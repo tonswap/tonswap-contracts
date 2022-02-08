@@ -1,0 +1,4 @@
+module.exports = {
+    'token': '<your_key here>'
+}
+
