@@ -4,9 +4,9 @@
 This project tries to combine a [TRC20](https://github.com/cod1ng-studio/TRC20) based and an AMM [uniswap](https://github.com/Uniswap/v2-core) 
 
 ### Compile Contract and RUN Fift Tests
-In order to run this project you need a this binaris **fift** **func** and **lite-client** , you can install from [source] (https://ton.org/docs/#/howto/getting-started) or use [tncli] (https://github.com/disintar/tncli) or just run `pip install tncli` 
+In order to run this project you need a this binaris **fift** **func** and **lite-client** , you can install from [source](https://ton.org/docs/#/howto/getting-started) or use [tncli](https://github.com/disintar/tncli) or just run `pip install tncli` 
 
-In order to run tests
+### Run Tests
 `npm run test-dex`  for non npm users just run `./scripts/test-dex.sh`
 
 ### Telegram bot as user interface
