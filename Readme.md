@@ -27,7 +27,8 @@ Run `npm run bot` to launch bot ,you will need a config.json
 - [X] - Swap TON -> Token and Token -> TON Tests (based on Uniswap)
 - [X] - Swap Tests in Fift
 - [X] - Masterchef with rewards 
-- [X] - Masterchef Rewards with Tests 
+- [ ] - Masterchef Rewards with Tests 
+- [ ] - Send receipt based on TRC20
 - [ ] - Deploy Contract to mainnet
 - [ ] - Connect Bot to mainnet
 - [ ] - Add Masterchef functionality with auto stake and auto withdraw inside the contract
