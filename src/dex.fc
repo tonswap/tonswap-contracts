@@ -21,8 +21,8 @@
 ;; ============= actions ====================
 ;; transfer = 1 TRC20 
 ;; transfer_from = 2 TRC20 
-;; approve = 3 TRC20
-;; increase/decrease = 4 TRC20
+;; increase/decrease = 3 TRC20
+;; claim_rewards = 4 claim_rewards
 ;; add_liqiuidity = 5 mint lp token 
 ;; remove_liqiuidity = 6 burn lp token
 ;; Swap In = 7   
@@ -288,11 +288,10 @@ int squareRoot(int number)  {
     int storage_fee = 0;
   
     (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
-
+    
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
-    
     throw_if(601, amount_out < min_amount_out);
 
   
@@ -566,7 +565,7 @@ int squareRoot(int number)  {
           ;; <b  killo 100 , min_amount_out=10 b>
           int transferd_amount = cs~load_grams();
           int senders_balance = _get_balance(balances, sender);
-          throw_if( 102, senders_balance > transferd_amount);
+          throw_if( 102, senders_balance < transferd_amount);
           int min_amount_out = cs~load_grams(); 
           
           return_value = swapTokens(min_amount_out, msg_value, false, sender);
