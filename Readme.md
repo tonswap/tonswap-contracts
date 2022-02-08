@@ -26,7 +26,9 @@ and just `npm run bot`
 - [X] - Add Liquidity + Fift Tests
 - [X] - Remove Liquidity + Fift Tests
 - [X] - Swap TON -> Token and Token -> TON Tests (based on Uniswap)
-- [ ] - Swap Tests in Fift
+- [X] - Swap Tests in Fift
+- [X] - Masterchef with rewards 
+- [X] - Masterchef Rewards with Tests 
 - [ ] - Deploy Contract to mainnet
 - [ ] - Connect Bot to mainnet
 - [ ] - Add Masterchef functionality with auto stake and auto withdraw inside the contract
