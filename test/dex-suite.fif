@@ -2,7 +2,7 @@
 "TonUtil.fif" include
 "Asm.fif" include
 
-"./keys/master.addr" load-address 2dup 2constant owner_addr
+"./test/master.addr" load-address 2dup 2constant owner_addr
 
 variable storage
 variable exit_code
