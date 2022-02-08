@@ -2,11 +2,7 @@
 "TonUtil.fif" include
 "Asm.fif" include
 
-"./keys/doron.addr" load-address 2dup 2constant owner_addr
-"./keys/alice.addr" load-address 2dup 2constant alice_addr
-"./keys/bob.addr" load-address 2dup 2constant bob_addr
-
-
+"./keys/master.addr" load-address 2dup 2constant owner_addr
 
 variable storage
 variable exit_code
@@ -88,9 +84,9 @@ cr ."===========================================================================
  finish_run print_result exit_grace
 
 
-
-
-
+// <b 40000 Gram, b> <s <b usdc_addr addr, b> <s dictnew 264 sdict! drop =: REF
+// <b 10 Gram, b> <s <b weth_addr addr, b> <s REF 264 sdict! drop =: REF2
+// <b REF2 dict, b> <s <b owner_addr addr, b> <s dictnew 264 sdict! drop =: credits
 
  
 // ########################################################################################
@@ -168,4 +164,30 @@ b> storage !
 
 // 10000000000 expect 
 ."Swap 100 TON exepct 1000 $KILO ton amount user recived 50 == " . 
+
+
+// ########################################################################################
+cr ."====================================================================================================================" cr 
+  ."Swap In "    cr 
+  ."Action = 7 - Send "    cr 
+  ."=====================================================================================================================" cr 
+
+
+// Ton Amount (10TON)
+ 10000000000
+
+ <b 0 1 i, b{000100} s, owner_addr addr, 3 Gram, b{00} s, b>
+ 
+ // Swap In OP=7,Query=0, 
+ <b 7 32 u, 0 64 u, 50 Gram, b> <s
+
+ 90191 code <s storage @ runvm
+ finish_run print_result exit_grace
+ 
+ // put top most element int return_value
+ 2dup 2constant return_value
+
+
+ 94965947516 expect 
+."expecting ton amount user recived 94965947516 == " . 
 

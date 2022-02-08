@@ -30,7 +30,7 @@ echo "  ============ ########################### ===================="
 
 
 echo "  ========== ######## Test -> DEX-Swaps        ########## ===================="
-./fift -s test/dex-add-liquidity.fif
+./fift -s test/dex-suite.fif
 if [[ $? -ne 0 ]] ; then
     exit 1
 fi

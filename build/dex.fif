@@ -457,37 +457,52 @@ PROGRAM{
     //  min_amount_out transferd_amount is_ton_src sender
     c4 PUSH	//  min_amount_out transferd_amount is_ton_src sender _17
     load_data CALLDICT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
+    s13 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized transferd_amount
+    s0 DUMP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _19
+    DROP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
     s12 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized is_ton_src
-    -1 EQINT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _21
+    -1 EQINT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _22
     IF:<{	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
-      s4 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _22
+      s4 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _23
     }>ELSE<{	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
-      s5 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _22
+      s5 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized _23
     }>	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers
     s13 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers is_ton_src
-    -1 EQINT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers _25
+    -1 EQINT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers _26
     IF:<{	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers
-      s5 POP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply _26 src_resvers balances allowances liquidity initialized
+      s5 POP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply _27 src_resvers balances allowances liquidity initialized
     }>ELSE<{	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized src_resvers
-      s6 POP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply src_resvers _26 balances allowances liquidity initialized
-      s4 s5 XCHG	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply _26 src_resvers balances allowances liquidity initialized
+      s6 POP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply src_resvers _27 balances allowances liquidity initialized
+      s4 s5 XCHG	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply _27 src_resvers balances allowances liquidity initialized
     }>	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized
+    s4 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized src_resvers
+    s0 DUMP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized _28
+    DROP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized
+    s5 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized trgt_resvers
+    s0 DUMP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized _29
+    DROP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized
     s13 s4 s5 PUSH3	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized transferd_amount src_resvers trgt_resvers
     get_amount_out CALLDICT	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out
+    DUP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out amount_out
+    s0 DUMP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out _32
+    DROP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out
+    s15 PUSH	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out min_amount_out
+    s0 DUMP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out _33
+    DROP	//  min_amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out
     DUP
     s0 16 s() XCHG	//  amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized amount_out min_amount_out
-    LESS	//  amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized _30
+    LESS	//  amount_out transferd_amount is_ton_src sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity initialized _35
     601 THROWIF
     s0 s12 XCHG	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity is_ton_src
-    -1 EQINT	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity _33
+    -1 EQINT	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity _38
     IF:<{	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity
       s3 s12 XCHG2	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers allowances balances src_resvers transferd_amount
       ADD	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers allowances balances ton_reserves
       s3 s12 XCPU	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply ton_reserves allowances balances trgt_resvers amount_out
       SUB	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply ton_reserves allowances balances token_reserves
-      my_address_x GETGLOB	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply ton_reserves allowances balances token_reserves _37
-      s0 s10 s13 XC2PU	//  amount_out liquidity initialized token_reserves name symbol decimals total_supply total_lp_supply ton_reserves allowances balances _37 sender amount_out
-      ~transfer CALLDICT	//  amount_out liquidity initialized token_reserves name symbol decimals total_supply total_lp_supply ton_reserves allowances _55 _56
+      my_address_x GETGLOB	//  amount_out liquidity initialized sender name symbol decimals total_supply total_lp_supply ton_reserves allowances balances token_reserves _42
+      s0 s10 s13 XC2PU	//  amount_out liquidity initialized token_reserves name symbol decimals total_supply total_lp_supply ton_reserves allowances balances _42 sender amount_out
+      ~transfer CALLDICT	//  amount_out liquidity initialized token_reserves name symbol decimals total_supply total_lp_supply ton_reserves allowances _60 _61
       DROP	//  amount_out liquidity initialized token_reserves name symbol decimals total_supply total_lp_supply ton_reserves allowances balances
     }>ELSE<{	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply trgt_resvers src_resvers balances allowances liquidity
       s4 s13 XCPU	//  amount_out transferd_amount initialized sender name symbol decimals total_supply total_lp_supply liquidity src_resvers balances allowances trgt_resvers amount_out
@@ -706,7 +721,7 @@ PROGRAM{
       3 BLKDROP	// 
       0 PUSHINT	//  _13=0
     }>	//  msg_value in_msg cs
-    LDMSGADDR	//  msg_value in_msg _214 _213
+    LDMSGADDR	//  msg_value in_msg _216 _215
     DROP	//  msg_value in_msg sender_raw
     REWRITESTDADDR	//  msg_value in_msg sender_wc sender_addr
     pack_addr INLINECALLDICT	//  msg_value cs sender
@@ -719,7 +734,7 @@ PROGRAM{
     }>	//  msg_value cs sender
     SWAP	//  msg_value sender cs
     32 LDU	//  msg_value sender action cs
-    64 LDU	//  msg_value sender action _220 _219
+    64 LDU	//  msg_value sender action _222 _221
     NIP	//  msg_value sender action cs
     c4 PUSH	//  msg_value sender action cs _45
     load_data CALLDICT	//  msg_value sender action cs name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
@@ -735,7 +750,7 @@ PROGRAM{
       LDSLICEX	//  liquidity sender initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances to cs
       LDGRAMS	//  liquidity sender initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances to value cs
       s13 s13 s13 XCHG3	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances sender to value
-      ~transfer CALLDICT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _236 _237
+      ~transfer CALLDICT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _238 _239
       DROP	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances
       1 PUSHINT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances return_value=1
     }>ELSE<{	//  msg_value sender action cs name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized return_value=0
@@ -759,10 +774,10 @@ PROGRAM{
         s0 16 s() XCHG
         SWAP
         1 PUSHINT	//  liquidity cs initialized value name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances from to allowances from sender _80 _81=1
-        ~change_allowance CALLDICT	//  liquidity cs initialized value name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances from to _244 _245
+        ~change_allowance CALLDICT	//  liquidity cs initialized value name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances from to _246 _247
         DROP	//  liquidity cs initialized value name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances from to allowances
         s0 s11 XCHG	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances from to value
-        ~transfer CALLDICT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _246 _247
+        ~transfer CALLDICT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _248 _249
         DROP	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances
         2 PUSHINT	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances return_value=2
       }>ELSE<{	//  msg_value sender action cs name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized return_value=0
@@ -788,7 +803,7 @@ PROGRAM{
           s4 s12 XCHG
           s3 s14 XCHG
           SWAP	//  liquidity cs initialized balances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves allowances sender spender _105 exact
-          ~change_allowance CALLDICT	//  liquidity cs initialized balances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _256 _257
+          ~change_allowance CALLDICT	//  liquidity cs initialized balances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves _258 _259
           DROP	//  liquidity cs initialized balances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves allowances
           3 PUSHINT	//  liquidity cs initialized balances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves allowances return_value=3
         }>ELSE<{	//  msg_value sender action cs name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized return_value=0
@@ -851,11 +866,11 @@ PROGRAM{
               s0 18 s() XCHG
               s0 s2 s8 XC2PU
               s10 s11 PUSH2	//  cs sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances balances liquidity sender reserves_price msg_value token_new_liquidity ton_reserves token_reserves total_lp_supply
-              mint_lp_token CALLDICT	//  cs sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances _264 _265 _266 _267 _268
+              mint_lp_token CALLDICT	//  cs sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances _266 _267 _268 _269 _270
               DROP	//  cs sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances new_liquidity new_lp_supply new_token_reserves new_ton_reserves
               s3 s(-1) PUXC
               s0 16 s() XCHG	//  cs new_ton_reserves initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances new_liquidity new_lp_supply new_token_reserves new_liquidity sender
-              _get_liquidity CALLDICT	//  cs new_ton_reserves initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances new_liquidity new_lp_supply new_token_reserves _269 _270
+              _get_liquidity CALLDICT	//  cs new_ton_reserves initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances new_liquidity new_lp_supply new_token_reserves _271 _272
               DROP	//  cs new_ton_reserves initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances new_liquidity new_lp_supply new_token_reserves return_value
               s12 PUSH
               s4 s12 XCPU
@@ -886,7 +901,7 @@ PROGRAM{
                 s0 s5 XCHG
                 s4 s14 XCHG
                 s2 s7 XCHG	//  liquidity balances initialized allowances name symbol decimals total_supply cs balances liquidity sender lp_amount_to_remove total_lp_supply token_reserves ton_reserves
-                _burn_liquidity CALLDICT	//  liquidity balances initialized allowances name symbol decimals total_supply cs _273 _274 _275 _276 _277 _278 _279
+                _burn_liquidity CALLDICT	//  liquidity balances initialized allowances name symbol decimals total_supply cs _275 _276 _277 _278 _279 _280 _281
                 s4 POP
                 s4 POP
                 s4 POP	//  liquidity balances initialized allowances name symbol decimals total_supply cs token_reserves ton_reserves return_value total_lp_supply
@@ -911,13 +926,19 @@ PROGRAM{
                     LDGRAMS	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs
                     s3 s13 PUSH2	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs balances sender
                     _get_balance CALLDICT	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance
+                    DUP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance senders_balance
+                    s0 DUMP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance _197
+                    DROP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance
+                    DUP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance senders_balance
+                    s0 DUMP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance _198
+                    DROP	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances transferd_amount cs senders_balance
                     ROT	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances cs senders_balance transferd_amount
-                    GREATER	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances cs _198
+                    LESS	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances cs _200
                     102 THROWIF
                     LDGRAMS	//  msg_value sender initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances min_amount_out cs
                     s1 s14 s0 XCHG3
                     FALSE
-                    s0 s14 XCHG2	//  allowances cs initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances min_amount_out msg_value _203 sender
+                    s0 s14 XCHG2	//  allowances cs initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances min_amount_out msg_value _205 sender
                     swapTokens CALLDICT	//  allowances cs initialized liquidity name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances return_value
                     s9 s12 XCHG
                     s0 s10 XCHG
@@ -952,8 +973,8 @@ PROGRAM{
       }>
     }>
     s0 s11 XCHG
-    10 PUSHINT	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances cs _208=10
-    SDATASIZE	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances _286 _287 _288
+    10 PUSHINT	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances cs _210=10
+    SDATASIZE	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances _288 _289 _290
     3 BLKDROP	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances
     s7 s10 XCHG
     s6 s9 XCHG
