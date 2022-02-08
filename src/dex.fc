@@ -34,7 +34,7 @@ builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
 (slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
 
 global slice my_address_x; ;; Testing , this a replacemnet my_address()
-
+global int now_x;
 
 ;; =============== GAS Functions =============================
 
@@ -147,16 +147,23 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
 }
 
 
-int _get_liquidity(cell balances, slice address) {
-  (slice balance_slice, int found) = balances.dict_get?(264, address);
+(int, int) _get_liquidity(cell liquidity, slice address) {
+  (slice liquidity_slice, int found) = liquidity.dict_get?(264, address);
   if (found) {
-    int amount =  balance_slice~load_grams();
-    return amount;
+    int amount =  liquidity_slice~load_grams();
+    ~dump amount;
+    int timestamp =  liquidity_slice~load_uint(32);
+    ~dump timestamp;
+    return(amount, timestamp);
   } else {
-    return 0;
+    return (0, 0);
   }
 }
 
+(cell, ()) ~set_liquidity(cell liquidity, slice address, int value) {
+  liquidity~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(now_x, 32));
+  return (liquidity, ());
+}
 
 
 ;; value - MUST BE NON-NEGATIVE
@@ -351,6 +358,22 @@ int squareRoot(int number)  {
     return ( balances, liquidity, storage_fee, total_lp_supply, token_reserves, ton_reserves, share_in_ton_reserves);
 }
 
+(cell, int) ~claim_rewards(cell liquidity, slice address, int reward_rate, int total_lp_supply, int token_reserves) {
+
+  (slice liquidity_slice, int found) = liquidity.dict_get?(264, address);
+  if (found) {
+    
+    int lp_amount =  liquidity_slice~load_grams();
+    int user_tokens = (lp_amount / total_lp_supply) * token_reserves;
+    int timestamp =  liquidity_slice~load_uint(32);
+    int minutes_staked =  (now_x - timestamp);
+    int rewards = user_tokens * minutes_staked * reward_rate;
+    liquidity~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now_x, 32));
+    return (liquidity, rewards);
+  } 
+  return (liquidity, 0);
+}
+
 (cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
     int new_liquidity = 0;
     int storage_fee = 0;
@@ -382,8 +405,8 @@ int squareRoot(int number)  {
 
     int old_senders_liquidity = _get_balance(liquidity, sender);
     ;; setting the new liqudity to the user
-    ;; TODO add a new method ~set_liquidity that sets amount and timestamp for masterchef
-    liquidity~set_balance(sender, new_liquidity + old_senders_liquidity);
+    liquidity~set_liquidity(sender, new_liquidity + old_senders_liquidity);
+    
     if ( old_senders_liquidity > 0 ) {
       storage_fee += cell_storage_fee();
     }
@@ -490,7 +513,13 @@ int squareRoot(int number)  {
 
       storage_fee += allowances~change_allowance(sender, spender, sign ? - delta_value : delta_value, exact);
       return_value = 3;
-    } elseif (action == 5) { ;; add liqudity
+    } elseif (action == 4) { ;; claim rewards
+      ;; TODO add reward_rate is a memroy parm 
+      int rewards = liquidity~claim_rewards(sender, 10, total_lp_supply, token_reserves);
+      int sender_balance = _get_balance(balances, sender);
+      balances~set_balance(sender, rewards + sender_balance);
+      return_value = 4;
+    }  elseif (action == 5) { ;; add liqudity
         
         int token_new_liquidity = cs~load_grams();
         int slipage = cs~load_uint(64);
@@ -512,7 +541,7 @@ int squareRoot(int number)  {
         
         (cell new_liquidity, int new_lp_supply, int new_token_reserves, int new_ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, ton_reserves, token_reserves, total_lp_supply);
 
-        int newliq = _get_liquidity(new_liquidity, sender);
+        (int newliq, _) = _get_liquidity(new_liquidity, sender);
         return_value = newliq;
         store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
         
@@ -541,8 +570,6 @@ int squareRoot(int number)  {
           int min_amount_out = cs~load_grams(); 
           
           return_value = swapTokens(min_amount_out, msg_value, false, sender);
-
-        
       }        
 
 
@@ -570,7 +597,7 @@ int squareRoot(int number)  {
 }
 
 ;; Returns the account balance of another account with address _owner.
-int liquidity_of(int owner_wc, int owner_addr) method_id {
+(int, int) liquidity_of(int owner_wc, int owner_addr) method_id {
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
   
   (_, _, _, _, _, _, _, _, _, cell liquidity, int initialized) = load_data(get_data());
@@ -649,6 +676,7 @@ int test_recv_internal(int value, cell in_msg_cell, slice in_msg) method_id {
   slice sender = pack_addr(sender_wc, sender_addr);
   slice my_f_address = pack_addr(-1, sender_addr);
   my_address_x = my_f_address;
+  now_x = 1644329284;
 
   (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
   balances~set_balance(my_address_x, 100000000000000);

@@ -1,0 +1,15 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <lp_amount_to_remove>" cr
+  ."Creates a remove liqudity .boc file" cr 1 halt
+} : usage
+$# 1- -1 and ' usage if
+
+$1 $>GR =: lp_amount_to_remove
+
+<b 6 32 u, 0 64 u, lp_amount_to_remove Gram, b> =: body_boc
+body_boc <s csr.
+body_boc 2 boc+>B
+"remove-liquidtiy.boc" tuck B>file

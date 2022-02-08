@@ -1,0 +1,171 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"./keys/doron.addr" load-address 2dup 2constant owner_addr
+"./keys/alice.addr" load-address 2dup 2constant alice_addr
+"./keys/bob.addr" load-address 2dup 2constant bob_addr
+
+
+
+variable storage
+variable exit_code
+// ====================== UTILS   ========================================
+{ storage ! exit_code ! } : finish_run
+{ exit_code @ 0 = not abort"command failed" } : exit_grace
+{ - 0= not abort"Elements are not equal" .s } : expect
+
+{
+  ."Exit code " exit_code @ . cr
+  ."Updated storage: " cr storage @ <s csr. cr
+  ."Stack:" cr .s
+} : print_result
+// =======================================================================
+
+."=====================================================================================" cr 
+." ______  _____   __  __      ____    ____    __   __     " cr
+."/\__  _\/\  __`\/\ \/\ \    /\  _`\ /\  _`\ /\ \ /\ \    " cr
+."\/_/\ \/\ \ \/\ \ \ `\\ \   \ \ \/\ \ \ \L\_\ `\`\/'/'   " cr
+."   \ \ \ \ \ \ \ \ \ , ` \   \ \ \ \ \ \  _\L`\/ > <     " cr
+."    \ \ \ \ \ \_\ \ \ \`\ \   \ \ \_\ \ \ \L\ \ \/'/\`\  " cr
+."     \ \_\ \ \_____\ \_\ \_\   \ \____/\ \____/ /\_\\ \_\" cr
+."      \/_/  \/_____/\/_/\/_/    \/___/  \/___/  \/_/ \/_/" cr
+cr                                                         
+."=====================================================================================" cr 
+
+
+
+"../build/dex.fif" include =: code
+
+1000000000 =: total_supply
+100 =: total_lp_supply
+200000000000 =: ton_reserves
+2000000000000 =: token_reserves
+
+"TON" constant tokenname
+"TON" constant tokensymbol
+<b -1 8 i, owner_addr addr, b> <s constant owner_address_full
+
+variable balances dictnew balances !
+variable approvals dictnew approvals !
+
+<b tokenname $, b> constant tokennamecell
+<b tokensymbol $, b> constant tokensymbolcell
+
+// intalise the balances dictionary with 100% of the supply owned to owner_addr.addr
+<b total_supply Gram, b> <s <b owner_addr addr, b> <s dictnew 264 sdict! drop =: balances
+
+
+
+// this cell represent the sub balance of the credtis dictonary credits[my_address][token_address] = balance
+
+// init storage
+<b "RUB" $len 8 u,
+   "RUB" $,
+   "R" $len 8 u,
+   "R" $, 
+   18 8 u, // decimals
+   total_supply Gram, // total supply
+   total_lp_supply Gram, // total supply
+   token_reserves Gram, // reserveA
+   ton_reserves Gram, // reserveB
+   balances dict, // balances 
+   null dict, // approvals
+   null dict, // liquidity
+   0 1 u, // un initaliised 
+b> storage !
+
+
+// ######################################################################################
+// receive external - init
+cr ."=====================================================================================" cr 
+." receive external - init" 
+."=====================================================================================" cr 
+
+ <b b> <s
+
+ 124838 code <s storage @ runvm
+ finish_run print_result exit_grace
+
+
+
+
+
+
+ 
+// ########################################################################################
+
+
+variable return_value
+
+cr ."====================================================================================================================" cr 
+  ."Add Liqudity "    cr 
+  ."Action = 5 - Send "    cr 
+  ."=====================================================================================================================" cr 
+
+// Ton Amount
+ 100000000000
+
+ <b 0 1 i, b{000100} s, owner_addr addr, 3 Gram, b{00} s, b>
+ 
+ // Add Liquidity OP=5,Query=0,token_amount, slipage=10
+ <b 5 32 u, 0 64 u, 1000000000000 Gram, 10 64 u, b> <s
+
+ 90191 code <s storage @ runvm
+ finish_run print_result exit_grace
+ 
+ 
+ 50 expect 
+
+."============================" cr
+."expecting new lp 50 == " .  cr
+."============================" 
+
+cr ."====================================================================================================================" cr 
+  ."Remove Liqudity "    cr 
+  ."Action = 6 - Send "    cr 
+  ."=====================================================================================================================" cr 
+
+// intalise the liquidty dictionary with 50 of the supply owned to owner_addr.addr
+<b 77777777 Gram, b> <s <b owner_addr addr, b> <s dictnew 264 sdict! drop =: liquidity
+<b 77777777 Gram, b> <s <b owner_addr addr, b> <s dictnew 264 sdict! drop =: balances
+
+
+
+// this cell represent the sub balance of the credtis dictonary credits[my_address][token_address] = balance
+
+// init storage
+<b "RUB" $len 8 u,
+   "RUB" $,
+   "R" $len 8 u,
+   "R" $, 
+   18 8 u, // decimals
+   total_supply Gram, // total supply
+   total_lp_supply Gram, // total supply
+   token_reserves Gram, // reserveA
+   ton_reserves Gram, // reserveB
+   null dict, // balances 
+   null dict, // approvals
+   liquidity dict, // liquidity
+   0 1 u, // un initaliised 
+b> storage !
+
+
+// Ton Amount  (10TON)
+ 10000000000 
+
+ <b 0 1 i, b{000100} s, owner_addr addr, 3 Gram, b{00} s, b>
+ 
+ // Remove Liquidity OP=6,Query=0,token_amount
+ <b 7 32 u, 0 64 u, 50 Gram, b> <s
+
+ 90191 code <s storage @ runvm
+ finish_run print_result exit_grace
+ 
+ // put top most element int return_value
+ 2dup 2constant return_value
+
+
+// 10000000000 expect 
+."Swap 100 TON exepct 1000 $KILO ton amount user recived 50 == " . 
+

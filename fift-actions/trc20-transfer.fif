@@ -1,0 +1,16 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <to_addr_file> <amount>" cr
+  ."Creates a transfer message body" cr 1 halt
+} : usage
+$# 2- -2 and ' usage if
+
+$1 load-address 2dup 2constant to_addr
+$2 $>GR =: amount
+
+<b 1 32 u, 0 64 u, to_addr addr, amount Gram, b> =: body_boc
+body_boc <s csr.
+body_boc 2 boc+>B
+"transfer.boc" tuck B>file

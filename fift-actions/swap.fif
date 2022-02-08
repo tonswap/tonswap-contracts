@@ -1,0 +1,19 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+
+{ ."usage: " @' $0 type ."<lp_address> <amount_to_swap> <min_amount_out>" cr
+  ."TRC20 transfer + min_amount_out" cr 1 halt
+} : usage
+$# 2- -2 and ' usage if
+
+
+$1 load-address 2dup 2constant to_addr // to_addr=lp_address so the lp_address would recive the transfer
+$2 $>GR =: amount_in
+$3 $>GR =: min_amount_out // this params projects the miniumum amount out minus fees
+
+<b 1 32 u, 0 64 u, to_addr addr, amount_in Gram, min_amount_out Gram, b> =: body_boc
+body_boc <s csr.
+body_boc 2 boc+>B
+"swap.boc" tuck B>file

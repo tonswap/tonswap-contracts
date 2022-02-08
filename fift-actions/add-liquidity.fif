@@ -1,0 +1,16 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <token_b_amount> <token_b_amount>" cr
+  ."Creates a an add liqiuidity message" cr 1 halt
+} : usage
+$# 2- -2 and ' usage if
+
+$1 $>GR =: token_a_amount
+$2 $>GR =: token_b_amount
+
+<b 5 32 u, 0 64 u, token_a_amount Gram, token_b_amount Gram, b> =: body_boc
+body_boc <s csr.
+body_boc 2 boc+>B
+"add-liquidtiy.boc" tuck B>file
