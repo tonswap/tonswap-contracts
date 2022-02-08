@@ -6,6 +6,8 @@ This project tries to combine a [TRC20](https://github.com/cod1ng-studio/TRC20) 
 ### Compile Contract and RUN Fift Tests
 In order to run this project you need a this binaris **fift** **func** and **lite-client** , you can install from [source](https://ton.org/docs/#/howto/getting-started) or use [tncli](https://github.com/disintar/tncli) or just run `pip install tncli` 
 
+after you installing **fift** and **func** copy or symlink the binaries to root folder `ln -s ~/src/func ./func` and `ln -s ~/src/fift ./fift`
+
 ### Run Tests
 `npm run test-dex`  for non npm users just run `./scripts/test-dex.sh`
 
@@ -15,7 +17,7 @@ The telegram bot serves as a UI which you can interact with AMM, The bot support
 Run `npm install` to install npm dependencies
 and just `npm run bot`
 
-[![Bot](https://i.ibb.co/fq3rhzR/bot-300.jpg)](https://drive.google.com/file/d/1m3QnCtsUbTdbuAq2_Y7D2l1tr-6kibM2/view?usp=sharing)
+[![Bot](https://i.ibb.co/cDtCYFd/Group-25.png)](https://drive.google.com/file/d/1m3QnCtsUbTdbuAq2_Y7D2l1tr-6kibM2/view?usp=sharing)
 
 
 ### Roadmap
