@@ -151,9 +151,7 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
   (slice liquidity_slice, int found) = liquidity.dict_get?(264, address);
   if (found) {
     int amount =  liquidity_slice~load_grams();
-    ~dump amount;
     int timestamp =  liquidity_slice~load_uint(32);
-    ~dump timestamp;
     return(amount, timestamp);
   } else {
     return (0, 0);
@@ -206,7 +204,6 @@ slice clone_slice(slice s) {
 
 ;; ======= Memory Methods =================
 
-
 (slice, slice, int, int, int, int, int, cell, cell, cell, int) load_data(cell data) {
   slice ds = data.begin_parse();
   int name_size = ds~load_uint(8);
@@ -248,7 +245,7 @@ slice clone_slice(slice s) {
 }
 
 
-;; =============  Using babylonian method of Math.sqrt
+;; =============  Using babylonian method for Math.sqrt
 int squareRoot(int number)  {
     if(number < 3) {
       return 1;
@@ -333,11 +330,8 @@ int squareRoot(int number)  {
     int storage_fee = 0;
     
     int shareInLp = total_lp_supply / lp_amount_to_remove;
-    
-
     int share_in_ton_reserves = (lp_amount_to_remove * ton_reserves) / total_lp_supply;
     int share_in_token_reserves = (lp_amount_to_remove * token_reserves) / total_lp_supply;
-    
 
     ;; TODO ========================================================
     ;; slice conract_address = my_address();
@@ -388,7 +382,6 @@ int squareRoot(int number)  {
       int token_share = (token_amount * total_lp_supply) / token_reserves;
       new_liquidity = min(ton_share, token_share);
     }
-    
     
     ;; TODO ========================================================
     ;; slice conract_address = my_address();
