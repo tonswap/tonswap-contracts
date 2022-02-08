@@ -6,7 +6,7 @@
 
 ## Overview
 
-Tonswap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow liquidity providers to supply liquidity and traders to swap tokens.
+Tonswap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow traders to swap tokens and liquidity providers to supply liquidity and earn rewards.
 
 The project depends on an unofficial implementation for [TRC20](https://github.com/cod1ng-studio/TRC20) (which is not yet distributed and will probably change as the fungibe token standard gets developed).
 
