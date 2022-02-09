@@ -25,8 +25,8 @@
 ;; claim_rewards = 4 claim_rewards
 ;; add_liqiuidity = 5 mint lp token 
 ;; remove_liqiuidity = 6 burn lp token
-;; Swap In = 7   
-;; Swap Out = 8 
+;; Swap In = 7  TON -> Token
+;; Swap Out = 8 Token -> TON
 
 builder store_builder(builder to, builder what) asm(what to) "STB";
 builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
@@ -34,7 +34,7 @@ builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
 (slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
 
 global slice my_address_x; ;; Testing , this a replacemnet my_address()
-global int now_x;
+global int now_x; ;; this a replacement for block_lt()
 
 ;; =============== GAS Functions =============================
 
@@ -550,7 +550,6 @@ int squareRoot(int number)  {
         return_value = users_new_ton;
     } elseif ( action == 7 ) {
         ;; <b 10TON , min_amount_out=99 b>
-        ;; swap-in 10 Ton -> X Token
         int min_amount_out = cs~load_grams();
         return_value = swapTokens(min_amount_out, msg_value, true, sender);
 
@@ -566,6 +565,8 @@ int squareRoot(int number)  {
 
 
     
+    store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
+    ;; ensure that receipt carries at least 10k gas
     (int cells, int bits, int refs) = cs.slice_compute_data_size(10);
     ;; msg value has enough coins to pay for 
     ;;  1) storing cells created during tx plus
@@ -573,15 +574,11 @@ int squareRoot(int number)  {
     ;;  3) 10k gas for processing of outcoming message
     ;;  4) forward fee for outcoming message
     
-  ;;  throw_if(1001, true);
+    ;;throw_unless(111, msg_value > storage_fee + gas_to_coins(chain_id, gas_limit + 10000) + msg_fwd_price(cells, bits, chain_id));
     
-  ;; throw_unless(111, msg_value > storage_fee + gas_to_coins(chain_id, 10000) + msg_fwd_price(cells, bits, chain_id));
-
-      
-    store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
-
+    
+    
     return return_value;
-
 }
 
 () recv_external(slice in_msg) impure {

@@ -945,15 +945,18 @@ PROGRAM{
         s1 s9 XCHG	//  liquidity cs initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances return_value
       }>
     }>
-    s0 s11 XCHG
-    10 PUSHINT	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances cs _208=10
-    SDATASIZE	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances _286 _287 _288
-    3 BLKDROP	//  liquidity return_value initialized allowances name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances
-    s7 s10 XCHG
-    s6 s9 XCHG
-    3 6 BLKSWAP
-    s1 s11 XCHG	//  return_value name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
+    s8 s10 XCHG
+    s7 s9 XCHG
+    s6 s8 XCHG
+    s5 s7 XCHG
+    s4 s6 XCHG
+    s3 s5 XCHG
+    s4 s12 s12 XCHG3
+    s3 s1 s3 XCHG3	//  return_value cs name symbol decimals total_supply total_lp_supply token_reserves ton_reserves balances allowances liquidity initialized
     store_data CALLDICT
+    10 PUSHINT	//  return_value cs _209=10
+    SDATASIZE	//  return_value _286 _287 _288
+    3 BLKDROP	//  return_value
   }>
   recv_external PROC:<{
     //  in_msg
