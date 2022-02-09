@@ -1,4 +1,4 @@
-# Tonswap - FunC smart contracts
+# Tonswap - FunC Smart Contracts
 
 ## Work in progress!
 
