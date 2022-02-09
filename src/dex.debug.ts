@@ -110,12 +110,12 @@ export class DexDebug {
         let address = new BN(owner.hash)
         console.log(wc, address);
 
-        let balanceResult = await this.contract.invokeGetMethod('balance_of', [
+        let balanceResult = await this.contract.invokeGetMethod('ibalance_of', [
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
         
-        return (balanceResult.result[0] as BN).toNumber();
+        return (balanceResult.result[0] as BN);
     }
 
     async liquidityOf(owner: Address) {

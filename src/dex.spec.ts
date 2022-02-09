@@ -15,19 +15,20 @@ var DefaultConfig = {
     name: 'Masterchef',
     symbol: 'NO_NEED',
     decimals: new BN(9),
-    totalSupply: toBN(100000),
+    totalSupply: toDecimals(100000),
     totalLPSupply: new BN(12),
-    tokenReserves: toBN(0),
-    tonReserves: toBN(0),
+    tokenReserves: toDecimals(0),
+    tonReserves: toDecimals(0),
 
 } as DexConfig;
 
 
-function toBN(num: number) {
+function toDecimals(num: number) {
     return (new BN(num)).mul(decimals);
 }
 
 const baseLP = new BN('316227766016');
+const senderInitialBalance = new BN('200000000000000')
 
 describe('SmartContract', () => {
     let source: string
@@ -66,13 +67,13 @@ describe('SmartContract', () => {
         
 
         // Add liquidity take #1
-        let res = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
+        let res = await contract.addLiquidity(myAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0)
         let liq1 = await contract.liquidityOf(myAddress);
         expect(liq1.cmp(baseLP)).toBe(0);
         
         // Add liquidity take #2
-        let res2 = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
+        let res2 = await contract.addLiquidity(myAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res2.exit_code).toBe(0);
 
         let liq2 = await contract.liquidityOf(myAddress);
@@ -80,7 +81,7 @@ describe('SmartContract', () => {
 
 
         // Add liquidity take #3 with 3x of the amounts
-        let res3 = await contract.addLiquidity(myAddress,  toBN(30), toBN(300), 2);
+        let res3 = await contract.addLiquidity(myAddress,  toDecimals(30), toDecimals(300), 2);
         expect(res3.exit_code).toBe(0);
         
         // Expect liquidity to be 
@@ -94,21 +95,31 @@ describe('SmartContract', () => {
         let res0 = await contract.initTestData(myAddress)
         expect(res0.exit_code).toBe(0)
 
+        let tokenBalance = await contract.balanceOf(myAddress);
+        console.log('balance', tokenBalance.toNumber());
+        expect(tokenBalance.cmp(senderInitialBalance)).toBe(0);
+
         // Add liquidity take #1
-        let res = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
+        let res = await contract.addLiquidity(myAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0)
         let liq1 = await contract.liquidityOf(myAddress);
         expect(liq1.cmp(baseLP)).toBe(0);
-        
-        
 
-        let res2 = await contract.removeLiquidity(myAddress, liq1);
-        expect(res.exit_code).toBe(0)
+
+        let tokenBalanceAfterAddLiq = await contract.balanceOf(myAddress);
+        expect(tokenBalanceAfterAddLiq.cmp(senderInitialBalance.sub(toDecimals(100)))).toBe(0);
+        
+    
+        expect((await contract.removeLiquidity(myAddress, liq1)).exit_code).toBe(0);
         
         let liq2 = await contract.liquidityOf(myAddress);
-        console.log('user liquidity', liq2.toNumber());
-
         expect(liq2.cmp(new BN(0))).toBe(0);
+
+        let tokenBalanceAfterAddAndRemove = await contract.balanceOf(myAddress);
+        console.log('balance after remove ', tokenBalanceAfterAddAndRemove.toNumber());
+        console.log('initial balance ', senderInitialBalance.toNumber());
+
+        expect(tokenBalanceAfterAddAndRemove.cmp(senderInitialBalance)).toBe(0);
     });
        
 

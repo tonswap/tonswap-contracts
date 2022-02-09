@@ -367,10 +367,8 @@ int squareRoot(int number)  {
   return (liquidity, 0);
 }
 
-(cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
-    int x = 122;
-    int y = 222;
-    int z = 322;
+(cell, cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
+    
     
     int new_liquidity = 0;
     int storage_fee = 0;
@@ -389,29 +387,13 @@ int squareRoot(int number)  {
     
     ;; TODO ========================================================
     ;; slice conract_address = my_address();
-    
-    ~dump x;
-    ~dump token_amount;
-    ~dump ton_amount;
-    ~dump x;
-    
     int contracts_balance = _get_balance(balances, my_address_x);
-    
     ;; TODO ========================================================
-    ~dump y;
-    ~dump token_reserves;
-    ~dump ton_reserves;
-    ~dump y;
+    
 
     storage_fee += balances~transfer(sender, my_address_x, token_amount);
     token_reserves = token_amount + token_reserves;
     ton_reserves = ton_amount + ton_reserves;
-    
-    ~dump z;
-    ~dump token_reserves;
-    ~dump ton_reserves;
-    ~dump z;
-
     total_lp_supply = new_liquidity + total_lp_supply;
 
     int old_senders_liquidity = _get_balance(liquidity, sender);
@@ -424,7 +406,7 @@ int squareRoot(int number)  {
       storage_fee += cell_storage_fee();
     }
     int after_set = _get_balance(liquidity, sender);
-    return (liquidity, total_lp_supply, token_reserves, ton_reserves, storage_fee);
+    return (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, storage_fee);
     ;; Should send callback or set the state for the callback to be completed 
  }
 
@@ -560,26 +542,16 @@ int squareRoot(int number)  {
         int reserves_price = 0;
         int price_delta = 0;
         
-        ~dump action;
-          ~dump token_reserves;
-            ~dump ton_reserves;
-        
         if ( token_reserves > 0 ) {
           
           reserves_price = token_reserves / ton_reserves ;
-          ~dump action;
-          ~dump action;
-          ~dump reserves_price;
-          ~dump msg_price;
           price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
           throw_if(103,  price_delta > slipage );
         }
 
-        (liquidity, total_lp_supply, token_reserves, ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_lp_supply);
-~dump action;
+        (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_lp_supply);
         (int newliq, _) = _get_liquidity(liquidity, sender);
         return_value = newliq;
-        ~dump newliq;
        ;; store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
         
         storage_fee += fee;
