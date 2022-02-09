@@ -1,18 +1,26 @@
-# Tonswap
+# Tonswap - FunC smart contracts
 
-## This project is TRC20 + AMM built in, including Liquidity Pool and fees
-This project tries to combine a [TRC20](https://github.com/cod1ng-studio/TRC20) based and an AMM [uniswap](https://github.com/Uniswap/v2-core) 
+## Work in progress!
 
-### Compile Contract and RUN Fift Tests
-In order to run this project you need a this binaris **fift** **func** and **lite-client** , you can install from [source](https://ton.org/docs/#/howto/getting-started) or use [tncli](https://github.com/disintar/tncli) or just run `pip install tncli` 
+> This project is still experimental and in an ongoing research phase.
 
-after you installing **fift** and **func** copy or symlink the binaries to root folder `ln -s ~/src/func ./func` and `ln -s ~/src/fift ./fift`
+## Overview
 
-### Run Tests
-`npm run test-dex`  for non npm users just run `./scripts/test-dex.sh`
+Tonswap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow traders to swap tokens and liquidity providers to supply liquidity and earn rewards.
 
+The project depends on an unofficial implementation for [TRC20](https://github.com/cod1ng-studio/TRC20) (which is not yet distributed and will probably change as the fungibe token standard gets developed).
 
-### Roadmap
+## Develop
+
+### Compile contract and run Fift tests
+
+This project depends on the executables **fift**, **func** and **lite-client**. You can build them from [source](https://ton.org/docs/#/howto/getting-started), use [tncli](https://github.com/disintar/tncli) or run `pip install tncli`. After installing **fift** and **func**, copy or symlink the executables to the root folder `ln -s ~/src/func ./func` and `ln -s ~/src/fift ./fift`
+
+### Run tests
+
+run `./scripts/test-dex.sh`
+
+## Roadmap
 
 - [X] - Basic Bot with TRC20 interaction
 - [X] - AMM with 0.03% Fees 
