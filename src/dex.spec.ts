@@ -27,6 +27,7 @@ function toBN(num: number) {
     return (new BN(num)).mul(decimals);
 }
 
+const baseLP = new BN('316227766016');
 
 describe('SmartContract', () => {
     let source: string
@@ -34,6 +35,10 @@ describe('SmartContract', () => {
     beforeAll(async () => {
         source = (await readFile('./src/dex.fc')).toString('utf-8')
     })
+
+    beforeEach(async () => {
+
+    });
 
 
     // it('should return token Data', async () =>    {
@@ -51,53 +56,60 @@ describe('SmartContract', () => {
     // })
 
     
-
+  // TODO fix dust issue
     it('should Add Liquidity multiple times', async () => {
         let contract = await DexDebug.create(DefaultConfig)
 
         let res0 = await contract.initTestData(myAddress)
         expect(res0.exit_code).toBe(0)
         
-        const baseLP = 316227766016;
+        
 
+        // Add liquidity take #1
         let res = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
         expect(res.exit_code).toBe(0)
-        expect(res.returnValue).toBe(baseLP);
-
+        let liq1 = await contract.liquidityOf(myAddress);
+        expect(liq1.cmp(baseLP)).toBe(0);
+        
+        // Add liquidity take #2
         let res2 = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
         expect(res2.exit_code).toBe(0);
-        expect(res2.returnValue).toBeCloseTo(baseLP*2, 12);
 
-    
-        expect(await contract.liquidityOf(myAddress)).toBe(2);
+        let liq2 = await contract.liquidityOf(myAddress);
+        expect(liq2.cmp( baseLP.mul( new BN(2)).add( new BN(12) ) )) .toBe(0);
 
+
+        // Add liquidity take #3 with 3x of the amounts
         let res3 = await contract.addLiquidity(myAddress,  toBN(30), toBN(300), 2);
         expect(res3.exit_code).toBe(0);
-        expect(res2.returnValue).toBeCloseTo(baseLP * 5, 12);
-
-        expect(await contract.liquidityOf(myAddress)).toBe(baseLP * 5);        
+        
+        // Expect liquidity to be 
+        let liq3 = await contract.liquidityOf(myAddress);
+        expect(liq3.cmp(baseLP.mul(new BN(5)).add( new BN(48))   )).toBe(0);
     })
 
-    
+    it('should Add Liquidity and remove liquidity', async () => {
+        
+        let contract = await DexDebug.create(DefaultConfig)
+        let res0 = await contract.initTestData(myAddress)
+        expect(res0.exit_code).toBe(0)
 
+        // Add liquidity take #1
+        let res = await contract.addLiquidity(myAddress,  toBN(10), toBN(100), 2);
+        expect(res.exit_code).toBe(0)
+        let liq1 = await contract.liquidityOf(myAddress);
+        expect(liq1.cmp(baseLP)).toBe(0);
+        
+        
 
-//     it('should mint a couple of tokens ', async () => {
-//         let contract = await Trc721Debug.create(DefaultConfig);
+        let res2 = await contract.removeLiquidity(myAddress, liq1);
+        expect(res.exit_code).toBe(0)
+        
+        let liq2 = await contract.liquidityOf(myAddress);
+        console.log('user liquidity', liq2.toNumber());
 
-//         let res1 = await contract.mint(myAddress)
-//         expect(res1.exit_code).toBe(0)
-//         let res2 = await contract.mint(myAddress)
-//         expect(res2.exit_code).toBe(0)        
-
-//         let uri = await contract.getTokenUri(2)
-//         let nftData = await fethcIpfs(uri);
-//         expect(nftData.image).toBe(APE_2_IMAGE);
-
-//         expect( await contract.getSupply()).toBe(2)
-//         expect( await contract.balanceOf(myAddress)).toBe(2);
-
-//         expect( await contract.balanceOf(bobAddress)).toBe(0);
-
+        expect(liq2.cmp(new BN(0))).toBe(0);
+    });
        
 
 //         //console.log(await contract.getOwner(1));

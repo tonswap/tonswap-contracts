@@ -590,7 +590,7 @@ int squareRoot(int number)  {
         int user_lp_balance = _get_balance(liquidity, sender);
         throw_if( 104, user_lp_balance < lp_amount_to_remove);
 
-        (cell balances, cell liquidity, int fee, total_lp_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, liquidity, sender, lp_amount_to_remove, total_lp_supply, token_reserves, ton_reserves);
+        (balances, liquidity, int fee, total_lp_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, liquidity, sender, lp_amount_to_remove, total_lp_supply, token_reserves, ton_reserves);
         storage_fee += fee;
         return_value = users_new_ton;
     } elseif ( action == 7 ) {

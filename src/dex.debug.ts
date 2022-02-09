@@ -79,12 +79,30 @@ export class DexDebug {
         console.log(res);
         return {
             "exit_code": res.exit_code,
-            returnValue: (res.result[1] as BN).toNumber()
+            returnValue: res.result[1] as BN
         }
     }
 
-    async removeLiquidity(minter: Address) {
+    async removeLiquidity(sender: Address, lpAmount: BN) {
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(6, 32) // op
+        messageBody.bits.writeUint(1, 64) // query_id
+        messageBody.bits.writeCoins(lpAmount);
+        
+        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
 
+        let res = await this.contract.sendInternalMessage(new InternalMessage({
+            to: contractAddress,
+            from: sender,
+            value: new BN(1),
+            bounce: false,
+            body: b
+        }))
+        console.log(res);
+        return {
+            "exit_code": res.exit_code,
+            returnValue: res.result[0] as BN
+        }
     }
 
     async balanceOf(owner: Address) {
@@ -112,7 +130,7 @@ export class DexDebug {
 
         console.log(liquidityResult);
         
-        return (liquidityResult.result[1] as BN).toNumber();
+        return (liquidityResult.result[0] as BN)
     }
 
     static async create(config: DexConfig) {
