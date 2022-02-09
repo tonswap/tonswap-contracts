@@ -217,14 +217,14 @@ slice clone_slice(slice s) {
   int ton_reserves = ds~load_grams();
   cell balances = ds~load_dict();
   cell approvals = ds~load_dict();
-  cell liqudity = ds~load_dict();
+  cell liquidity = ds~load_dict();
   int initialised = ds~load_uint(1);
-  var result = (name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, approvals, liqudity, initialised);
+  var result = (name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, approvals, liquidity, initialised);
   ds.end_parse();
   return result;
 }
 
-() store_data(slice name, slice symbol, int decimals, int total_supply, total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liqudity, int initialized) impure {
+() store_data(slice name, slice symbol, int decimals, int total_supply, total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) impure {
   
   set_data(begin_cell()
     .store_uint(name.slice_bits() / 8, 8)
@@ -238,7 +238,7 @@ slice clone_slice(slice s) {
     .store_grams(ton_reserves)
     .store_dict(balances)
     .store_dict(allowances)
-    .store_dict(liqudity)
+    .store_dict(liquidity)
     .store_uint(initialized, 1)
     .end_cell()
   );
@@ -367,7 +367,11 @@ int squareRoot(int number)  {
   return (liquidity, 0);
 }
 
-(cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
+(cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
+    int x = 122;
+    int y = 222;
+    int z = 322;
+    
     int new_liquidity = 0;
     int storage_fee = 0;
     int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000
@@ -386,24 +390,41 @@ int squareRoot(int number)  {
     ;; TODO ========================================================
     ;; slice conract_address = my_address();
     
+    ~dump x;
+    ~dump token_amount;
+    ~dump ton_amount;
+    ~dump x;
+    
     int contracts_balance = _get_balance(balances, my_address_x);
+    
     ;; TODO ========================================================
+    ~dump y;
+    ~dump token_reserves;
+    ~dump ton_reserves;
+    ~dump y;
 
     storage_fee += balances~transfer(sender, my_address_x, token_amount);
-    ton_reserves += ton_amount;
-    token_reserves += token_amount;
+    token_reserves = token_amount + token_reserves;
+    ton_reserves = ton_amount + ton_reserves;
     
+    ~dump z;
+    ~dump token_reserves;
+    ~dump ton_reserves;
+    ~dump z;
+
     total_lp_supply = new_liquidity + total_lp_supply;
 
     int old_senders_liquidity = _get_balance(liquidity, sender);
-    ;; setting the new liqudity to the user
+    ;; setting the new liquidity to the user
+    
     liquidity~set_liquidity(sender, new_liquidity + old_senders_liquidity);
     
+
     if ( old_senders_liquidity > 0 ) {
       storage_fee += cell_storage_fee();
     }
     int after_set = _get_balance(liquidity, sender);
-    return (liquidity, total_lp_supply, ton_reserves, token_reserves, storage_fee);
+    return (liquidity, total_lp_supply, token_reserves, ton_reserves, storage_fee);
     ;; Should send callback or set the state for the callback to be completed 
  }
 
@@ -443,6 +464,8 @@ int squareRoot(int number)  {
 (int) recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
     ;; (int chain_id, _) = parse_std_addr(my_address());
     ;; TODO testing 
+
+    
     int chain_id = 0;
     
     slice cs = in_msg_cell.begin_parse();
@@ -454,6 +477,10 @@ int squareRoot(int number)  {
     (int sender_wc, int sender_addr) = parse_std_addr(sender_raw);
     slice sender = pack_addr(sender_wc, sender_addr);
     
+    ;; TODO 
+    slice my_f_address = pack_addr(-1, sender_addr);
+    my_address_x = my_f_address;
+    now_x = 1644329284;
     
     cs = in_msg;
     if (cs.slice_bits() == 0) { ;; just accept grams
@@ -473,12 +500,20 @@ int squareRoot(int number)  {
     ;; }
 
     (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
-
     slice to = null();
     int value = 0;
     int sign = 0;
     int storage_fee = 0;
     int return_value = 0;
+
+    if(action == 101) {
+      balances~set_balance(my_address_x, 100000000000000);
+      balances~set_balance(sender, 200000000000000);
+      allowances = new_dict();
+      liquidity = new_dict();
+      store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
+      return action;
+    }
 
     ;;  < amount_a Gram, amount_b Gram, token_address_a uint256, token_address_b uint256 ,slipage int32, b>  
     if (action == 1) { ;; transfer
@@ -511,7 +546,7 @@ int squareRoot(int number)  {
       int sender_balance = _get_balance(balances, sender);
       balances~set_balance(sender, rewards + sender_balance);
       return_value = 4;
-    }  elseif (action == 5) { ;; add liqudity
+    }  elseif (action == 5) { ;; add liquidity
         
         int token_new_liquidity = cs~load_grams();
         int slipage = cs~load_uint(64);
@@ -524,18 +559,28 @@ int squareRoot(int number)  {
         ;; check slipage only for the first time
         int reserves_price = 0;
         int price_delta = 0;
-
+        
+        ~dump action;
+          ~dump token_reserves;
+            ~dump ton_reserves;
+        
         if ( token_reserves > 0 ) {
+          
           reserves_price = token_reserves / ton_reserves ;
+          ~dump action;
+          ~dump action;
+          ~dump reserves_price;
+          ~dump msg_price;
           price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
           throw_if(103,  price_delta > slipage );
         }
-        
-        (cell new_liquidity, int new_lp_supply, int new_token_reserves, int new_ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, ton_reserves, token_reserves, total_lp_supply);
 
-        (int newliq, _) = _get_liquidity(new_liquidity, sender);
+        (liquidity, total_lp_supply, token_reserves, ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_lp_supply);
+~dump action;
+        (int newliq, _) = _get_liquidity(liquidity, sender);
         return_value = newliq;
-        store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
+        ~dump newliq;
+       ;; store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
         
         storage_fee += fee;
     } elseif (action == 6 ) { ;; Remove liquidty
@@ -590,6 +635,9 @@ int squareRoot(int number)  {
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
   
   (_, _, _, _, _, _, _, _, _, cell liquidity, int initialized) = load_data(get_data());
+  (int a, int ts) = _get_liquidity(liquidity, owner);
+  ~dump a;
+  ~dump ts;
   return _get_liquidity(liquidity, owner);
 }
 
