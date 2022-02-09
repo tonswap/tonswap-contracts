@@ -11,12 +11,6 @@ after you installing **fift** and **func** copy or symlink the binaries to root 
 ### Run Tests
 `npm run test-dex`  for non npm users just run `./scripts/test-dex.sh`
 
-### Telegram bot as user interface
-The telegram bot serves as a UI which you can interact with AMM, The bot supports commands such as swap , balance , liquidity stats.
-
-Run `npm install` to install npm dependencies
-Run `npm run bot` to launch bot ,you will need a config.json
-
 
 ### Roadmap
 
@@ -33,5 +27,4 @@ Run `npm run bot` to launch bot ,you will need a config.json
 - [ ] - Connect Bot to mainnet
 - [ ] - Add Masterchef functionality with auto stake and auto withdraw inside the contract
 
-### Demo Video
-[![Bot](https://i.ibb.co/cDtCYFd/Group-25.png)](https://drive.google.com/file/d/1m3QnCtsUbTdbuAq2_Y7D2l1tr-6kibM2/view?usp=sharing)
+
