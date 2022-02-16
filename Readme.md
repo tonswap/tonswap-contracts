@@ -12,27 +12,31 @@ The project depends on an unofficial implementation for [TRC20](https://github.c
 
 ## Develop
 
+run `npm install`
+
 ### Compile contract and run Fift tests
 
 This project depends on the executables **fift**, **func** and **lite-client**. You can build them from [source](https://ton.org/docs/#/howto/getting-started), use [tncli](https://github.com/disintar/tncli) or run `pip install tncli`. After installing **fift** and **func**, copy or symlink the executables to the root folder `ln -s ~/src/func ./func` and `ln -s ~/src/fift ./fift`
 
-### Run tests
 
-run `./scripts/test-dex.sh`
+
+### Run tests
+the project uses [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor) package to run Jest based tests.
+Use `npm run test` to execute the test suite.
 
 ## Roadmap
 
-- [X] - Basic Bot with TRC20 interaction
-- [X] - AMM with 0.03% Fees 
-- [X] - Add Liquidity + Fift Tests
-- [X] - Remove Liquidity + Fift Tests
-- [X] - Swap TON -> Token and Token -> TON Tests (based on Uniswap)
-- [X] - Swap Tests in Fift
-- [X] - Masterchef with rewards 
-- [ ] - Masterchef Rewards with Tests 
-- [ ] - Send receipt based on TRC20
-- [ ] - Deploy Contract to mainnet
-- [ ] - Connect Bot to mainnet
-- [ ] - Add Masterchef functionality with auto stake and auto withdraw inside the contract
+- [X] Basic Bot with TRC20 interaction
+- [X] AMM with 0.03% Fees 
+- [X] Add Liquidity + Fift Tests
+- [X] Remove Liquidity + Fift Tests
+- [X] Swap TON -> Token and Token -> TON Tests (based on Uniswap)
+- [X] Swap Tests in Fift
+- [X] Masterchef with rewards 
+- [ ] Masterchef Rewards with Tests 
+- [ ] Send receipt based on TRC20
+- [ ] Deploy Contract to mainnet
+- [ ] Connect Bot to mainnet
+- [ ] Add Masterchef functionality with auto stake and auto withdraw inside the contract
 
 
