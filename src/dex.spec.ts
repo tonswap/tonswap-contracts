@@ -130,8 +130,7 @@ describe('SmartContract', () => {
         console.log('balance after remove ', fromDecimals(tokenBalanceAfterRemove) );
         console.log('senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber() ', senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber());
 
-        //BUG should be fixed 
-        expect(senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber()).toBeLessThanOrEqual(900000000004);
+        expect(senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber()).toBe(0);
     });
        
 })
