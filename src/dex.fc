@@ -23,10 +23,16 @@
 ;; transfer_from = 2 TRC20 
 ;; increase/decrease = 3 TRC20
 ;; claim_rewards = 4 claim_rewards
-;; add_liqiuidity = 5 mint lp token 
-;; remove_liqiuidity = 6 burn lp token
+;; add_liquidity = 5 mint lp token 
+;; remove_liquidity = 6 burn lp token
 ;; Swap In = 7  TON -> Token
 ;; Swap Out = 8 Token -> TON
+int op:claim_rewards() asm "4 PUSHINT";
+int op:add_liquidity() asm "5 PUSHINT";
+int op:remove_liquidity() asm "6 PUSHINT";
+int op:swap_in() asm "7 PUSHINT";
+int op:swap_out() asm "8 PUSHINT";
+
 
 builder store_builder(builder to, builder what) asm(what to) "STB";
 builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
@@ -326,13 +332,11 @@ int squareRoot(int number)  {
 }
 
 
-(cell, cell, int, int, int, int, int) _burn_liquidity(cell balances, cell liquidity, slice sender, int lp_amount_to_remove, int total_lp_supply, int ton_reserves,int token_reserves) impure {
+(cell, cell, int, int, int, int, int) _burn_liquidity(cell balances, cell liquidity, slice sender, int lp_amount_to_remove, int total_lp_supply, int ton_reserves ,int token_reserves) impure {
     int storage_fee = 0;
-    
-    int shareInLp = total_lp_supply / lp_amount_to_remove;
+    int share_on_lp = total_lp_supply / lp_amount_to_remove;
     int share_in_ton_reserves = (lp_amount_to_remove * ton_reserves) / total_lp_supply;
     int share_in_token_reserves = (lp_amount_to_remove * token_reserves) / total_lp_supply;
-
     ;; TODO ========================================================
     ;; slice conract_address = my_address();
     slice conract_address = my_address_x;
@@ -342,8 +346,6 @@ int squareRoot(int number)  {
     int current_balance = _get_balance(balances, sender);
     storage_fee += balances~transfer(conract_address, sender, share_in_token_reserves);
     int user_liquidity = _get_balance(liquidity, sender);
-
-    ;; i think no gas is consumed
     int lq = user_liquidity - lp_amount_to_remove;
     liquidity~set_balance(sender, user_liquidity - lp_amount_to_remove);
 
@@ -369,7 +371,6 @@ int squareRoot(int number)  {
 
 (cell, cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
     
-    
     int new_liquidity = 0;
     int storage_fee = 0;
     int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000
@@ -385,27 +386,17 @@ int squareRoot(int number)  {
       new_liquidity = min(ton_share, token_share);
     }
     
-    ;; TODO ========================================================
-    ;; slice conract_address = my_address();
-    int contracts_balance = _get_balance(balances, my_address_x);
-    ;; TODO ========================================================
-    
-
     storage_fee += balances~transfer(sender, my_address_x, token_amount);
     token_reserves = token_amount + token_reserves;
     ton_reserves = ton_amount + ton_reserves;
-    total_lp_supply = new_liquidity + total_lp_supply;
-
-    int old_senders_liquidity = _get_balance(liquidity, sender);
-    ;; setting the new liquidity to the user
     
+    total_lp_supply = new_liquidity + total_lp_supply;
+    int old_senders_liquidity = _get_balance(liquidity, sender);
     liquidity~set_liquidity(sender, new_liquidity + old_senders_liquidity);
     
-
     if ( old_senders_liquidity > 0 ) {
       storage_fee += cell_storage_fee();
     }
-    int after_set = _get_balance(liquidity, sender);
     return (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, storage_fee);
     ;; Should send callback or set the state for the callback to be completed 
  }
@@ -522,13 +513,13 @@ int squareRoot(int number)  {
 
       storage_fee += allowances~change_allowance(sender, spender, sign ? - delta_value : delta_value, exact);
       return_value = 3;
-    } elseif (action == 4) { ;; claim rewards
+    } elseif (action == op:claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
       int rewards = liquidity~claim_rewards(sender, 10, total_lp_supply, token_reserves);
       int sender_balance = _get_balance(balances, sender);
       balances~set_balance(sender, rewards + sender_balance);
       return_value = 4;
-    }  elseif (action == 5) { ;; add liquidity
+    }  elseif (action == op:add_liquidity() ) { 
         
         int token_new_liquidity = cs~load_grams();
         int slipage = cs~load_uint(64);
@@ -548,29 +539,28 @@ int squareRoot(int number)  {
           price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
           throw_if(103,  price_delta > slipage );
         }
-
+        
         (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_lp_supply);
         (int newliq, _) = _get_liquidity(liquidity, sender);
         return_value = newliq;
        ;; store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
         
         storage_fee += fee;
-    } elseif (action == 6 ) { ;; Remove liquidty
+    } elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
         
-        ;; lp value
         int lp_amount_to_remove = cs~load_grams();
         int user_lp_balance = _get_balance(liquidity, sender);
         throw_if( 104, user_lp_balance < lp_amount_to_remove);
 
-        (balances, liquidity, int fee, total_lp_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, liquidity, sender, lp_amount_to_remove, total_lp_supply, token_reserves, ton_reserves);
+        (balances, liquidity, int fee, total_lp_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, liquidity, sender, lp_amount_to_remove, total_lp_supply, ton_reserves, token_reserves);
         storage_fee += fee;
         return_value = users_new_ton;
-    } elseif ( action == 7 ) {
+    } elseif ( action == op:swap_in() ) {
         ;; <b 10TON , min_amount_out=99 b>
         int min_amount_out = cs~load_grams();
         return_value = swapTokens(min_amount_out, msg_value, true, sender);
 
-    } elseif( action == 8 ) {
+    } elseif( action == op:swap_out() ) {
           ;; <b  killo 100 , min_amount_out=10 b>
           int transferd_amount = cs~load_grams();
           int senders_balance = _get_balance(balances, sender);
@@ -608,8 +598,6 @@ int squareRoot(int number)  {
   
   (_, _, _, _, _, _, _, _, _, cell liquidity, int initialized) = load_data(get_data());
   (int a, int ts) = _get_liquidity(liquidity, owner);
-  ~dump a;
-  ~dump ts;
   return _get_liquidity(liquidity, owner);
 }
 
