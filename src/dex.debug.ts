@@ -1,7 +1,7 @@
 import {readFile} from "fs/promises";
 import {SmartContract} from "ton-contract-executor";
-import {buildDataCell, stringToCell, DexConfig} from "./dex.data";
-import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, StateInit} from "ton";
+import {buildDataCell, DexConfig} from "./dex.data";
+import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo} from "ton";
 import BN from "bn.js";
 
 function sliceToString(s: Slice) {
