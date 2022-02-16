@@ -20,7 +20,6 @@ export class DexDebug {
 
     async getData() {
         let res = await this.contract.invokeGetMethod('get_token_data', []);
-        console.log(res);
         let name = sliceToString(res.result[0] as Slice);
         let symbol = sliceToString(res.result[1] as Slice );
         let decimals = res.result[2] as BN;
@@ -29,7 +28,7 @@ export class DexDebug {
         let tokenReserves = res.result[5] as BN;
         let tonReserves = res.result[6] as BN;
 
-        return {
+        return  {
             name,
             symbol,
             decimals,
@@ -55,7 +54,6 @@ export class DexDebug {
             bounce: false,
             body: msg
         }))
-        console.log(res);
         return res;
     }
 
@@ -76,7 +74,6 @@ export class DexDebug {
             bounce: false,
             body: b
         }))
-        console.log(res);
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[1] as BN
@@ -98,7 +95,6 @@ export class DexDebug {
             bounce: false,
             body: b
         }))
-        console.log(res);
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[0] as BN
@@ -108,7 +104,7 @@ export class DexDebug {
     async balanceOf(owner: Address) {
         let wc = owner.workChain;
         let address = new BN(owner.hash)
-        console.log(wc, address);
+        
 
         let balanceResult = await this.contract.invokeGetMethod('ibalance_of', [
             { type: 'int', value: wc.toString(10) },
@@ -121,14 +117,11 @@ export class DexDebug {
     async liquidityOf(owner: Address) {
         let wc = owner.workChain;
         let address = new BN(owner.hash)
-        console.log(wc, address);
 
         let liquidityResult = await this.contract.invokeGetMethod('liquidity_of', [
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
-
-        console.log(liquidityResult);
         
         return (liquidityResult.result[0] as BN)
     }
