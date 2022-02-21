@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import {Cell, serializeDict} from "ton";
+import {Address, Cell, serializeDict} from "ton";
 
 export const stringToCell = (str: string) => {
     let cell = new Cell()
@@ -15,6 +15,11 @@ export type DexConfig = {
     totalLPSupply: BN
     tokenReserves: BN
     tonReserves : BN
+    tokenAddress: Address
+    tokenAdmin: Address
+    tokenAllocPoints: BN
+    protocolAdmin: Address
+    protocolAllocPoints: BN
 }
 
 export function buildDataCell(conf: DexConfig) {
@@ -24,17 +29,26 @@ export function buildDataCell(conf: DexConfig) {
     let dataCell = new Cell()
     dataCell.bits.writeUint(conf.name.length, 8)        // name.length
     dataCell.bits.writeString(conf.name)                // name
-    dataCell.bits.writeUint(conf.symbol.length, 8)        // symbol.length
+    dataCell.bits.writeUint(conf.symbol.length, 8)      // symbol.length
     dataCell.bits.writeString(conf.symbol)              // symbol
     dataCell.bits.writeUint(conf.decimals, 8)           // decimals
-    dataCell.bits.writeCoins(conf.totalSupply)      // total_supply
-    dataCell.bits.writeCoins(conf.totalLPSupply)      // total_supply
-    dataCell.bits.writeCoins(conf.tokenReserves)    // token_reserves
-    dataCell.bits.writeCoins(conf.tonReserves)      // ton_reserves
+    dataCell.bits.writeCoins(conf.totalSupply)          // total_supply
+    dataCell.bits.writeCoins(conf.tokenReserves)        // token_reserves
+    dataCell.bits.writeCoins(conf.tonReserves)          // ton_reserves
     dataCell.bits.writeUint(0, 1)                       // balances dict
-    dataCell.bits.writeUint(0, 1)                       // allowed  dict
-    dataCell.bits.writeUint(0, 1)                       // credits dict
-    dataCell.bits.writeUint(1, 1)                       // inited
+    dataCell.bits.writeUint(0, 1)                       // approvals  dict
+    dataCell.bits.writeAddress(conf.tokenAddress)       // tokenAddr address
+    dataCell.bits.writeUint(1, 1)                       // inited 1u
+    
+
+    let adminDataCell = new Cell();
+    adminDataCell.bits.writeAddress(conf.tokenAdmin);
+    adminDataCell.bits.writeCoins(conf.tokenAllocPoints);
+    adminDataCell.bits.writeAddress(conf.protocolAdmin);
+    adminDataCell.bits.writeCoins(conf.protocolAllocPoints);
+
+    dataCell.refs.push(adminDataCell);
+
     
     return dataCell
 }

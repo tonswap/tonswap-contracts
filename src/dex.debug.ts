@@ -10,6 +10,8 @@ function sliceToString(s: Slice) {
 }
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
+const TRC20_TRANSFER_RECIPT = 2147483649;
+
 
 
 export class DexDebug {
@@ -20,25 +22,39 @@ export class DexDebug {
 
     async getData() {
         let res = await this.contract.invokeGetMethod('get_token_data', []);
-        let name = sliceToString(res.result[0] as Slice);
-        let symbol = sliceToString(res.result[1] as Slice );
-        let decimals = res.result[2] as BN;
-        let totalSupply = res.result[3] as BN;
-        let totalLpSupply =  res.result[4] as BN;
-        let tokenReserves = res.result[5] as BN;
-        let tonReserves = res.result[6] as BN;
+        const name = sliceToString(res.result[0] as Slice);
+        const symbol = sliceToString(res.result[1] as Slice );
+        const decimals = res.result[2] as BN;
+        const totalSupply = res.result[3] as BN;
+        const tokenReserves = res.result[4] as BN;
+        const tonReserves = res.result[5] as BN;
 
         return  {
             name,
             symbol,
             decimals,
             totalSupply,
-            totalLpSupply,
             tokenReserves,
             tonReserves
         }
     }
+    
+    async getAdminData() {
+        
+        const res = await this.contract.invokeGetMethod('get_admin_data', []);
+        console.log(res);
 
+        let [adminWc, adminAddress, adminPoints , protocolWc ,protocolAddress, protocolPoints] = res.result as [BN, BN, BN ,BN, BN, BN]
+        const admin = new Address(adminWc.toNumber(), adminAddress.toBuffer());
+        const protocol = new Address(protocolWc.toNumber(), protocolAddress.toBuffer());
+        
+        return {
+            admin,
+            adminPoints,
+            protocol,
+            protocolPoints
+        }
+    }
    
     async initTestData(sender: Address) {
         let messageBody = new Cell();
@@ -57,23 +73,27 @@ export class DexDebug {
         return res;
     }
 
-    async addLiquidity(sender: Address, tonValue: BN, tokenValue: BN, slippage: number) {
+    async addLiquidity(tokenContract: Address, tokenSender: Address, tonAmount: BN, tokenAmount: BN, slippage: number) {
 
         let messageBody = new Cell();
-        messageBody.bits.writeUint(5, 32) // op
-        messageBody.bits.writeUint(1, 64) // query_id
-        messageBody.bits.writeCoins(tokenValue);
+        messageBody.bits.writeUint(TRC20_TRANSFER_RECIPT, 32) // action
+        messageBody.bits.writeUint(1, 64) // query-id
+        messageBody.bits.writeAddress(tokenSender) // token contract is sender (recv_internal)
+        messageBody.bits.writeCoins(tokenAmount); // sent amount
+        messageBody.bits.writeUint(2, 8); // sub-op  
         messageBody.bits.writeUint(slippage, 64) // slippage
         
         let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
 
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
-            from: sender,
-            value: tonValue,
+            from: tokenContract,
+            value: tonAmount,
             bounce: false,
             body: b
         }))
+
+        console.log(res);
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[1] as BN
@@ -110,7 +130,7 @@ export class DexDebug {
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
-        
+        console.log(balanceResult)
         return (balanceResult.result[0] as BN);
     }
 

@@ -1,12 +1,16 @@
-
+;; AMM & LP combined
 ;; storage : {
 ;;   slice name,
 ;;   slice symbol,
 ;;   uint8 decimals,
-;;   uint256 supply,
-;;   uint256 total_lp_supply,
-;;   token_reserves supply,
-;;   ton_reserves supply,
+;;   cell token_address,
+;;   cell token_rewards_admin,           [this role can set token_alloc_points]
+;;   uint32 token_alloc_points, 
+;;   cell protcol_rewards_admin, [this role can set protocl_alloc_points] 
+;;   uint32 protocol_alloc_points,
+;;   uint256 total_supply,
+;;   grams token_reserves,
+;;   grams ton_reserves,
 ;;   balances : {
 ;;     slice address : uint256 amount
 ;;   },
@@ -16,29 +20,31 @@
 ;;     }
 ;;   }
 ;;   uint8 initialised 
-;;   }
+;;}
 
 ;; ============= actions ====================
 ;; transfer = 1 TRC20 
 ;; transfer_from = 2 TRC20 
 ;; increase/decrease = 3 TRC20
-;; claim_rewards = 4 claim_rewards
-;; add_liquidity = 5 mint lp token 
-;; remove_liquidity = 6 burn lp token
-;; Swap In = 7  TON -> Token
-;; Swap Out = 8 Token -> TON
 int op:claim_rewards() asm "4 PUSHINT";
-int op:add_liquidity() asm "5 PUSHINT";
+int op:add_liquidity() asm "2 PUSHINT";  ;; sub op of trc20:transfer
 int op:remove_liquidity() asm "6 PUSHINT";
-int op:swap_in() asm "7 PUSHINT";
+int op:swap_in() asm "7 PUSHINT";        ;; sub op of trc20:transfer
 int op:swap_out() asm "8 PUSHINT";
+int op:transfer_recipt() asm "2147483649 PUSHINT";
+int op:transfer_from_recipt() asm "2147483649 PUSHINT";
 
+int error:trc20_insufficent_transfer() asm "1000 PUSHINT";
+int error:trc20_bad_source_address() asm "0x40001 PUSHINT";
 
+int equal_slices (slice s1, slice s2) asm "SDEQ";
 builder store_builder(builder to, builder what) asm(what to) "STB";
 builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
 (cell, int) dict_delete?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTDEL";
 (slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
 
+
+;; TODO remove them using Macros/replace (can be on )
 global slice my_address_x; ;; Testing , this a replacemnet my_address()
 global int now_x; ;; this a replacement for block_lt()
 
@@ -75,7 +81,7 @@ slice pack_addr(int wc, int addr) inline {
 ;; =============== DEX helpers =============================
 
 int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
-  int amountInWithFee = amountIn * 997;
+  int amountInWithFee = amountIn * 997; ;; lp fees 0.3% 
   int numerator =  amountInWithFee * reserveOut;
   int denominator = reserveIn * 1000 + amountInWithFee;
   return numerator / denominator;
@@ -86,6 +92,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 int _get_balance(cell balances, slice address) {
   (slice balance_slice, int found) = balances.dict_get?(264, address);
   if (found) {
+      ;; TODO GET TIME STAMP
       int val = balance_slice~load_grams(); 
       
     return val;
@@ -96,9 +103,9 @@ int _get_balance(cell balances, slice address) {
 
 (cell, ()) ~set_balance(cell balances, slice address, int value)  {
   
-  throw_if(100, value < 0);  ;; Explicit error code
+  throw_if(error:trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
   if(value > 0) {
-    balances~dict_set_builder(264, address, begin_cell().store_grams(value));
+    balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(now_x, 32));
   } else {
     balances~dict_delete?(264, address);
   }
@@ -153,22 +160,9 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
 }
 
 
-(int, int) _get_liquidity(cell liquidity, slice address) {
-  (slice liquidity_slice, int found) = liquidity.dict_get?(264, address);
-  if (found) {
-    int amount =  liquidity_slice~load_grams();
-    int timestamp =  liquidity_slice~load_uint(32);
-    return(amount, timestamp);
-  } else {
-    return (0, 0);
-  }
+_ send_token_to(slice to, int amount) {
+  ;; TODO
 }
-
-(cell, ()) ~set_liquidity(cell liquidity, slice address, int value) {
-  liquidity~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(now_x, 32));
-  return (liquidity, ());
-}
-
 
 ;; value - MUST BE NON-NEGATIVE
 (cell, (int)) ~transfer(cell balances, slice from, slice to, int value) impure {
@@ -186,10 +180,6 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
   throw_unless(103, new_allowances >= 0);
   allowances~set_allowance(sender, spender, new_allowances);
   return (allowances, new_allowances);
-}
-
-slice clone_slice(slice s) {
-  return begin_cell().store_slice(s).end_cell().begin_parse();
 }
 
 ;; sender - raw address
@@ -210,7 +200,8 @@ slice clone_slice(slice s) {
 
 ;; ======= Memory Methods =================
 
-(slice, slice, int, int, int, int, int, cell, cell, cell, int) load_data(cell data) {
+_ load_data(cell data) {
+  int x = 111;
   slice ds = data.begin_parse();
   int name_size = ds~load_uint(8);
   slice name = ds~load_bits(name_size * 8);
@@ -218,36 +209,71 @@ slice clone_slice(slice s) {
   slice symbol = ds~load_bits(symbol_size * 8);
   int decimals = ds~load_uint(8);
   int total_supply = ds~load_grams();
-  int total_lp_supply = ds~load_grams();
   int token_reserves = ds~load_grams();
   int ton_reserves = ds~load_grams();
   cell balances = ds~load_dict();
   cell approvals = ds~load_dict();
-  cell liquidity = ds~load_dict();
+  ~dump x;
+  slice token_address = ds~load_msg_addr();
+  
   int initialised = ds~load_uint(1);
-  var result = (name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, approvals, liquidity, initialised);
+  
+  slice ds2 = ds~load_ref().begin_parse();
+  slice token_rewards_admin = ds2~load_msg_addr();
+  int token_alloc_points = ds2~load_grams();
+  slice protocol_rewards_admin = ds2~load_msg_addr();
+  int protocol_alloc_points = ds2~load_grams();
+  
+
+  var result = (
+    name,
+    symbol,
+    decimals,
+    total_supply,
+    token_reserves,
+    ton_reserves,
+    balances,
+    approvals,
+    token_address,
+    initialised,
+    token_rewards_admin,
+    token_alloc_points,
+    protocol_rewards_admin,
+    protocol_alloc_points
+  );
+  ds2.end_parse();
   ds.end_parse();
   return result;
 }
 
-() store_data(slice name, slice symbol, int decimals, int total_supply, total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) impure {
+
+() store_data(slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, slice token_rewards_admin, int token_alloc_points, slice protocol_rewards_admin, int protocol_alloc_points) impure {
   
-  set_data(begin_cell()
+  cell admin_data =  begin_cell().store_slice(token_rewards_admin)
+  .store_grams(token_alloc_points)
+  .store_slice(protocol_rewards_admin)
+  .store_grams(protocol_alloc_points).end_cell();
+  
+  
+  cell data = begin_cell()
     .store_uint(name.slice_bits() / 8, 8)
     .store_slice(name)
     .store_uint(symbol.slice_bits() / 8, 8)
     .store_slice(symbol)
     .store_uint(decimals, 8)
     .store_grams(total_supply)
-    .store_grams(total_lp_supply)
     .store_grams(token_reserves)
     .store_grams(ton_reserves)
     .store_dict(balances)
     .store_dict(allowances)
-    .store_dict(liquidity)
+    .store_slice(token_address)
     .store_uint(initialized, 1)
-    .end_cell()
-  );
+    .store_ref(admin_data)
+    .end_cell();
+
+
+
+  set_data(data);
 }
 
 
@@ -289,8 +315,8 @@ int squareRoot(int number)  {
 
 (int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice sender) impure {
     int storage_fee = 0;
-  
-    (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
+    
+    (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, slice token_rewards_admin,int token_alloc_points ,slice protocol_rewards_admin ,int protocol_alloc_points) = load_data(get_data());
     
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
@@ -309,7 +335,7 @@ int squareRoot(int number)  {
       send_grams(sender, amount_out);
     }
     
-    store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
+    store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
     return amount_out;
 }
 
@@ -332,48 +358,51 @@ int squareRoot(int number)  {
 }
 
 
-(cell, cell, int, int, int, int, int) _burn_liquidity(cell balances, cell liquidity, slice sender, int lp_amount_to_remove, int total_lp_supply, int ton_reserves ,int token_reserves) impure {
+(cell, int, int, int, int, int) _burn_liquidity(cell balances, slice sender, int amount_to_remove, int total_supply, int ton_reserves ,int token_reserves) impure {
     int storage_fee = 0;
-    int share_on_lp = total_lp_supply / lp_amount_to_remove;
-    int share_in_ton_reserves = (lp_amount_to_remove * ton_reserves) / total_lp_supply;
-    int share_in_token_reserves = (lp_amount_to_remove * token_reserves) / total_lp_supply;
-    ;; TODO ========================================================
-    ;; slice conract_address = my_address();
-    slice conract_address = my_address_x;
-    int contracts_balance = _get_balance(balances, my_address_x);
-    ;; TODO ========================================================
-
+    int share_on_lp = total_supply / amount_to_remove;
+    int share_in_ton_reserves = (amount_to_remove * ton_reserves) / total_supply;
+    int share_in_token_reserves = (amount_to_remove * token_reserves) / total_supply;
+    
     int current_balance = _get_balance(balances, sender);
-    storage_fee += balances~transfer(conract_address, sender, share_in_token_reserves);
-    int user_liquidity = _get_balance(liquidity, sender);
-    int lq = user_liquidity - lp_amount_to_remove;
-    liquidity~set_balance(sender, user_liquidity - lp_amount_to_remove);
 
+    ;;storage_fee += balances~transfer(conract_address, sender, share_in_token_reserves);
+
+
+    int user_liquidity = _get_balance(balances, sender);
+    int lq = user_liquidity - amount_to_remove;
+    balances~set_balance(sender, user_liquidity - amount_to_remove);
+    ;; send messages to user to release funds from liquidity
+    send_token_to(sender, share_in_token_reserves);
     send_grams(sender, share_in_ton_reserves);
-    return ( balances, liquidity, storage_fee, total_lp_supply, token_reserves, ton_reserves, share_in_ton_reserves);
+
+    return ( balances, storage_fee, total_supply, token_reserves, ton_reserves, share_in_ton_reserves);
 }
 
-(cell, int) ~claim_rewards(cell liquidity, slice address, int reward_rate, int total_lp_supply, int token_reserves) {
 
-  (slice liquidity_slice, int found) = liquidity.dict_get?(264, address);
+
+
+(cell, int) ~claim_rewards(cell balances, slice address, int reward_rate, int total_supply, int token_reserves) {
+
+  (slice liquidity_slice, int found) = balances.dict_get?(264, address);
   if (found) {
     
     int lp_amount =  liquidity_slice~load_grams();
-    int user_tokens = (lp_amount / total_lp_supply) * token_reserves;
+    int user_tokens = (lp_amount / total_supply) * token_reserves;
     int timestamp =  liquidity_slice~load_uint(32);
     int minutes_staked =  (now_x - timestamp);
     int rewards = user_tokens * minutes_staked * reward_rate;
-    liquidity~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now_x, 32));
-    return (liquidity, rewards);
+    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now_x, 32));
+    return (balances, rewards);
   } 
-  return (liquidity, 0);
+  return (balances, 0);
 }
 
-(cell, cell, int, int, int, int) mint_lp_token(cell balances, cell liquidity, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
+(cell, int, int, int, int) mint_lp(cell balances, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
     
     int new_liquidity = 0;
     int storage_fee = 0;
-    int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000
+    int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
 
     ;; TODO fix handle liquidtiy supply on its own param
     if( token_reserves == 0  ) {
@@ -391,13 +420,13 @@ int squareRoot(int number)  {
     ton_reserves = ton_amount + ton_reserves;
     
     total_lp_supply = new_liquidity + total_lp_supply;
-    int old_senders_liquidity = _get_balance(liquidity, sender);
-    liquidity~set_liquidity(sender, new_liquidity + old_senders_liquidity);
+    int old_senders_liquidity = _get_balance(balances, sender);
+    balances~set_balance(sender, new_liquidity + old_senders_liquidity);
     
     if ( old_senders_liquidity > 0 ) {
       storage_fee += cell_storage_fee();
     }
-    return (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, storage_fee);
+    return (balances, total_lp_supply, token_reserves, ton_reserves, storage_fee);
     ;; Should send callback or set the state for the callback to be completed 
  }
 
@@ -450,7 +479,7 @@ int squareRoot(int number)  {
     (int sender_wc, int sender_addr) = parse_std_addr(sender_raw);
     slice sender = pack_addr(sender_wc, sender_addr);
     
-    ;; TODO 
+    ;; TODO  This hack is only for testing purposes 
     slice my_f_address = pack_addr(-1, sender_addr);
     my_address_x = my_f_address;
     now_x = 1644329284;
@@ -468,11 +497,12 @@ int squareRoot(int number)  {
     
 
     ;; if (action > 9) {
-    ;;  bounce_back(sender_raw, 0xffffffff, query_id, action); ;; operation not supported
+    ;;  bounce_back(sender_raw, 0xffffffff, query_id, action); 
     ;;  return ();
     ;; }
 
-    (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
+    ~dump action;
+    (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, slice token_rewards_admin, int token_alloc_points, slice protocol_rewards_admin, int protocol_alloc_points) = load_data(get_data());
     slice to = null();
     int value = 0;
     int sign = 0;
@@ -480,11 +510,9 @@ int squareRoot(int number)  {
     int return_value = 0;
 
     if(action == 101) {
-      balances~set_balance(my_address_x, 100000000000000);
-      balances~set_balance(sender, 200000000000000);
+      balances = new_dict();
       allowances = new_dict();
-      liquidity = new_dict();
-      store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
+      store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
       return action;
     }
 
@@ -515,64 +543,65 @@ int squareRoot(int number)  {
       return_value = 3;
     } elseif (action == op:claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
-      int rewards = liquidity~claim_rewards(sender, 10, total_lp_supply, token_reserves);
-      int sender_balance = _get_balance(balances, sender);
-      balances~set_balance(sender, rewards + sender_balance);
+      int rewards = balances~claim_rewards(sender, 10, total_supply, token_reserves);
+      send_token_to(sender, rewards);
       return_value = 4;
-    }  elseif (action == op:add_liquidity() ) { 
+    }  elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
         
-        int token_new_liquidity = cs~load_grams();
-        int slipage = cs~load_uint(64);
-        
-        throw_if(98, 0 >= token_new_liquidity);
-        throw_if(99, 0 >= msg_value);
+        int amount_to_remove = cs~load_grams();
+        int user_balance = _get_balance(balances, sender);
+        throw_if( 104, user_balance < amount_to_remove);
 
-        int msg_price = token_new_liquidity / msg_value;
-        
-        ;; check slipage only for the first time
-        int reserves_price = 0;
-        int price_delta = 0;
-        
-        if ( token_reserves > 0 ) {
-          
-          reserves_price = token_reserves / ton_reserves ;
-          price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
-          throw_if(103,  price_delta > slipage );
-        }
-        
-        (balances, liquidity, total_lp_supply, token_reserves, ton_reserves, int fee) = mint_lp_token(balances, liquidity, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_lp_supply);
-        (int newliq, _) = _get_liquidity(liquidity, sender);
-        return_value = newliq;
-       ;; store_data(name, symbol, decimals, total_supply, new_lp_supply, new_token_reserves, new_ton_reserves, balances, allowances, new_liquidity, initialized);
-        
-        storage_fee += fee;
-    } elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
-        
-        int lp_amount_to_remove = cs~load_grams();
-        int user_lp_balance = _get_balance(liquidity, sender);
-        throw_if( 104, user_lp_balance < lp_amount_to_remove);
-
-        (balances, liquidity, int fee, total_lp_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, liquidity, sender, lp_amount_to_remove, total_lp_supply, ton_reserves, token_reserves);
+        (balances, int fee, total_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, sender, amount_to_remove, total_supply, ton_reserves, token_reserves);
         storage_fee += fee;
         return_value = users_new_ton;
-    } elseif ( action == op:swap_in() ) {
-        ;; <b 10TON , min_amount_out=99 b>
-        int min_amount_out = cs~load_grams();
-        return_value = swapTokens(min_amount_out, msg_value, true, sender);
+    }  elseif (action == op:swap_in() ) { ;; TON -> TRC20
 
-    } elseif( action == op:swap_out() ) {
-          ;; <b  killo 100 , min_amount_out=10 b>
-          int transferd_amount = cs~load_grams();
-          int senders_balance = _get_balance(balances, sender);
-          throw_if( 102, senders_balance < transferd_amount);
-          int min_amount_out = cs~load_grams(); 
+      int min_amount_out = cs~load_grams();
+      return_value = swapTokens(min_amount_out, msg_value, true, sender);
+      ;; Handle revert (maybe thorugh expection is enough to return TONS)
+
+    } elseif ( ( ( action == op:transfer_recipt() ) | ( action == op:transfer_from_recipt() ) ) & equal_slices(token_address ,sender) ) {  ;; TRC20 RECIPTS and validate source token
+
+        ~dump action;
+
+        slice trc_sender = cs~load_bits(264);
+        int trc_amount = cs~load_grams();
+        int sub_op = cs~load_uint(8);
           
-          return_value = swapTokens(min_amount_out, msg_value, false, sender);
-      }        
+        if (sub_op == op:add_liquidity() ) { 
+        
+            int token_new_liquidity = trc_amount;
+            int slipage = cs~load_uint(64);
+            
+            throw_if(98, 0 >= token_new_liquidity);
+            throw_if(99, 0 >= msg_value);
 
-
+            int msg_price = token_new_liquidity / msg_value;
+            ;; check slipage only for the first time
+            int reserves_price = 0;
+            int price_delta = 0;
+            
+            if ( token_reserves > 0 ) {
+              reserves_price = token_reserves / ton_reserves ;
+              price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
+              throw_if(103,  price_delta > slipage );
+            }
+            
+            (balances, total_supply, token_reserves, ton_reserves, int fee) = mint_lp(balances, sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_supply);
+            int newliq = _get_balance(balances, sender);
+            return_value = newliq;
+            
+            storage_fee += fee;
+        } elseif (sub_op == op:swap_out() ) {  ;; swap TRC20 -> TON
+          ;; <b 10TON , min_amount_out=99 b>
+          int min_amount_out = cs~load_grams();
+          return_value = swapTokens(min_amount_out, msg_value, true, trc_sender);
+          ;; TODO  Handle revert (make sure in case of min amount out doesnt meet , the bounced message returns funds)
+        }
+    }        
     
-    store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
+    store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
     ;; ensure that receipt carries at least 10k gas
     (int cells, int bits, int refs) = cs.slice_compute_data_size(10);
     ;; msg value has enough coins to pay for 
@@ -588,47 +617,40 @@ int squareRoot(int number)  {
     return return_value;
 }
 
+;; TODO add intalise for boc deployment
 () recv_external(slice in_msg) impure {
   ;;nop
 }
 
-;; Returns the account balance of another account with address _owner.
-(int, int) liquidity_of(int owner_wc, int owner_addr) method_id {
-  slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
-  
-  (_, _, _, _, _, _, _, _, _, cell liquidity, int initialized) = load_data(get_data());
-  (int a, int ts) = _get_liquidity(liquidity, owner);
-  return _get_liquidity(liquidity, owner);
+
+
+
+;;======================== TRC20  ======================================
+
+(slice, slice, int, int, int, int) get_token_data() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, _, _, _, _, _, _, _, _) = load_data(get_data());
+  return (name, symbol, decimals, total_supply, token_reserves, ton_reserves);
 }
 
 
-
-;;======================================================================
-;;======================== TRC20  ================================
-;;======================================================================
-
-
-;; Returns the name of the token.
-(slice, slice, int, int, int, int, int) get_token_data() method_id {
-  (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, _, _, _, _) = load_data(get_data());
-  return (name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves);
-}
 
 ;; Returns the account balance of another account with address _owner.
 int balance_of(slice owner) method_id {
-  (_, _, _, _, _, _, _, cell balances, _, _, _) = load_data(get_data());
+  (_, _, _, _, _, _, cell balances, _, _, _, _, _, _, _) = load_data(get_data());
   return _get_balance(balances, owner);
 }
 
 int allowance(slice owner, slice spender) method_id {
-  (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
 
   return _get_allowance(allowances, owner, spender);
 }
 
+;;====================== DEX Helpers =====================================
+
 ;; I dont know how to pass more than two paramters to read function
 var get_amount_out_lp(int amountIn, int is_token_src) method_id {
-  (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
   int amountInWithFee = amountIn * 997;
   int reserveIn = is_token_src ? token_reserves : ton_reserves;
   int reserveOut = is_token_src ? ton_reserves : token_reserves;
@@ -639,45 +661,15 @@ var get_amount_out_lp(int amountIn, int is_token_src) method_id {
 
 }
 
-;;======================================================================
-;;======================== Test Methods ================================
-;;======================================================================
+(int, int, int, int, int, int) get_admin_data() method_id {
+  (_, _, _, _, _, _, _, _, _, _, slice token_admin_addr, int token_alloc_points, slice protocol_admin_addr, int protocol_alloc_points) = load_data(get_data());
+  (int token_admin_wc, int token_admin) = parse_std_addr(token_admin_addr);
+  (int protocol_admin_wc, int protocol_admin) = parse_std_addr(protocol_admin_addr);
+  return( token_admin_wc, token_admin, token_alloc_points, protocol_admin_wc, protocol_admin, protocol_alloc_points);
+}
+
 
 int ibalance_of(int owner_wc, int owner_addr) method_id {
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
   return balance_of(owner);
-}
-
-int iallowance(int owner_wc, int owner_addr, int spender_wc, int spender_addr) method_id {
-  slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
-  slice spender = begin_cell().store_int(spender_wc, 8).store_uint(spender_addr, 256).end_cell().begin_parse();
-  return allowance(owner, spender);
-}
-
-int test_recv_external(slice in_msg) method_id {
-  recv_external(in_msg);
-  return 0;
-}
-
-int test_recv_internal(int value, cell in_msg_cell, slice in_msg) method_id {
-  
-  ;; =========== Testing Purposes Only !!!! ================== ;
-  slice cs = in_msg_cell.begin_parse();
-  int flags = cs~load_uint(4);
-  if (flags & 1) { ;; ignore bounces
-      return (0);
-  }
-  slice sender_raw = cs~load_msg_addr();
-
-  (int sender_wc, int sender_addr) = parse_std_addr(sender_raw);
-  slice sender = pack_addr(sender_wc, sender_addr);
-  slice my_f_address = pack_addr(-1, sender_addr);
-  my_address_x = my_f_address;
-  now_x = 1644329284;
-
-  (slice name, slice symbol, int decimals, int total_supply, int total_lp_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, cell liquidity, int initialized) = load_data(get_data());
-  balances~set_balance(my_address_x, 100000000000000);
-  balances~set_balance(sender, 200000000000000);
-  store_data(name, symbol, decimals, total_supply, total_lp_supply, token_reserves, ton_reserves, balances, allowances, liquidity, initialized);
-  return recv_internal(value, in_msg_cell, in_msg);
 }
