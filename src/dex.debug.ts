@@ -1,8 +1,9 @@
 import {readFile} from "fs/promises";
-import {SmartContract} from "ton-contract-executor";
+import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 import {buildDataCell, DexConfig} from "./dex.data";
 import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo} from "ton";
 import BN from "bn.js";
+import { parseActionsList } from "./utils";
 
 function sliceToString(s: Slice) {
     let data = s.readRemaining()
@@ -115,9 +116,13 @@ export class DexDebug {
             bounce: false,
             body: b
         }))
+
+        let successResult = res as SuccessfulExecutionResult;
+
         return {
             "exit_code": res.exit_code,
-            returnValue: res.result[0] as BN
+            returnValue: res.result[0] as BN,
+            actions: parseActionsList(successResult.action_list_cell)
         }
     }
 
