@@ -81,6 +81,9 @@ slice pack_addr(int wc, int addr) inline {
 ;; =============== DEX helpers =============================
 
 int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
+  ~dump amountIn;
+  ~dump reserveIn;
+  ~dump reserveOut;
   int amountInWithFee = amountIn * 997; ;; lp fees 0.3% 
   int numerator =  amountInWithFee * reserveOut;
   int denominator = reserveIn * 1000 + amountInWithFee;
@@ -340,7 +343,8 @@ int squareRoot(int number)  {
     if(is_ton_src == true) {
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
-      storage_fee += balances~transfer(my_address_x, sender, amount_out);
+      send_token_to(token_address, sender, amount_out, 1);
+      ;; TODO think of query ID purpose
       ;; TODO SEND RECIPT
     } else {
       ton_reserves = trgt_resvers - amount_out;
@@ -610,7 +614,7 @@ int squareRoot(int number)  {
         } elseif (sub_op == op:swap_out() ) {  ;; swap TRC20 -> TON
           ;; <b 10TON , min_amount_out=99 b>
           int min_amount_out = cs~load_grams();
-          return_value = swapTokens(min_amount_out, msg_value, true, trc_sender);
+          return_value = swapTokens(min_amount_out, trc_amount, false, trc_sender);
           ;; TODO  Handle revert (make sure in case of min amount out doesnt meet , the bounced message returns funds)
         }
     }        

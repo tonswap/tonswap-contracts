@@ -147,37 +147,79 @@ describe('SmartContract', () => {
         expect(messageTonDest.toFriendly()).toEqual(bobAddress.toFriendly());
         expect(fromDecimals(msgTonValue)).toEqual(TON_SIDE.toString());
 
-        //Message #2 sending TOKEN to User  
-        const messageTokenOut = removeResponse.actions[1] as SendMsgOutAction;
+        // //Message #2 sending TOKEN to User  
+        // const messageTokenOut = removeResponse.actions[1] as SendMsgOutAction;
 
-        console.log('trc20 message ',messageTokenOut.message.body.toString());
-        const msgBody = parseTrc20Transfer(messageTokenOut.message.body);
-        console.log(msgBody);
-        expect( fromDecimals(msgBody.amount)).toEqual(TOKEN_SIDE.toString());
+        // console.log('trc20 message ',messageTokenOut.message.body.toString());
+        // const msgBody = parseTrc20Transfer(messageTokenOut.message.body);
+        // console.log(msgBody);
+        // expect( fromDecimals(msgBody.amount)).toEqual(TOKEN_SIDE.toString());
 
-        // validate target is equal to token contract
-        const msgTokenDest = messageOutputTonValue.message.info.dest;
-        expect(msgTokenDest?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());   
+        // // validate target is equal to token contract
+        // const msgTokenDest = messageOutputTonValue.message.info.dest;
+        // expect(msgTokenDest?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());   
 
 
-        //expect(msgTokenValue)
+        // //expect(msgTokenValue)
 
-        let tokenBalanceAfterRemove = await contract.balanceOf(bobAddress);
-        console.log('balance after remove ', fromDecimals(tokenBalanceAfterRemove) );
-        console.log('senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber() ', senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber());
+        // let tokenBalanceAfterRemove = await contract.balanceOf(bobAddress);
+        // console.log('balance after remove ', fromDecimals(tokenBalanceAfterRemove) );
+        // console.log('senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber() ', senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber());
 
-        expect(senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber()).toBe(0);
+        // expect(senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber()).toBe(0);
     });
 
 
-//     it('should swap in Token->TON', async () => {
-//         let contract = await DexDebug.create(configData)
-//         await contract.initTestData(myAddress)
+    it('should swap in Token->TON', async () => {
+        let contract = await DexDebug.create(configData)
+        await contract.initTestData(bobAddress);
 
-//         // Add liquidity take #1
-//         let res = await contract.addLiquidity(KILO_TOKEN, tokenSender toDecimals(10), toDecimals(100), 2);
+        // Add liquidity take #1
+        let res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
+        expect(res.exit_code).toBe(0)
+         
+        let swap = await contract.swapIn(bobAddress, toDecimals(3), toDecimals(22))
+        expect(swap.exit_code).toBe(0)
+        
+        expect(swap.actions.length).toBe(1);
+    }); 
 
-//     });
+
+    it('should swap Swap In TON->Token', async () => {
+        let contract = await DexDebug.create(configData)
+        await contract.initTestData(bobAddress);
+
+        // Add liquidity take #1
+        let res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
+        expect(res.exit_code).toBe(0)
+         
+        let swap = await contract.swapIn(bobAddress, toDecimals(3), toDecimals(22))
+        expect(swap.exit_code).toBe(0)
+        
+        expect(swap.actions.length).toBe(1);
+    }); 
+
+
+    it('should swap Swap Out Token->TON', async () => {
+        let contract = await DexDebug.create(configData)
+        await contract.initTestData(bobAddress);
+        let res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
+        expect(res.exit_code).toBe(0)
+        
+        let swap = await contract.swapOut(bobAddress, KILO_TOKEN, toDecimals(50), toDecimals(3))
+        expect(swap.exit_code).toBe(0);
+        expect(swap.actions.length).toBe(1);
+
+        const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
+        const msgTonValue = messageOutputTonValue.message.info.value.coins;
+        const messageTonDest = messageOutputTonValue.message.info.dest;        
+        
+        console.log('output message destination' , messageTonDest.toFriendly());
+        console.log('messageOutputTonValue.message.info.value.coins' , fromDecimals(msgTonValue) ,'TON');
+
+        expect(messageTonDest.toFriendly()).toEqual(bobAddress.toFriendly());
+        expect(fromDecimals(msgTonValue)).toEqual('3');
+    }); 
        
 })
 

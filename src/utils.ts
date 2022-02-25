@@ -74,9 +74,9 @@ export function parseTrc20Transfer(msgBody: Cell) {
     var op = slice.readUint(32);
     var query = slice.readUint(64); 
     return {
-        op: slice.readUint(32),
-        query: slice.readUint(64),
+        op: op.toString(10),
+        query: query.toString(10),
         dest: slice.readAddress(),
-        amount: slice.readCoins()
+        amount: slice.readCoins().toString(10)
     }
 }

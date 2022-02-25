@@ -122,6 +122,64 @@ export class DexDebug {
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[0] as BN,
+            logs: res.logs,
+            actions: parseActionsList(successResult.action_list_cell)
+        }
+    }
+
+
+    // Swap TON->TRC20
+    async swapIn(sender: Address, tonToSwap: BN, minAmountOut: BN) {
+
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(7, 32) // action
+        messageBody.bits.writeUint(1, 64) // query-id
+        messageBody.bits.writeCoins(minAmountOut); // min amount out 
+        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        let res = await this.contract.sendInternalMessage(new InternalMessage({
+            to: contractAddress,
+            from: sender,
+            value: tonToSwap,
+            bounce: false,
+            body: b
+        }))
+
+        let successResult = res as SuccessfulExecutionResult;
+
+        return {
+            "exit_code": res.exit_code,
+            returnValue: res.result[0] as BN,
+            logs: res.logs,
+            actions: parseActionsList(successResult.action_list_cell)
+        }
+    }
+
+    // Swap TON->TRC20
+    async swapOut(sender: Address,tokenSender: Address, tokenAmount: BN, minAmountOut: BN) {
+
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(TRC20_TRANSFER_RECIPT, 32) // action
+        messageBody.bits.writeUint(1, 64) // query-id
+        messageBody.bits.writeAddress(sender) // token contract is sender (recv_internal)
+        messageBody.bits.writeCoins(tokenAmount); // sent amount
+        messageBody.bits.writeUint(8, 8); // sub-op 
+        messageBody.bits.writeCoins(minAmountOut); // min amount out, Slippage
+    
+        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        let res = await this.contract.sendInternalMessage(new InternalMessage({
+            to: contractAddress,
+            from: tokenSender, 
+            value: new BN(1),
+            bounce: false,
+            body: b
+        }))
+
+        let successResult = res as SuccessfulExecutionResult;
+
+        return {
+            "exit_code": res.exit_code,
+            returnValue: res.result[0] as BN,
+            logs: res.logs,
             actions: parseActionsList(successResult.action_list_cell)
         }
     }
