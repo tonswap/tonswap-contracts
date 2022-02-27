@@ -80,9 +80,6 @@ slice pack_addr(int wc, int addr) inline {
 ;; =============== DEX helpers =============================
 
 int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
-  ~dump amountIn;
-  ~dump reserveIn;
-  ~dump reserveOut;
   int amountInWithFee = amountIn * 997; ;; lp fees 0.3% 
   int numerator =  amountInWithFee * reserveOut;
   int denominator = reserveIn * 1000 + amountInWithFee;
@@ -699,10 +696,8 @@ int get_rewards_of(int owner_wc, int owner_addr) method_id {
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
   (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, _ ,_ ,_) = load_data(get_data());
   (slice liquidity_slice, int found) = balances.dict_get?(264, owner);
-  ~dump found;
   if (found) {  
     (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, 300);
-    ~dump user_rewards;
     return user_rewards;
   }
   return 0;
