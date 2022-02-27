@@ -25,7 +25,7 @@ var configData = {
     tonReserves: toDecimals(0),
     tokenAddress: KILO_TOKEN,
     tokenAdmin: TOKEN_ADMIN,
-    tokenAllocPoints: new BN(10),
+    tokenAllocPoints: new BN(300),
     protocolAdmin: PROTOCOL_ADMIN,
     protocolAllocPoints: new BN(77),
 } as DexConfig;

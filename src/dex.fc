@@ -562,7 +562,7 @@ int squareRoot(int number)  {
       return_value = 3;
     } elseif (action == op:claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
-      int rewards = balances~claim_rewards(sender, 300, total_supply, token_reserves);
+      int rewards = balances~claim_rewards(sender, token_alloc_points, total_supply, token_reserves);
       send_token_to(token_address, sender, rewards, 1);
       return_value = rewards;
     }  elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
@@ -694,10 +694,10 @@ int ibalance_of(int owner_wc, int owner_addr) method_id {
 int get_rewards_of(int owner_wc, int owner_addr) method_id {
   
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
-  (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, _ ,_ ,_) = load_data(get_data());
+  (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, int token_alloc_points ,_ ,_) = load_data(get_data());
   (slice liquidity_slice, int found) = balances.dict_get?(264, owner);
   if (found) {  
-    (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, 300);
+    (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_alloc_points);
     return user_rewards;
   }
   return 0;
