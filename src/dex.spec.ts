@@ -227,13 +227,15 @@ describe('SmartContract', () => {
 
         let contract = await DexDebug.create(configData)
         await contract.initTestData(bobAddress);
+
         contract.setUnixTime(toUnixTime(Date.now()));
         let res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
         
         //fast forward time 
         contract.setUnixTime( toUnixTime(Date.now()) + ONE_DAY );
-
+        let rewards = await contract.getRewards(bobAddress);
+        expect(rewards.toNumber()).toBe(expectedRewards);
 
         let claimResponse = await contract.claimRewards(bobAddress);
         expect(claimResponse.exit_code).toBe(0);
@@ -254,7 +256,11 @@ describe('SmartContract', () => {
         expect(res.exit_code).toBe(0);
 
         let days = 12;
+
         contract.setUnixTime(toUnixTime(Date.now()) + (ONE_DAY * days));
+        let rewards = await contract.getRewards(bobAddress);
+        expect(rewards.toNumber()).toBe(expectedRewards * (days));
+
         let claimResponse2 = await contract.claimRewards(bobAddress);
         expect(claimResponse2.exit_code).toBe(0);
         //verify send token to message
@@ -284,9 +290,15 @@ describe('SmartContract', () => {
         expect(claimResponse.actions.length).toBe(1);
         expect(claimResponse.rewards).toBe(expectedRewards);
 
+        let rewardsAfterWithdraw = await contract.getRewards(bobAddress);
+        expect(rewardsAfterWithdraw.toNumber()).toBe(0);
+
         // days
         let days = 12 + 1;
         contract.setUnixTime(toUnixTime(Date.now()) + (ONE_DAY * days));
+        let rewardsAfterWithdraw2 = await contract.getRewards(bobAddress);
+        expect(rewardsAfterWithdraw2.toNumber()).toBe(expectedRewards * (days-1));
+
         let claimResponse2 = await contract.claimRewards(bobAddress);
         expect(claimResponse2.exit_code).toBe(0);
         //verify send token to message
