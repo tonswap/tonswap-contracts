@@ -12,7 +12,7 @@ function sliceToString(s: Slice) {
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
 const TRC20_TRANSFER_RECIPT = 2147483649;
-
+const CLAIM_REWARDS = 4;
 
 
 export class DexDebug {
@@ -184,6 +184,34 @@ export class DexDebug {
         }
     }
 
+    async claimRewards(sender: Address) {
+
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(CLAIM_REWARDS, 32) // action
+        messageBody.bits.writeUint(1, 64) // query-id
+    
+        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        let resBalance = await this.contract.sendInternalMessage(new InternalMessage({
+            to: contractAddress,
+            from: sender, 
+            value: new BN(1),
+            bounce: false,
+            body: b
+        }))
+        
+        let successResult = resBalance as SuccessfulExecutionResult;
+        const rewards = resBalance.result[1] as BN;
+
+
+        return {
+            "exit_code": resBalance.exit_code,
+            returnValue: resBalance.result[1] as BN,
+            logs: resBalance.logs,
+            actions: parseActionsList(successResult.action_list_cell),
+            rewards : rewards.toNumber()
+        }
+    }
+
     async balanceOf(owner: Address) {
         let wc = owner.workChain;
         let address = new BN(owner.hash)
@@ -197,16 +225,20 @@ export class DexDebug {
         return (balanceResult.result[0] as BN);
     }
 
-    async liquidityOf(owner: Address) {
-        let wc = owner.workChain;
-        let address = new BN(owner.hash)
+    async getRewards(user: Address) {
+        let wc = user.workChain;
+        let address = new BN(user.hash)
 
-        let liquidityResult = await this.contract.invokeGetMethod('liquidity_of', [
+        let liquidityResult = await this.contract.invokeGetMethod('get_rewards_of', [
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
         
         return (liquidityResult.result[0] as BN)
+    }
+
+    setUnixTime( time: number) {
+        this.contract.setUnixTime(time);
     }
 
     static async create(config: DexConfig) {

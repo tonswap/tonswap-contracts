@@ -71,6 +71,11 @@ export function parseActionsList(actions: Slice|Cell): OutAction[] {
 
 export function parseTrc20Transfer(msgBody: Cell) {
     let slice = msgBody.beginParse();
+    const six = slice.readUint(6); 
+    const flags = slice.readUint(3);
+    const addrs = slice.readAddress();
+    const fees = slice.readCoins();
+    var prefix = slice.readUint(1 + 4 + 4 + 64 + 32 + 1 + 1);
     var op = slice.readUint(32);
     var query = slice.readUint(64); 
     return {
@@ -79,4 +84,9 @@ export function parseTrc20Transfer(msgBody: Cell) {
         dest: slice.readAddress(),
         amount: slice.readCoins().toString(10)
     }
+}
+
+
+export function toUnixTime(timeInMS: number) {
+    return Math.round( timeInMS / 1000);
 }

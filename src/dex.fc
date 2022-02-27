@@ -46,7 +46,6 @@ builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
 
 ;; TODO remove them using Macros/replace (can be on )
 global slice my_address_x; ;; Testing , this a replacemnet my_address()
-global int now_x; ;; this a replacement for block_lt()
 
 ;; =============== GAS Functions =============================
 
@@ -106,9 +105,9 @@ int _get_balance(cell balances, slice address) {
 
 (cell, ()) ~set_balance(cell balances, slice address, int value)  {
   
-  throw_if(error:trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
+   throw_if(error:trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
   if(value > 0) {
-    balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(now_x, 32));
+    balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(block_lt(), 32));
   } else {
     balances~dict_delete?(264, address);
   }
@@ -400,20 +399,26 @@ int squareRoot(int number)  {
 }
 
 
+(int, int) calc_rewards(slice liquidity_slice, int total_supply, int token_reserves, int reward_rate) {
+  int lp_amount =  liquidity_slice~load_grams();
+  int user_tokens = (lp_amount / total_supply) * token_reserves;
+  int timestamp =  liquidity_slice~load_uint(32);
+  int seconds_staked =  (block_lt() - timestamp);
+  int daily_rewards = (token_reserves / 100000000) * reward_rate;
+  int reward_per_second = daily_rewards / (3600 * 24);
+  int period_rewards = reward_per_second * seconds_staked;
+  int rewards = (period_rewards * lp_amount) / total_supply;
+  return ( rewards, lp_amount );
+}
 
 
 (cell, int) ~claim_rewards(cell balances, slice address, int reward_rate, int total_supply, int token_reserves) {
-
   (slice liquidity_slice, int found) = balances.dict_get?(264, address);
-  if (found) {
-    
-    int lp_amount =  liquidity_slice~load_grams();
-    int user_tokens = (lp_amount / total_supply) * token_reserves;
-    int timestamp =  liquidity_slice~load_uint(32);
-    int minutes_staked =  (now_x - timestamp);
-    int rewards = user_tokens * minutes_staked * reward_rate;
-    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now_x, 32));
-    return (balances, rewards);
+
+  if (found) {  
+    (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, reward_rate);
+    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 32));
+    return (balances, user_rewards);
   } 
   return (balances, 0);
 }
@@ -502,7 +507,6 @@ int squareRoot(int number)  {
     ;; TODO  This hack is only for testing purposes 
     slice my_f_address = pack_addr(-1, sender_addr);
     my_address_x = my_f_address;
-    now_x = 1644329284;
     
     cs = in_msg;
     if (cs.slice_bits() == 0) { ;; just accept grams
@@ -561,9 +565,9 @@ int squareRoot(int number)  {
       return_value = 3;
     } elseif (action == op:claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
-      int rewards = balances~claim_rewards(sender, 10, total_supply, token_reserves);
+      int rewards = balances~claim_rewards(sender, 300, total_supply, token_reserves);
       send_token_to(token_address, sender, rewards, 1);
-      return_value = 4;
+      return_value = rewards;
     }  elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
         
         int amount_to_remove = cs~load_grams();
@@ -660,13 +664,11 @@ int balance_of(slice owner) method_id {
 
 int allowance(slice owner, slice spender) method_id {
   (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
-
   return _get_allowance(allowances, owner, spender);
 }
 
 ;;====================== DEX Helpers =====================================
 
-;; I dont know how to pass more than two paramters to read function
 var get_amount_out_lp(int amountIn, int is_token_src) method_id {
   (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
   int amountInWithFee = amountIn * 997;
@@ -690,4 +692,18 @@ var get_amount_out_lp(int amountIn, int is_token_src) method_id {
 int ibalance_of(int owner_wc, int owner_addr) method_id {
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
   return balance_of(owner);
+}
+
+int get_rewards_of(int owner_wc, int owner_addr) method_id {
+  
+  slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
+  (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, _ ,_ ,_) = load_data(get_data());
+  (slice liquidity_slice, int found) = balances.dict_get?(264, owner);
+  ~dump found;
+  if (found) {  
+    (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, 300);
+    ~dump user_rewards;
+    return user_rewards;
+  }
+  return 0;
 }
