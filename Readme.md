@@ -33,10 +33,12 @@ Use `npm run test` to execute the test suite.
 - [X] Swap TON -> Token and Token -> TON Tests (based on Uniswap)
 - [X] Swap Tests in Fift
 - [X] Masterchef with rewards 
-- [ ] Masterchef Rewards with Tests 
+- [X] Masterchef Rewards with Tests 
+- [X] Add Masterchef functionality with auto stake and auto withdraw inside the contract
+- [ ] Gas Optimizations
+- [ ] Move to distributed architecture [distributed-token.fc](https://github.com/cod1ng-studio/TRC20/blob/master/distributed-token.fc)
 - [ ] Send receipt based on TRC20
 - [ ] Deploy Contract to mainnet
 - [ ] Connect Bot to mainnet
-- [ ] Add Masterchef functionality with auto stake and auto withdraw inside the contract
 
 

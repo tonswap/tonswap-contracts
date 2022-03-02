@@ -31,11 +31,15 @@ int op:add_liquidity() asm "2 PUSHINT";  ;; sub op of trc20:transfer
 int op:remove_liquidity() asm "6 PUSHINT";
 int op:swap_in() asm "7 PUSHINT";        ;; sub op of trc20:transfer
 int op:swap_out() asm "8 PUSHINT";
+int op:update_token_data() asm "9 PUSHINT";
+int op:update_protocol_data() asm "10 PUSHINT";
 int op:transfer_recipt() asm "2147483649 PUSHINT";
 int op:transfer_from_recipt() asm "2147483649 PUSHINT";
 
-int error:trc20_insufficent_transfer() asm "1000 PUSHINT";
-int error:trc20_bad_source_address() asm "0x40001 PUSHINT";
+int error:trc20_insufficent_transfer()  asm "1000 PUSHINT";
+int error:trc20_bad_source_address()    asm "0x40001 PUSHINT";
+int error:update_token_no_role()        asm "0x40002 PUSHINT";
+int error:update_admin_no_role()        asm "0x40003 PUSHINT";
 
 int equal_slices (slice s1, slice s2) asm "SDEQ";
 builder store_builder(builder to, builder what) asm(what to) "STB";
@@ -395,25 +399,30 @@ int squareRoot(int number)  {
     return ( balances, storage_fee, total_supply, token_reserves, ton_reserves, share_in_ton_reserves);
 }
 
-
-(int, int) calc_rewards(slice liquidity_slice, int total_supply, int token_reserves, int reward_rate) {
-  int lp_amount =  liquidity_slice~load_grams();
-  int user_tokens = (lp_amount / total_supply) * token_reserves;
-  int timestamp =  liquidity_slice~load_uint(32);
-  int seconds_staked =  (block_lt() - timestamp);
-  int daily_rewards = (token_reserves / 100000000) * reward_rate;
+(int) calc_rewards_seconds(int seconds_staked, int reward_rate, int lp_amount, int token_reserves, int total_supply) {
+  int daily_rewards =  muldiv(token_reserves, reward_rate, 100000000);
   int reward_per_second = daily_rewards / (3600 * 24);
   int period_rewards = reward_per_second * seconds_staked;
-  int rewards = (period_rewards * lp_amount) / total_supply;
+  return (period_rewards * lp_amount) / total_supply;
+}
+
+(int, int) calc_rewards(slice liquidity_slice, int total_supply, int token_reserves, int token_reward_rate, int protocol_reward_rate) {
+  int lp_amount =  liquidity_slice~load_grams();
+  int timestamp =  liquidity_slice~load_uint(32);
+
+  int seconds_staked =  (block_lt() - timestamp);
+  int token_rewards = calc_rewards_seconds(seconds_staked, token_reward_rate, lp_amount, token_reserves, total_supply);
+  int protocol_rewards = calc_rewards_seconds(seconds_staked, protocol_reward_rate, lp_amount, token_reserves, total_supply);
+  int rewards = token_rewards + protocol_rewards;
   return ( rewards, lp_amount );
 }
 
 
-(cell, int) ~claim_rewards(cell balances, slice address, int reward_rate, int total_supply, int token_reserves) {
+(cell, int) ~claim_rewards(cell balances, slice address, int token_reward_rate, int protocol_reward_rate, int total_supply, int token_reserves) {
   (slice liquidity_slice, int found) = balances.dict_get?(264, address);
 
-  if (found) {  
-    (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, reward_rate);
+  if (found) {                                      
+    (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_reward_rate, protocol_reward_rate);
     balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 32));
     return (balances, user_rewards);
   } 
@@ -562,7 +571,7 @@ int squareRoot(int number)  {
       return_value = 3;
     } elseif (action == op:claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
-      int rewards = balances~claim_rewards(sender, token_alloc_points, total_supply, token_reserves);
+      int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
       send_token_to(token_address, sender, rewards, 1);
       return_value = rewards;
     }  elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
@@ -581,6 +590,14 @@ int squareRoot(int number)  {
       ;; Handle revert (maybe thorugh expection is enough to return TONS)
 
       ;; TODO  add equal_slices(token_address ,sender)
+    } elseif ( action == op:update_token_data() ) {  
+       ;; throw_unless(error:update_token_no_role(), equal_slices(sender_raw, token_rewards_admin) );
+      token_alloc_points = cs~load_grams();
+      return_value = token_alloc_points;
+    } elseif ( action == op:update_protocol_data() ) {  
+     ;; throw_unless(112, equal_slices(sender, protocol_rewards_admin) );
+      protocol_alloc_points = cs~load_grams();
+      return_value = protocol_alloc_points;
     } elseif ( ( ( action == op:transfer_recipt() ) | ( action == op:transfer_from_recipt() ) )  ) {  ;; TRC20 RECIPTS and validate source token
         ;; cast address to 264 bit 
         slice trc_sender_raw = cs~load_msg_addr();
@@ -694,10 +711,10 @@ int ibalance_of(int owner_wc, int owner_addr) method_id {
 int get_rewards_of(int owner_wc, int owner_addr) method_id {
   
   slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
-  (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, int token_alloc_points ,_ ,_) = load_data(get_data());
+  (_, _, _, int total_supply, int token_reserves, _, cell balances, _, _, _, _, int token_alloc_points ,_ ,int protocol_reward_rate) = load_data(get_data());
   (slice liquidity_slice, int found) = balances.dict_get?(264, owner);
   if (found) {  
-    (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_alloc_points);
+    (int user_rewards, _) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_alloc_points, protocol_reward_rate);
     return user_rewards;
   }
   return 0;
