@@ -228,7 +228,7 @@ export class DexDebug {
             bounce: false,
             body: b
         }))
-        
+
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[0] as BN,

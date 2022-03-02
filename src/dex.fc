@@ -591,11 +591,13 @@ int squareRoot(int number)  {
 
       ;; TODO  add equal_slices(token_address ,sender)
     } elseif ( action == op:update_token_data() ) {  
-       ;; throw_unless(error:update_token_no_role(), equal_slices(sender_raw, token_rewards_admin) );
+      (int t_wc, int t_addr) = parse_std_addr(token_rewards_admin);
+      throw_unless( 401 , ( (t_addr == sender_addr) & (t_wc == sender_wc) ) );
       token_alloc_points = cs~load_grams();
       return_value = token_alloc_points;
     } elseif ( action == op:update_protocol_data() ) {  
-     ;; throw_unless(112, equal_slices(sender, protocol_rewards_admin) );
+      (int p_wc, int p_addr) = parse_std_addr(protocol_rewards_admin);
+      throw_unless( 401 , ( (p_addr == sender_addr) & (p_wc == sender_wc) ) );
       protocol_alloc_points = cs~load_grams();
       return_value = protocol_alloc_points;
     } elseif ( ( ( action == op:transfer_recipt() ) | ( action == op:transfer_from_recipt() ) )  ) {  ;; TRC20 RECIPTS and validate source token

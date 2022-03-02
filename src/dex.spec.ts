@@ -423,12 +423,13 @@ describe('SmartContract', () => {
         const newAllocPoints = 500;
         const newProtocolPoints = 700;
 
-        const res = await contract.updateAdminData(bobAddress, OP_UPDATE_TOKEN_REWARDS, new BN(newAllocPoints));
+        const res = await contract.updateAdminData(TOKEN_ADMIN, OP_UPDATE_TOKEN_REWARDS, new BN(newAllocPoints));
         expect(res.exit_code).toBe(0);
         const tokenData = await contract.getAdminData();
         expect(tokenData.adminPoints.cmp(new BN(newAllocPoints))).toEqual(0);
         
-        await contract.updateAdminData(bobAddress, OP_UPDATE_PROTOCOL_REWARDS, new BN(newProtocolPoints));
+        const res2 = await contract.updateAdminData(PROTOCOL_ADMIN, OP_UPDATE_PROTOCOL_REWARDS, new BN(newProtocolPoints));
+        expect(res2.exit_code).toBe(0);
         const tokenData2 = await contract.getAdminData();
         expect(tokenData2.protocolPoints.cmp(new BN(newProtocolPoints))).toEqual(0);
         
