@@ -165,7 +165,9 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
 
 () send_token_to(slice token_address, slice to, int token_amount, int query_id) impure {
    ;; TODO reserve gas for messaage
-  int x = 101;
+    if token_amount == 0 {
+      return;
+    }
 
    int fee = 10000000;
    builder msg = begin_cell()
@@ -179,13 +181,15 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
       .store_slice(to)
       .store_grams(token_amount);
 
-    send_raw_message(msg.end_cell(), 64);
+    send_raw_message(msg.end_cell(), 2);
 }
 
 ;; value - MUST BE NON-NEGATIVE
 (cell, (int)) ~transfer(cell balances, slice from, slice to, int value) impure {
   int old_to_balance = _get_balance(balances, to);
-  int new_from_balance = _get_balance(balances, from) - value; 
+  int new_from_balance = _get_balance(balances, from) - value;
+
+  ;;when moving lp-tokens we must claim rewards before the transfer ,  
   balances~set_balance(from, new_from_balance );
   balances~set_balance(to, old_to_balance + value);
 
@@ -548,6 +552,10 @@ int squareRoot(int number)  {
     if (action == 1) { ;; transfer
       to = cs~load_bits(264);
       value = cs~load_grams();
+      ;; claim rewards by sender before moving lps, timestamp resets after transfer.
+      int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+      send_token_to(token_address, sender, rewards, 1);
+
       storage_fee += balances~transfer(sender, to, value);
       return_value = 1;
     } elseif (action == 2) { ;; transfer_from
@@ -555,6 +563,9 @@ int squareRoot(int number)  {
       slice from = cs~load_bits(264);
       to = cs~load_bits(264);
       value = cs~load_grams();
+      ;; claim rewards by sender before moving lps, timestamp resets after transfer.
+      int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+      send_token_to(token_address, sender, rewards, 1);
 
       storage_fee += allowances~change_allowance(from, sender, - value, 1);
       storage_fee += balances~transfer(from, to, value);
@@ -579,6 +590,9 @@ int squareRoot(int number)  {
         int amount_to_remove = cs~load_grams();
         int user_balance = _get_balance(balances, sender);
         throw_if( 104, user_balance < amount_to_remove);
+        
+        int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+        send_token_to(token_address, sender, rewards, 1);
 
         (balances, int fee, total_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, sender, amount_to_remove, total_supply, ton_reserves, token_reserves, token_address, query_id);
         storage_fee += fee;
@@ -625,7 +639,8 @@ int squareRoot(int number)  {
               price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
               throw_if(103,  price_delta > slipage );
             }
-            
+            int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+            send_token_to(token_address, sender, rewards, 1);
             (balances, total_supply, token_reserves, ton_reserves, int fee) = mint_lp(balances, trc_sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_supply);
             int newliq = _get_balance(balances, trc_sender);
             return_value = newliq;

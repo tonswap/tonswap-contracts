@@ -93,12 +93,16 @@ export class DexDebug {
             from: tokenContract,
             value: tonAmount,
             bounce: false,
-            body: b
+            body: b,
         }))
+
+        let successResult = res as SuccessfulExecutionResult;
 
         return {
             "exit_code": res.exit_code,
-            returnValue: res.result[1] as BN
+            returnValue: res.result[1] as BN,
+            logs: res.logs,
+            actions: parseActionsList(successResult.action_list_cell)
         }
     }
 
