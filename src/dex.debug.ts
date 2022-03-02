@@ -46,7 +46,6 @@ export class DexDebug {
     async getAdminData() {
         
         const res = await this.contract.invokeGetMethod('get_admin_data', []);
-        console.log(res);
 
         let [adminWc, adminAddress, adminPoints , protocolWc ,protocolAddress, protocolPoints] = res.result as [BN, BN, BN ,BN, BN, BN]
         const admin = new Address(adminWc.toNumber(), adminAddress.toBuffer());
@@ -97,7 +96,6 @@ export class DexDebug {
             body: b
         }))
 
-        console.log(res);
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[1] as BN

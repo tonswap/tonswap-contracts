@@ -434,5 +434,25 @@ describe('SmartContract', () => {
         expect(tokenData2.protocolPoints.cmp(new BN(newProtocolPoints))).toEqual(0);
         
     }) 
+
+    it('should throw un authorized when trying to update token data from wrong address', async () => {
+        const newAllocPoints = 500;
+        const newProtocolPoints = 700;
+
+        const contract = await DexDebug.create(configData)
+    
+        const res = await contract.updateAdminData(bobAddress, OP_UPDATE_TOKEN_REWARDS, new BN(newAllocPoints));
+        expect(res.exit_code).toBe(401);
+        const tokenData = await contract.getAdminData();
+        // points should not update
+        expect(tokenData.adminPoints).eqBN(new BN(configData.tokenAllocPoints));
+        
+        const res2 = await contract.updateAdminData(bobAddress, OP_UPDATE_PROTOCOL_REWARDS, new BN(newProtocolPoints));
+        expect(res2.exit_code).toBe(402);
+        const tokenData2 = await contract.getAdminData();
+        // points should not update
+        expect(tokenData2.protocolPoints).eqBN(new BN(configData.protocolAllocPoints));
+        
+    }) 
 })
 

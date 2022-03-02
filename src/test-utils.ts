@@ -23,9 +23,27 @@ expect.extend({
         return {
             pass: res,
             message: () => 
-`expected ${receivedValue.toString(10)} ~= ${targetValue.toString(10)}
-     >  ${low.toString(10)} 
-     <  ${high.toString(10)}`
+            `expected ${receivedValue.toString(10)} ~= ${targetValue.toString(10)}
+            >  ${low.toString(10)} 
+            <  ${high.toString(10)}`
+        }
+    } 
+}); 
+
+expect.extend({
+    eqBN(receivedValue: BN, targetValue: BN) {
+        if(receivedValue.cmp(targetValue) == 0 ) { 
+            return {
+                pass: true,
+                message: "" 
+            }
+        }
+        return {
+            pass: false,
+            message: () => 
+            `
+            expected ${receivedValue.toString(10)} 
+            got      ${targetValue.toString(10)}`
         }
     }
-}); 
+});
