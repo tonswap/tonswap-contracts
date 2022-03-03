@@ -56,26 +56,12 @@ describe('SmartContract', () => {
     let source: string
     
     beforeAll(async () => {
-        source = (await readFile('./src/dex.fc')).toString('utf-8')
+        source = (await readFile('./src/dex.func')).toString('utf-8')
     })
     
     beforeEach(async () => {
         
     });
-    
-    
-    // it('should return token Data', async () =>    {
-    
-    //     const contract = await DexDebug.create(configData)
-    //     const tokenData = await contract.getData();
-    //     expect(tokenData.name).toEqual(configData.name);
-    //     expect(tokenData.symbol).toEqual(configData.symbol);
-    //     expect(tokenData.decimals).toEqual(configData.decimals);
-    //     expect(tokenData.totalSupply.toNumber()).toEqual(configData.totalSupply.toNumber());
-    //     expect(tokenData.decimals).toEqual(configData.decimals);
-    //     expect(tokenData.tokenReserves.toNumber()).toEqual(configData.tokenReserves.toNumber());
-    //     expect(tokenData.tonReserves.toNumber()).toEqual(configData.tonReserves.toNumber());
-    // })
     
     
     it('should return admin Data', async () =>    {

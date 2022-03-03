@@ -26,20 +26,20 @@
 ;; transfer = 1 TRC20 
 ;; transfer_from = 2 TRC20 
 ;; increase/decrease = 3 TRC20
-int op:claim_rewards() asm "4 PUSHINT";
-int op:add_liquidity() asm "2 PUSHINT";  ;; sub op of trc20:transfer
-int op:remove_liquidity() asm "6 PUSHINT";
-int op:swap_in() asm "7 PUSHINT";        ;; sub op of trc20:transfer
-int op:swap_out() asm "8 PUSHINT";
-int op:update_token_data() asm "9 PUSHINT";
-int op:update_protocol_data() asm "10 PUSHINT";
-int op:transfer_recipt() asm "2147483649 PUSHINT";
-int op:transfer_from_recipt() asm "2147483649 PUSHINT";
+int op::claim_rewards() asm "4 PUSHINT";
+int op::add_liquidity() asm "2 PUSHINT";  ;; sub op of trc20:transfer
+int op::remove_liquidity() asm "6 PUSHINT";
+int op::swap_in() asm "7 PUSHINT";        ;; sub op of trc20:transfer
+int op::swap_out() asm "8 PUSHINT";
+int op::update_token_data() asm "9 PUSHINT";
+int op::update_protocol_data() asm "10 PUSHINT";
+int op::transfer_recipt() asm "2147483649 PUSHINT";
+int op::transfer_from_recipt() asm "2147483649 PUSHINT";
 
-int error:trc20_insufficent_transfer()  asm "1000 PUSHINT";
-int error:trc20_bad_source_address()    asm "0x40001 PUSHINT";
-int error:update_token_no_role()        asm "0x40002 PUSHINT";
-int error:update_admin_no_role()        asm "0x40003 PUSHINT";
+int erorr::trc20_insufficent_transfer()  asm "1000 PUSHINT";
+int erorr::trc20_bad_source_address()    asm "0x40001 PUSHINT";
+int erorr::update_token_no_role()        asm "0x40002 PUSHINT";
+int erorr::update_admin_no_role()        asm "0x40003 PUSHINT";
 
 int equal_slices (slice s1, slice s2) asm "SDEQ";
 builder store_builder(builder to, builder what) asm(what to) "STB";
@@ -106,7 +106,7 @@ int _get_balance(cell balances, slice address) {
 
 (cell, ()) ~set_balance(cell balances, slice address, int value)  {
   
-   throw_if(error:trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
+   throw_if(erorr::trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
   if(value > 0) {
     balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(block_lt(), 32));
   } else {
@@ -580,12 +580,12 @@ int squareRoot(int number)  {
 
       storage_fee += allowances~change_allowance(sender, spender, sign ? - delta_value : delta_value, exact);
       return_value = 3;
-    } elseif (action == op:claim_rewards() ) { 
+    } elseif (action == op::claim_rewards() ) { 
       ;; TODO add reward_rate is a memroy parm 
       int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
       send_token_to(token_address, sender, rewards, 1);
       return_value = rewards;
-    }  elseif (action == op:remove_liquidity() ) { ;; Remove liquidty
+    }  elseif (action == op::remove_liquidity() ) { ;; Remove liquidty
         
         int amount_to_remove = cs~load_grams();
         int user_balance = _get_balance(balances, sender);
@@ -597,24 +597,24 @@ int squareRoot(int number)  {
         (balances, int fee, total_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, sender, amount_to_remove, total_supply, ton_reserves, token_reserves, token_address, query_id);
         storage_fee += fee;
         return_value = users_new_ton;
-    }  elseif (action == op:swap_in() ) { ;; TON -> TRC20
+    }  elseif (action == op::swap_in() ) { ;; TON -> TRC20
 
       int min_amount_out = cs~load_grams();
       return_value = swapTokens(min_amount_out, msg_value, true, sender);
       ;; Handle revert (maybe thorugh expection is enough to return TONS)
 
       ;; TODO  add equal_slices(token_address ,sender)
-    } elseif ( action == op:update_token_data() ) {  
+    } elseif ( action == op::update_token_data() ) {  
       (int t_wc, int t_addr) = parse_std_addr(token_rewards_admin);
       throw_unless( 401 , ( (t_addr == sender_addr) & (t_wc == sender_wc) ) );
       token_alloc_points = cs~load_grams();
       return_value = token_alloc_points;
-    } elseif ( action == op:update_protocol_data() ) {  
+    } elseif ( action == op::update_protocol_data() ) {  
       (int p_wc, int p_addr) = parse_std_addr(protocol_rewards_admin);
       throw_unless( 402 , ( (p_addr == sender_addr) & (p_wc == sender_wc) ) );
       protocol_alloc_points = cs~load_grams();
       return_value = protocol_alloc_points;
-    } elseif ( ( ( action == op:transfer_recipt() ) | ( action == op:transfer_from_recipt() ) )  ) {  ;; TRC20 RECIPTS and validate source token
+    } elseif ( ( ( action == op::transfer_recipt() ) | ( action == op::transfer_from_recipt() ) )  ) {  ;; TRC20 RECIPTS and validate source token
         ;; cast address to 264 bit 
         slice trc_sender_raw = cs~load_msg_addr();
         (int trc_sender_wc, int trc_sender_addr) = parse_std_addr(trc_sender_raw);
@@ -622,7 +622,7 @@ int squareRoot(int number)  {
 
         int trc_amount = cs~load_grams();
         int sub_op = cs~load_uint(8);
-        if (sub_op == op:add_liquidity() ) { 
+        if (sub_op == op::add_liquidity() ) { 
             int token_new_liquidity = trc_amount;
             int slipage = cs~load_uint(64);
             
@@ -647,7 +647,7 @@ int squareRoot(int number)  {
             return_value = newliq;
             
             storage_fee += fee;
-        } elseif (sub_op == op:swap_out() ) {  ;; swap TRC20 -> TON
+        } elseif (sub_op == op::swap_out() ) {  ;; swap TRC20 -> TON
           ;; <b 10TON , min_amount_out=99 b>
           int min_amount_out = cs~load_grams();
           return_value = swapTokens(min_amount_out, trc_amount, false, trc_sender);
