@@ -182,32 +182,29 @@ describe('SmartContract', () => {
     it('should Add Liquidity twice, and make sure rewards are claimed after the second add liquidity', async () => {
         const TON_SIDE = 10;
         const TOKEN_SIDE = 100;
-
         const contract = await DexDebug.create(configData)
         const res0 = await contract.initTestData(bobAddress)
         expect(res0.exit_code).toBe(0)
+        const expectedRewards = configData.tokenAllocPoints.mul(toDecimals(10000000)).div(magic);
         
-        // Add liquidity take #1
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress, toDecimals(TON_SIDE), toDecimals(TOKEN_SIDE), 2);
         expect(res.exit_code).toBe(0);
-        
+        expect(res.actions.length).toBe(0);  //
         const liq1 = await contract.balanceOf(bobAddress);
         expect(liq1.cmp(baseLP)).toBe(0);
-        
-        const tokenData = await contract.getData();
-        expect( fromDecimals(tokenData.tokenReserves) ).toEqual(TOKEN_SIDE.toString())
+
 
         
         contract.setUnixTime( toUnixTime(Date.now()) + ONE_DAY );
         const rewards = await contract.getRewards(bobAddress);
         expect(rewards).toBeBNcloseTo(expectedRewards, DUST);
-
+        
         const res2 = await contract.addLiquidity(KILO_TOKEN, bobAddress, toDecimals(TON_SIDE), toDecimals(TOKEN_SIDE), 2);
         expect(res2.exit_code).toBe(0);
         expect(res2.actions.length).toBe(1);
 
         const rewardsAfterAddLiquidity = await contract.getRewards(bobAddress);
-        expect(rewards).eqBN(new BN(0));
+        expect(rewardsAfterAddLiquidity).eqBN(new BN(0));
     });
     
     
@@ -268,7 +265,6 @@ describe('SmartContract', () => {
         const contract = await DexDebug.create(configData)
         await contract.initTestData(bobAddress);
 
-        contract.setUnixTime(toUnixTime(Date.now()));
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
         
@@ -292,7 +288,6 @@ describe('SmartContract', () => {
 
         const contract = await DexDebug.create(configData)
         await contract.initTestData(bobAddress);
-        contract.setUnixTime(toUnixTime(Date.now()));
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
 
@@ -318,7 +313,6 @@ describe('SmartContract', () => {
 
         const contract = await DexDebug.create(configData)
         await contract.initTestData(bobAddress);
-        contract.setUnixTime(toUnixTime(Date.now()));
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
         
@@ -360,7 +354,6 @@ describe('SmartContract', () => {
 
         const contract = await DexDebug.create(testConfig)
         await contract.initTestData(bobAddress);
-        contract.setUnixTime(toUnixTime(Date.now()));
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
         
@@ -407,7 +400,6 @@ describe('SmartContract', () => {
 
         const contract = await DexDebug.create(testConfig)
         await contract.initTestData(bobAddress);
-        contract.setUnixTime(toUnixTime(Date.now()));
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
         
@@ -444,7 +436,6 @@ describe('SmartContract', () => {
 
         const contract = await DexDebug.create(configData)
         await contract.initTestData(bobAddress);
-        contract.setUnixTime(toUnixTime(Date.now()));
 
         const tokenDataInit = await contract.getAdminData();
         expect(tokenDataInit.admin.equals(configData.tokenAdmin)).toBe(true);

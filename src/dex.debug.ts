@@ -3,7 +3,7 @@ import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 import {buildDataCell, DexConfig} from "./dex.data";
 import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo} from "ton";
 import BN from "bn.js";
-import { parseActionsList } from "./utils";
+import { parseActionsList, toUnixTime } from "./utils";
 
 function sliceToString(s: Slice) {
     let data = s.readRemaining()
@@ -259,7 +259,7 @@ export class DexDebug {
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
-
+        
         return (liquidityResult.result[0] as BN);
     }
 
@@ -271,6 +271,8 @@ export class DexDebug {
         let source = (await readFile('./src/dex.fc')).toString('utf-8')
         let contract = await SmartContract.fromFuncSource(source, buildDataCell(config), { getMethodsMutate: true })
 
-        return new DexDebug(contract)
+        const contractDebug = new DexDebug(contract);
+        contractDebug.setUnixTime(toUnixTime(Date.now()));
+        return contractDebug;
     }
 }

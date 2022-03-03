@@ -166,7 +166,7 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
 () send_token_to(slice token_address, slice to, int token_amount, int query_id) impure {
    ;; TODO reserve gas for messaage
     if token_amount == 0 {
-      return;
+      return ();
     }
 
    int fee = 10000000;
@@ -424,7 +424,7 @@ int squareRoot(int number)  {
 
 (cell, int) ~claim_rewards(cell balances, slice address, int token_reward_rate, int protocol_reward_rate, int total_supply, int token_reserves) {
   (slice liquidity_slice, int found) = balances.dict_get?(264, address);
-
+  
   if (found) {                                      
     (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_reward_rate, protocol_reward_rate);
     balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 32));
@@ -639,8 +639,9 @@ int squareRoot(int number)  {
               price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
               throw_if(103,  price_delta > slipage );
             }
-            int rewards = balances~claim_rewards(sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
-            send_token_to(token_address, sender, rewards, 1);
+
+            int rewards = balances~claim_rewards(trc_sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+            send_token_to(token_address, trc_sender, rewards, 1);
             (balances, total_supply, token_reserves, ton_reserves, int fee) = mint_lp(balances, trc_sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_supply);
             int newliq = _get_balance(balances, trc_sender);
             return_value = newliq;
