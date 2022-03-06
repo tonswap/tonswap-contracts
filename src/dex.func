@@ -490,7 +490,6 @@ int squareRoot(int number)  {
   send_raw_message(msg.end_cell(), 128);
 }
 
-
 (int) recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
     ;; (int chain_id, _) = parse_std_addr(my_address());
     ;; TODO testing 
@@ -528,7 +527,7 @@ int squareRoot(int number)  {
     ;;  return ();
     ;; }
     (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, slice token_rewards_admin, int token_alloc_points, slice protocol_rewards_admin, int protocol_alloc_points) = load_data(get_data());
-    slice to = null();
+    slice to = sender;
     int value = 0;
     int sign = 0;
     int storage_fee = 0;
@@ -659,7 +658,12 @@ int squareRoot(int number)  {
     
     ;;throw_unless(111, msg_value > storage_fee + gas_to_coins(chain_id, gas_limit + 10000) + msg_fwd_price(cells, bits, chain_id));
     
-
+      send_receipt(to,
+                   action, query_id,
+                   sender,
+                   sign, 0,
+                   10000000, ;; TODO fix gas 0.01TON fees for message.
+                   begin_cell().store_slice(cs));
     
     return return_value;
 }
