@@ -3,12 +3,7 @@ import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 import {buildDataCell, DexConfig} from "./dex.data";
 import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo} from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime } from "./utils";
-
-function sliceToString(s: Slice) {
-    let data = s.readRemaining()
-    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
-}
+import { parseActionsList, sliceToAddress267, toUnixTime, sliceToString } from "./utils";
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
 const TRC20_TRANSFER_RECIPT = 2147483649;
@@ -32,6 +27,7 @@ export class DexDebug {
         const totalSupply = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         const tonReserves = res.result[5] as BN;
+        const tokenAddress = sliceToAddress267(res.result[6] as Slice);
 
         return  {
             name,
@@ -39,7 +35,8 @@ export class DexDebug {
             decimals,
             totalSupply,
             tokenReserves,
-            tonReserves
+            tonReserves,
+            tokenAddress
         }
     }
     
@@ -120,8 +117,7 @@ export class DexDebug {
             value: new BN(1),
             bounce: false,
             body: b
-        }))
-
+        }));
         let successResult = res as SuccessfulExecutionResult;
 
         return {

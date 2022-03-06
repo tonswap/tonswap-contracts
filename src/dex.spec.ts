@@ -3,7 +3,7 @@ import {readFile} from "fs/promises";
 import {DexConfig} from "./dex.data";
 import { DexDebug } from "./dex.debug";
 import BN from "bn.js";
-import { SendMsgOutAction, parseTrc20Transfer, toUnixTime } from "./utils"
+import { SendMsgOutAction, parseTrc20Transfer, toUnixTime, sliceToString } from "./utils"
 import { init as initJestHelpers } from "./test-utils";
 
 initJestHelpers() 
@@ -58,12 +58,23 @@ describe('SmartContract', () => {
     beforeAll(async () => {
         source = (await readFile('./src/dex.func')).toString('utf-8')
     })
-    
-    beforeEach(async () => {
-        
-    });
-    
-    
+
+
+    it('should get token Data', async () =>    {
+
+        const contract = await DexDebug.create(configData)
+        const tokenData = await contract.getData();
+        console.log('tokenData.tokenAddress.toFirendly', tokenData.tokenAddress)
+        expect(tokenData.name == configData.name).toBe(true);
+        expect(tokenData.symbol == configData.symbol ).toBe(true);
+        expect(tokenData.decimals.cmp(configData.decimals)).toBe(0);
+        expect(tokenData.totalSupply.cmp(configData.totalSupply)).toBe(0);
+        expect(tokenData.tokenAddress.equals(configData.tokenAddress)).toBe(true);
+
+    })
+
+
+
     it('should return admin Data', async () =>    {
     
         const contract = await DexDebug.create(configData)
@@ -111,11 +122,11 @@ describe('SmartContract', () => {
         const res0 = await contract.initTestData(bobAddress)
         expect(res0.exit_code).toBe(0)
         
-        const TON_SIDE = 10;
-        const TOKEN_SIDE = 100;
+        const TON_SIDE = toDecimals(10);
+        const TOKEN_SIDE = toDecimals(100);
         
         // Add liquidity take #1
-        const res = await contract.addLiquidity(KILO_TOKEN, bobAddress, toDecimals(TON_SIDE), toDecimals(TOKEN_SIDE), 2);
+        const res = await contract.addLiquidity(KILO_TOKEN, bobAddress, TON_SIDE, TOKEN_SIDE, 2);
         expect(res.exit_code).toBe(0);
         
         const liq1 = await contract.balanceOf(bobAddress);
@@ -125,7 +136,7 @@ describe('SmartContract', () => {
         const tokenData = await contract.getData();
         console.log('tokenData.tokenReserves', fromDecimals(tokenData.tokenReserves) )
         
-        expect( fromDecimals(tokenData.tokenReserves) ).toEqual(TOKEN_SIDE.toString())
+        expect( tokenData.tokenReserves.toString(10) ).toEqual(TOKEN_SIDE.toString(10))
         
         const removeResponse = await contract.removeLiquidity(bobAddress, liq1);
         expect(removeResponse.exit_code).toBe(0);
@@ -134,34 +145,28 @@ describe('SmartContract', () => {
         //Message #1  sending TON to user  
         const messageOutputTonValue = removeResponse.actions[0] as SendMsgOutAction;
         const msgTonValue = messageOutputTonValue.message.info.value.coins;
-        const messageTonDest = messageOutputTonValue.message.info.dest;        
-        
+        const sendTonMessage = messageOutputTonValue.message.info.dest;        
         console.log('output message destination' , messageOutputTonValue.message.info.dest?.toFriendly());
         console.log('messageOutputTonValue.message.info.value.coins' , fromDecimals(msgTonValue) ,'TON');
+        expect(sendTonMessage?.toFriendly()).toEqual(bobAddress.toFriendly());
+        expect(msgTonValue).eqBN(TON_SIDE);
         
-        expect(messageTonDest?.toFriendly()).toEqual(bobAddress.toFriendly());
-        expect(fromDecimals(msgTonValue)).toEqual(TON_SIDE.toString());
-        
-        // //Message #2 sending TOKEN to User  
-        // const messageTokenOut = removeResponse.actions[1] as SendMsgOutAction;
-        
-        // console.log('trc20 message ',messageTokenOut.message.body.toString());
-        // const msgBody = parseTrc20Transfer(messageTokenOut.message.body);
-        // console.log(msgBody);
-        // expect( fromDecimals(msgBody.amount)).toEqual(TOKEN_SIDE.toString());
-        
-        // // validate target is equal to token contract
-        // const msgTokenDest = messageOutputTonValue.message.info.dest;
-        // expect(msgTokenDest?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());   
-        
-        
-        // //expect(msgTokenValue)
-        
-        // const tokenBalanceAfterRemove = await contract.balanceOf(bobAddress);
-        // console.log('balance after remove ', fromDecimals(tokenBalanceAfterRemove) );
-        // console.log('senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber() ', senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber());
-        
-        // expect(senderInitialBalance.sub(tokenBalanceAfterRemove).toNumber()).toBe(0);
+        //Message #2 sending TOKEN to User
+        const sendTokenMessage = removeResponse.actions[1] as SendMsgOutAction;
+        const msgTokenDest = sendTokenMessage.message.info.dest;
+        expect(msgTokenDest?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());
+
+        const msgBody = parseTrc20Transfer(sendTokenMessage.message.body);
+        expect( msgBody.amount).eqBN(TOKEN_SIDE);
+        // TRC20 Validation
+        expect( msgBody.to.equals(bobAddress)).toBe(true);
+        expect( msgBody.amount).eqBN(TOKEN_SIDE);
+        // validate target is equal to token contract
+
+        const tokenBalanceAfterRemove = await contract.balanceOf(bobAddress);
+        console.log('balance after remove ', fromDecimals(tokenBalanceAfterRemove) );
+        // user LP balance should be 0
+        expect(tokenBalanceAfterRemove).eqBN(new BN(0));
     });
 
 
@@ -179,8 +184,6 @@ describe('SmartContract', () => {
         const liq1 = await contract.balanceOf(bobAddress);
         expect(liq1.cmp(baseLP)).toBe(0);
 
-
-        
         contract.setUnixTime( toUnixTime(Date.now()) + ONE_DAY );
         const rewards = await contract.getRewards(bobAddress);
         expect(rewards).toBeBNcloseTo(expectedRewards, DUST);
@@ -194,38 +197,48 @@ describe('SmartContract', () => {
     });
     
     
-    it('should swap in Token->TON', async () => {
-        const contract = await DexDebug.create(configData)
+    it('should swap in TON->Token', async () => {
+        const contract = await DexDebug.create(configData);
         await contract.initTestData(bobAddress);
-        
-        // Add liquidity take #1
+
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
-        expect(res.exit_code).toBe(0)
         
         const swap = await contract.swapIn(bobAddress, toDecimals(3), toDecimals(22))
         expect(swap.exit_code).toBe(0)
-        
         expect(swap.actions.length).toBe(1);
+
+        const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
+
+        const tokenContract = messageOutputTonValue.message.info.dest;
+        expect(tokenContract?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());
+        expect(messageOutputTonValue.message.info.value.coins).eqBN(new BN(10000000));
+
+        const msgBody = parseTrc20Transfer(messageOutputTonValue.message.body);
+        expect( msgBody.amount).eqBN(new BN(23023631745));
+        expect( msgBody.to.equals(bobAddress)).toBe(true);
+
     }); 
     
     
-    it('should swap Swap In TON->Token', async () => {
-        const contract = await DexDebug.create(configData)
-        await contract.initTestData(bobAddress);
-        
-        // Add liquidity take #1
-        const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
-        expect(res.exit_code).toBe(0)
-        
-        const swap = await contract.swapIn(bobAddress, toDecimals(3), toDecimals(22))
-        expect(swap.exit_code).toBe(0)
-        
-        expect(swap.actions.length).toBe(1);
+    it('should swap Swap In Token->TON', async () => {
+        // const contract = await DexDebug.create(configData);
+        // await contract.initTestData(bobAddress);
+        // const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
+        //
+        // const swap = await contract.swap(bobAddress, toDecimals(3), toDecimals(22))
+        // expect(swap.exit_code).toBe(0)
+        // expect(swap.actions.length).toBe(1);
+        //
+        // const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
+        //
+        // const tokenContract = messageOutputTonValue.message.info.dest;
+        // expect(tokenContract?.toFriendly()).toEqual(KILO_TOKEN.toFriendly());
+        // expect(messageOutputTonValue.message.info.value.coins).eqBN(new BN(10000000));
     }); 
     
     
     it('should swap Swap Out Token->TON', async () => {
-        const contract = await DexDebug.create(configData)
+        const contract = await DexDebug.create(configData);
         await contract.initTestData(bobAddress);
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0)
@@ -236,11 +249,7 @@ describe('SmartContract', () => {
 
         const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
         const msgTonValue = messageOutputTonValue.message.info.value?.coins;
-        const messageTonDest = messageOutputTonValue.message.info.dest;        
-        
-        console.log('output message destination' , messageTonDest?.toFriendly());
-        console.log('messageOutputTonValue.message.info.value.coins' , fromDecimals(msgTonValue) ,'TON');
-        
+        const messageTonDest = messageOutputTonValue.message.info.dest;
         expect(messageTonDest.toFriendly()).toEqual(bobAddress.toFriendly());
         expect(fromDecimals(msgTonValue)).toEqual('3');
     }); 
@@ -253,19 +262,15 @@ describe('SmartContract', () => {
 
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
-        
-        //fast forward time 
+
         contract.setUnixTime( toUnixTime(Date.now()) + ONE_DAY );
         const rewards = await contract.getRewards(bobAddress);
-        
         expect(rewards).toBeBNcloseTo(expectedRewards, DUST);
 
         const claimResponse = await contract.claimRewards(bobAddress);
         expect(claimResponse.exit_code).toBe(0);
         expect(claimResponse.actions.length).toBe(1);
-
         expect(claimResponse.rewards).toBeBNcloseTo(expectedRewards, DUST);
-
     });
     
     it('should claim rewards 2', async () => {
@@ -276,7 +281,6 @@ describe('SmartContract', () => {
         await contract.initTestData(bobAddress);
         const res = await contract.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0);
-
         const days = 12;
 
         contract.setUnixTime(toUnixTime(Date.now()) + (ONE_DAY * days));

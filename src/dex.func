@@ -168,19 +168,19 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
     if token_amount == 0 {
       return ();
     }
+    (int wc, int addr) = parse_std_addr(token_address);
+    slice token_packed = pack_addr(wc, addr);
 
    int fee = 10000000;
    builder msg = begin_cell()
-      .store_uint(0x18, 6)
-      .store_uint(0x4, 3)
-      .store_slice(token_address)
+      .store_uint(0xc4, 9)
+      .store_slice(token_packed) ;; 264 bit address
       .store_grams(fee)
       .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
       .store_uint(1, 32) ;; transfer action
       .store_uint(query_id, 64)
       .store_slice(to)
       .store_grams(token_amount);
-
     send_raw_message(msg.end_cell(), 2);
 }
 
@@ -343,7 +343,7 @@ int squareRoot(int number)  {
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     throw_if(601, amount_out < min_amount_out);
 
-  
+
     if(is_ton_src == true) {
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
@@ -386,19 +386,12 @@ int squareRoot(int number)  {
     int share_in_token_reserves = (amount_to_remove * token_reserves) / total_supply;
     
     int current_balance = _get_balance(balances, sender);
-
-    ;;storage_fee += balances~transfer(conract_address, sender, share_in_token_reserves);
-
-
     int user_liquidity = _get_balance(balances, sender);
     int lq = user_liquidity - amount_to_remove;
     balances~set_balance(sender, user_liquidity - amount_to_remove);
-    ;; send messages to user to release funds from liquidity
 
     send_token_to(token_address, sender, share_in_token_reserves, query_id);
     send_grams(sender, share_in_ton_reserves);
-
-
 
     return ( balances, storage_fee, total_supply, token_reserves, ton_reserves, share_in_ton_reserves);
 }
@@ -597,7 +590,7 @@ int squareRoot(int number)  {
         (balances, int fee, total_supply, token_reserves, ton_reserves, int users_new_ton) = _burn_liquidity(balances, sender, amount_to_remove, total_supply, ton_reserves, token_reserves, token_address, query_id);
         storage_fee += fee;
         return_value = users_new_ton;
-    }  elseif (action == op::swap_in() ) { ;; TON -> TRC20
+    }  elseif ( action == op::swap_in() ) { ;; TON -> TRC20
 
       int min_amount_out = cs~load_grams();
       return_value = swapTokens(min_amount_out, msg_value, true, sender);
@@ -666,7 +659,7 @@ int squareRoot(int number)  {
     
     ;;throw_unless(111, msg_value > storage_fee + gas_to_coins(chain_id, gas_limit + 10000) + msg_fwd_price(cells, bits, chain_id));
     
-    
+
     
     return return_value;
 }
@@ -681,9 +674,9 @@ int squareRoot(int number)  {
 
 ;;======================== TRC20  ======================================
 
-(slice, slice, int, int, int, int) get_token_data() method_id {
-  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, _, _, _, _, _, _, _, _) = load_data(get_data());
-  return (name, symbol, decimals, total_supply, token_reserves, ton_reserves);
+(slice, slice, int, int, int, int, slice) get_token_data() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, _, _, slice token_address, _, _, _, _, _) = load_data(get_data());
+  return (name, symbol, decimals, total_supply, token_reserves, ton_reserves, token_address);
 }
 
 

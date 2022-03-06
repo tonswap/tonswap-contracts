@@ -1,5 +1,6 @@
 //https://github.com/tonwhales/ton-nft/blob/main/packages/utils/parseActionsList.ts
-import {Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
+import BN from "bn.js";
+import {Address, Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
 import {readCurrencyCollection, readMessage} from "./messageUtils";
 
 // out_list_empty$_ = OutList 0;
@@ -71,22 +72,40 @@ export function parseActionsList(actions: Slice|Cell): OutAction[] {
 
 export function parseTrc20Transfer(msgBody: Cell) {
     let slice = msgBody.beginParse();
-    const six = slice.readUint(6); 
-    const flags = slice.readUint(3);
-    const addrs = slice.readAddress();
-    const fees = slice.readCoins();
-    var prefix = slice.readUint(1 + 4 + 4 + 64 + 32 + 1 + 1);
     var op = slice.readUint(32);
-    var query = slice.readUint(64); 
+    var query = slice.readUint(64);
+    var to = sliceToAddress(slice);
+
+    var grams = slice.readCoins();
+    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
+    console.log('parseTrc20Transfer',  to)
     return {
         op: op.toString(10),
         query: query.toString(10),
-        dest: slice.readAddress(),
-        amount: slice.readCoins().toString(10)
+        to: to,
+        amount:grams
+        // amount: fees
     }
 }
 
 
 export function toUnixTime(timeInMS: number) {
     return Math.round( timeInMS / 1000);
+}
+
+export function sliceToString(s: Slice) {
+    let data = s.readRemaining()
+    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
+}
+
+export function sliceToAddress267(s :Slice) {
+    const _anyCast = new BN(s.readUint(3)); //ignore anycast bits
+    return sliceToAddress(s);
+}
+
+export function sliceToAddress(s :Slice) {
+    const wc = new BN(s.readUint(8));
+    const addr = s.readUint(256);
+    const address = new Address(wc.toNumber(), addr.toBuffer());
+    return address;
 }
