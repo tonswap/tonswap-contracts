@@ -668,9 +668,11 @@ int squareRoot(int number)  {
     return return_value;
 }
 
-;; TODO add intalise for boc deployment
 () recv_external(slice in_msg) impure {
-  ;;nop
+    (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, slice token_rewards_admin, int token_alloc_points, slice protocol_rewards_admin, int protocol_alloc_points) = load_data(get_data());
+    throw_unless(60, initialized == 0);
+    accept_message();
+    store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, new_dict(), new_dict(), token_address, 1, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
 }
 
 
@@ -678,9 +680,9 @@ int squareRoot(int number)  {
 
 ;;======================== TRC20  ======================================
 
-(slice, slice, int, int, int, int, slice) get_token_data() method_id {
-  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, _, _, slice token_address, _, _, _, _, _) = load_data(get_data());
-  return (name, symbol, decimals, total_supply, token_reserves, ton_reserves, token_address);
+(slice, slice, int, int, int, int, slice, int) get_token_data() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, _, _, slice token_address, int initialized, _, _, _, _) = load_data(get_data());
+  return (name, symbol, decimals, total_supply, token_reserves, ton_reserves, token_address, initialized);
 }
 
 

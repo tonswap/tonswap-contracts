@@ -59,6 +59,13 @@ describe('SmartContract', () => {
         source = (await readFile('./src/dex.func')).toString('utf-8')
     })
 
+    it('should init external', async ()=>{
+        const contract = await DexDebug.create(configData);
+        const res = await contract.init(bobAddress);
+
+        expect(res.exit_code).toBe(60);
+        expect((await contract.getData()).initialized.toNumber()).toBe(1);
+    })
 
     it('should get token Data', async () =>    {
 

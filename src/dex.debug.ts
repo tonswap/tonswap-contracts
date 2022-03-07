@@ -1,7 +1,7 @@
 import {readFile} from "fs/promises";
 import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 import {buildDataCell, DexConfig} from "./dex.data";
-import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo} from "ton";
+import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage} from "ton";
 import BN from "bn.js";
 import { parseActionsList, sliceToAddress267, toUnixTime, sliceToString } from "./utils";
 
@@ -28,6 +28,7 @@ export class DexDebug {
         const tokenReserves = res.result[4] as BN;
         const tonReserves = res.result[5] as BN;
         const tokenAddress = sliceToAddress267(res.result[6] as Slice);
+        const initialized = res.result[7] as BN;
 
         return  {
             name,
@@ -36,7 +37,8 @@ export class DexDebug {
             totalSupply,
             tokenReserves,
             tonReserves,
-            tokenAddress
+            tokenAddress,
+            initialized
         }
     }
     
@@ -55,7 +57,20 @@ export class DexDebug {
             protocolPoints
         }
     }
-   
+
+    async init(fakeAddress: Address) {
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(1, 1);
+        let msg = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+
+
+        let res = await this.contract.sendExternalMessage(new ExternalMessage({
+            to: fakeAddress,
+            body: msg
+        }));
+        return res;
+    }
+
     async initTestData(sender: Address) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(101, 32) // op
