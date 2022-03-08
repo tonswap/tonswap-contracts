@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-./func -APSR -o build/lp.fif ../ton/crypto/smartcont/stdlib.fc  ./src/dex.fc
+./func -APSR -o build/dex.fif ../ton/crypto/smartcont/stdlib.fc  ./src/dex.func
 if [[ $? -ne 0 ]] ; then
     echo "  ============ ########################### ===================="
     echo "  ============ Compliation failed !!!!!!!!   ==================== "
