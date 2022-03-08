@@ -23,9 +23,6 @@ export type DexConfig = {
 }
 
 export function buildDataCell(conf: DexConfig) {
-    
-
-
     let dataCell = new Cell()
     dataCell.bits.writeUint(conf.name.length, 8)        // name.length
     dataCell.bits.writeString(conf.name)                // name
@@ -38,8 +35,7 @@ export function buildDataCell(conf: DexConfig) {
     dataCell.bits.writeUint(0, 1)                       // balances dict
     dataCell.bits.writeUint(0, 1)                       // approvals  dict
     dataCell.bits.writeAddress(conf.tokenAddress)       // tokenAddr address
-    dataCell.bits.writeUint(1, 1)                       // inited 1u
-    
+    dataCell.bits.writeUint(0, 1)                       // inited 1u
 
     let adminDataCell = new Cell();
     adminDataCell.bits.writeAddress(conf.tokenAdmin);
@@ -48,8 +44,6 @@ export function buildDataCell(conf: DexConfig) {
     adminDataCell.bits.writeCoins(conf.protocolAllocPoints);
 
     dataCell.refs.push(adminDataCell);
-
-    
     return dataCell
 }
 
