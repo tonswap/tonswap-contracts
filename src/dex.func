@@ -243,7 +243,6 @@ _ load_data(cell data) {
   int token_alloc_points = ds2~load_grams();
   slice protocol_rewards_admin = ds2~load_msg_addr();
   int protocol_alloc_points = ds2~load_grams();
-  
 
   var result = (
     name,
@@ -273,8 +272,7 @@ _ load_data(cell data) {
   .store_grams(token_alloc_points)
   .store_slice(protocol_rewards_admin)
   .store_grams(protocol_alloc_points).end_cell();
-  
-  
+
   cell data = begin_cell()
     .store_uint(name.slice_bits() / 8, 8)
     .store_slice(name)
@@ -290,8 +288,6 @@ _ load_data(cell data) {
     .store_uint(initialized, 1)
     .store_ref(admin_data)
     .end_cell();
-
-
 
   set_data(data);
 }
@@ -342,7 +338,6 @@ int squareRoot(int number)  {
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     throw_if(601, amount_out < min_amount_out);
-
 
     if(is_ton_src == true) {
       ton_reserves = src_resvers + transferd_amount;

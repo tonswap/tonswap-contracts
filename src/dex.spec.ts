@@ -62,8 +62,7 @@ describe('SmartContract', () => {
     it('should init external', async ()=>{
         const contract = await DexDebug.create(configData);
         const res = await contract.init(bobAddress);
-
-        expect(res.exit_code).toBe(60);
+        expect(res.exit_code).toBe(0);
         expect((await contract.getData()).initialized.toNumber()).toBe(1);
     })
 
@@ -91,9 +90,7 @@ describe('SmartContract', () => {
         expect(tokenData.protocol.equals(configData.protocolAdmin)).toBe(true);
         expect(tokenData.protocolPoints.toNumber()).toEqual(configData.protocolAllocPoints.toNumber());
     })
-    
-    
-    
+
     it('should Add Liquidity multiple times', async () => {
         const contract = await DexDebug.create(configData)
         
@@ -112,8 +109,6 @@ describe('SmartContract', () => {
         
         const liq2 = await contract.balanceOf(bobAddress);
         expect(liq2.cmp( baseLP.mul( new BN(2)) )) .toBe(0);
-        
-        
         // // Add liquidity take #3 with 3x of the amounts
         const res3 = await contract.addLiquidity(KILO_TOKEN, bobAddress, toDecimals(30), toDecimals(300), 2);
         expect(res3.exit_code).toBe(0);

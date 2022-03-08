@@ -6,7 +6,8 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "test-fift": "./scripts/test-dex.sh",
-    "test": "npx jest src/dex.spec.ts"
+    "test": "npx jest src/dex.spec.ts",
+    "deploy": "ts-node src/deploy.ts"
   },
   "dependencies": {
     "@babel/preset-env": "^7.16.11",
