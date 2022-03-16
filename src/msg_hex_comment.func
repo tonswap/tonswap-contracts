@@ -1,0 +1,86 @@
+;; Get binary message body from text message comment
+;; text message comment must contain data in hexadecimal form (produced by fift's method 'csr.')
+
+slice str2bin(slice hex) method_id {
+  builder b = begin_cell();
+
+  int len = hex.slice_bits() / 8;
+
+  int size = 4;
+
+  int i = 0;
+  while (i < len) {
+    int char = hex~load_uint(8);
+
+    if (char == 48) { ;; 0
+      b~store_uint(0, size);
+    } elseif (char == 49) { ;; 1
+      b~store_uint(1, size);
+    } elseif (char == 50) { ;; 2
+      b~store_uint(2, size);
+    } elseif (char == 51) { ;; 3
+      b~store_uint(3, size);
+    } elseif (char == 52) { ;; 4
+      b~store_uint(4, size);
+    } elseif (char == 53) { ;; 5
+      b~store_uint(5, size);
+    } elseif (char == 54) { ;; 6
+      b~store_uint(6, size);
+    } elseif (char == 55) { ;; 7
+      b~store_uint(7, size);
+    } elseif (char == 56) { ;; 8
+      b~store_uint(8, size);
+    } elseif (char == 57) { ;; 9
+      b~store_uint(9, size);
+    } elseif (char == 65) { ;; A
+      b~store_uint(10, size);
+    } elseif (char == 66) { ;; B
+      b~store_uint(11, size);
+    } elseif (char == 67) { ;; C
+      b~store_uint(12, size);
+    } elseif (char == 68) { ;; D
+      b~store_uint(13, size);
+    } elseif (char == 69) { ;; E
+      b~store_uint(14, size);
+    } elseif (char == 70) { ;; F
+      b~store_uint(15, size);
+    }
+
+    i += 1;
+  }
+
+  return b.end_cell().begin_parse();
+}
+
+(int, slice) parse_msg(int action, slice cs) {
+
+  int len = cs.slice_bits();
+
+  builder tmp = begin_cell();
+
+  if (action > 0) {
+    tmp = tmp.store_slice(cs~load_bits(len));
+    if (cs.slice_refs() > 0) {
+      cell ref0 = cs~load_ref();
+      slice ref0_slice = ref0.begin_parse();
+      tmp = tmp.store_slice(ref0_slice);
+    }
+    slice tmp_slice = tmp.end_cell().begin_parse();
+
+    return (action, tmp_slice);
+  }
+
+  tmp = tmp.store_slice(str2bin(cs~load_bits(len)));
+
+  if (cs.slice_refs() > 0) {
+    cell ref0 = cs~load_ref();
+    slice ref0_slice = ref0.begin_parse();
+    tmp = tmp.store_slice(str2bin(ref0_slice));
+  }
+
+  slice tmp_slice = tmp.end_cell().begin_parse();
+
+  action = tmp_slice~load_uint(32);
+
+  return (action, tmp_slice);
+}
