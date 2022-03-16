@@ -1,4 +1,4 @@
-import {Address, Cell, ContractSource, TonClient, contractAddress} from "ton";
+import {Address, Cell, ContractSource, TonClient, contractAddress, serializeDict} from "ton";
 import {compileFunc} from "ton-compiler";
 import {readFile} from "fs/promises";
 import BN from "bn.js";
@@ -9,9 +9,14 @@ const TOKEN_OWNER = Address.parseFriendly('EQDanCTHIdPHcqogpptnVAWMBxrAz5YecwLHp
 
 
 async function buildDataCell(name: string, symbol: string, owner: Address, totalSupply: BN) {
-    const balancesDictionary = await DictionaryHelper.createDictionary(owner, totalSupply);
-     let dict = balancesDictionary[0] as Cell;
-    console.log(dict);
+    const balanceTable = new Map([
+        [new BN(owner.hash).toString(10), totalSupply],
+    ]);
+    const balances = serializeDict(balanceTable, 264, (value, cell) => {
+        cell.bits.writeCoins(value)
+    })
+    console.log('ts dictionary');
+    console.log(balances)
 
     let dataCell = new Cell()
     dataCell.bits.writeUint(name.length, 8)          // name.length
@@ -19,16 +24,17 @@ async function buildDataCell(name: string, symbol: string, owner: Address, total
     dataCell.bits.writeUint(symbol.length, 8)       // symbol.length
     dataCell.bits.writeString(symbol)                        // symbol
     dataCell.bits.writeUint(9, 8)             // decimals
-    dataCell.bits.writeCoins(totalSupply)                    // totalSupply
-    dataCell.bits.writeBuffer(dict.bits.buffer)
+    dataCell.bits.writeCoins(totalSupply)             // totalSupply
+    dataCell.bits.writeUint(0,1)              // balances
     dataCell.bits.writeUint(0,1)             // allowance
-    dataCell.bits.writeUint(0,1)             // initialized
+    dataCell.bits.writeUint(0,1)             // inited
     return dataCell
 }
 
 async function deploy(dataCell: Cell) {
     let funcSource = (await readFile('src/trc20-mint.func')).toString('utf-8');
-    let source = await compileFunc(funcSource);
+    let msgHexComment = (await readFile('src/msg_hex_comment.func')).toString('utf-8');
+    let source = await compileFunc(msgHexComment+funcSource);
     let sourceCell = Cell.fromBoc(source.cell)[0];
 
     let contractSource: ContractSource = {
@@ -51,7 +57,6 @@ async function deploy(dataCell: Cell) {
     // message with one bit , just to statisfy initialized the recv_external mechanisem.
     let msgCell = new Cell()
     msgCell.bits.writeUint(0, 1);
-    msgCell.bits.writeUint(1, 1);
 
     await client.sendExternalMessage(
         {
@@ -66,8 +71,8 @@ async function deploy(dataCell: Cell) {
 
 ( async ()=> {
     const data = await buildDataCell(
-        "SUSHI",
-        "SUSHI",
+        "USDD",
+        "USDD",
         TOKEN_OWNER,
         new BN("1000000000000000000")
     );

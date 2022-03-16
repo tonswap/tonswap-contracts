@@ -4,20 +4,12 @@ import {buildDataCell, DexConfig} from "./dex.data";
 import {Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage} from "ton";
 import BN from "bn.js";
 import { parseActionsList, sliceToAddress267, toUnixTime, sliceToString } from "./utils";
+import {DexActions} from "./dex.actions";
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
-const TRC20_TRANSFER_RECIPT = 2147483649;
-const CLAIM_REWARDS = 4;
-const UPDATE_TOKEN_DATA = '9';
-const UPDATE_PROTOCOL_DATA = '10';
-
-type UPDATE_ACTIONS = UPDATE_TOKEN_DATA | UPDATE_PROTOCOL_DATA;
 
 export class DexDebug {
-    private constructor(public readonly contract: SmartContract) {
-
-    }
-
+    private constructor(public readonly contract: SmartContract) {}
 
     async getData() {
         let res = await this.contract.invokeGetMethod('get_token_data', []);
@@ -43,7 +35,6 @@ export class DexDebug {
     }
     
     async getAdminData() {
-        
         const res = await this.contract.invokeGetMethod('get_admin_data', []);
 
         let [adminWc, adminAddress, adminPoints , protocolWc ,protocolAddress, protocolPoints] = res.result as [BN, BN, BN ,BN, BN, BN]
@@ -63,7 +54,6 @@ export class DexDebug {
         messageBody.bits.writeUint(1, 1);
         let msg = new CommonMessageInfo( { body: new CellMessage(messageBody) });
 
-
         let res = await this.contract.sendExternalMessage(new ExternalMessage({
             to: fakeAddress,
             body: msg
@@ -75,8 +65,8 @@ export class DexDebug {
         let messageBody = new Cell();
         messageBody.bits.writeUint(101, 32) // op
         messageBody.bits.writeUint(1, 64) // query_id
+
         let msg = new CommonMessageInfo( { body: new CellMessage(messageBody) });
-        
 
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
@@ -89,23 +79,14 @@ export class DexDebug {
     }
 
     async addLiquidity(tokenContract: Address, tokenSender: Address, tonAmount: BN, tokenAmount: BN, slippage: number) {
-
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(TRC20_TRANSFER_RECIPT, 32) // action
-        messageBody.bits.writeUint(1, 64) // query-id
-        messageBody.bits.writeAddress(tokenSender) // token contract is sender (recv_internal)
-        messageBody.bits.writeCoins(tokenAmount); // sent amount
-        messageBody.bits.writeUint(2, 8); // sub-op  
-        messageBody.bits.writeUint(slippage, 64) // slippage
-        
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        const b = await DexActions.addLiquidity(tokenContract,tokenSender,tonAmount,tokenAmount,slippage);
 
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
             from: tokenContract,
             value: tonAmount,
             bounce: false,
-            body: b,
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }))
 
         let successResult = res as SuccessfulExecutionResult;
@@ -118,20 +99,34 @@ export class DexDebug {
         }
     }
 
-    async removeLiquidity(sender: Address, lpAmount: BN) {
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(6, 32) // op
-        messageBody.bits.writeUint(1, 64) // query_id
-        messageBody.bits.writeCoins(lpAmount);
-        
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+    async addLiquidityRaw(from: Address, to :Address, tonAmount: BN, trc20Receipt: Cell) {
+        console.log('tonAmount',tonAmount)
+        let res = await this.contract.sendInternalMessage(new InternalMessage({
+            to: to,
+            from: from,
+            value: tonAmount,
+            bounce: false,
+            body: new CommonMessageInfo( { body: new CellMessage(trc20Receipt) })
+        }))
 
+        let successResult = res as SuccessfulExecutionResult;
+        console.log(res);
+        return {
+            "exit_code": res.exit_code,
+            returnValue: res.result[1] as BN,
+            logs: res.logs,
+            actions: parseActionsList(successResult.action_list_cell)
+        }
+    }
+
+    async removeLiquidity(sender: Address, lpAmount: BN) {
+        const b = await DexActions.removeLiquidity(lpAmount);
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
             from: sender,
             value: new BN(1),
             bounce: false,
-            body: b
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }));
         let successResult = res as SuccessfulExecutionResult;
 
@@ -146,18 +141,14 @@ export class DexDebug {
 
     // Swap TON->TRC20
     async swapIn(sender: Address, tonToSwap: BN, minAmountOut: BN) {
+        const b = await DexActions.swapIn(minAmountOut);
 
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(7, 32) // action
-        messageBody.bits.writeUint(1, 64) // query-id
-        messageBody.bits.writeCoins(minAmountOut); // min amount out 
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
             from: sender,
             value: tonToSwap,
             bounce: false,
-            body: b
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }))
 
         let successResult = res as SuccessfulExecutionResult;
@@ -171,27 +162,19 @@ export class DexDebug {
     }
 
     // Swap TON->TRC20
-    async swapOut(sender: Address,tokenSender: Address, tokenAmount: BN, minAmountOut: BN) {
+    async swapOut(sender: Address, tokenContract: Address, tokenAmount: BN, minAmountOut: BN) {
+        const b = await DexActions.swapOut(sender ,tokenAmount ,minAmountOut);
 
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(TRC20_TRANSFER_RECIPT, 32) // action
-        messageBody.bits.writeUint(1, 64) // query-id
-        messageBody.bits.writeAddress(sender) // token contract is sender (recv_internal)
-        messageBody.bits.writeCoins(tokenAmount); // sent amount
-        messageBody.bits.writeUint(8, 8); // sub-op 
-        messageBody.bits.writeCoins(minAmountOut); // min amount out, Slippage
-    
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
-            from: tokenSender, 
+            from: tokenContract,
             value: new BN(1),
             bounce: false,
-            body: b
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }))
 
         let successResult = res as SuccessfulExecutionResult;
-
+        console.log(res);
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[0] as BN,
@@ -201,22 +184,18 @@ export class DexDebug {
     }
 
     async claimRewards(sender: Address) {
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(CLAIM_REWARDS, 32) // action
-        messageBody.bits.writeUint(1, 64) // query-id
-    
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        const b = await DexActions.claimRewards();
+
         let resBalance = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
             from: sender, 
             value: new BN(1),
             bounce: false,
-            body: b
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }))
         
         let successResult = resBalance as SuccessfulExecutionResult;
         const rewards = resBalance.result[1] as BN;
-        
 
         return {
             "exit_code": resBalance.exit_code,
@@ -228,18 +207,13 @@ export class DexDebug {
     }
 
     async updateAdminData(sender: Address, op: UPDATE_ACTIONS, allocPoints: BN) {
-        let messageBody = new Cell();
-        messageBody.bits.writeUint( new BN(op), 32) // action
-        messageBody.bits.writeUint(1, 64) // query-id
-        messageBody.bits.writeCoins(allocPoints);
-    
-        let b = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+        const b = await DexActions.updateAdminData(op, allocPoints);
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
             from: sender, 
             value: new BN(1),
             bounce: false,
-            body: b
+            body: new CommonMessageInfo( { body: new CellMessage(b) })
         }))
 
         return {
@@ -248,11 +222,18 @@ export class DexDebug {
             logs: res.logs,
         }
     }
+    async minAmountOut(amountIn: BN, isTokenSource: boolean) {
+
+        let minAmountOut = await this.contract.invokeGetMethod('get_amount_out_lp', [
+            { type: 'int', value: amountIn.toString(10) },
+            { type: 'int', value: isTokenSource ? '1': '0' },
+        ])
+        return (minAmountOut.result[0] as BN);
+    }
 
     async balanceOf(owner: Address) {
         let wc = owner.workChain;
         let address = new BN(owner.hash)
-        
 
         let balanceResult = await this.contract.invokeGetMethod('ibalance_of', [
             { type: 'int', value: wc.toString(10) },
@@ -270,7 +251,6 @@ export class DexDebug {
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
-        
         return (liquidityResult.result[0] as BN);
     }
 
@@ -281,7 +261,6 @@ export class DexDebug {
     static async create(config: DexConfig) {
         let source = (await readFile('./src/dex.func')).toString('utf-8')
         let contract = await SmartContract.fromFuncSource(source, buildDataCell(config), { getMethodsMutate: true })
-
         const contractDebug = new DexDebug(contract);
         contractDebug.setUnixTime(toUnixTime(Date.now()));
         return contractDebug;

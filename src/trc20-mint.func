@@ -1,0 +1,358 @@
+;; TRC20 basic token implementation.
+;; send_message support buffer overlading without ref
+
+
+global int operational_balance;
+(slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
+builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
+builder store_builder(builder to, builder what) asm(what to) "STB";
+
+slice clone_slice(slice s) {
+  return begin_cell().store_slice(s).end_cell().begin_parse();
+}
+
+slice pack_addr(int wc, slice addr) {
+  return begin_cell().store_int(wc, 8).store_slice(addr).end_cell().begin_parse();
+}
+
+
+(slice, slice, int, int, cell, cell, int) load_data(cell data) {
+  slice ds = data.begin_parse();
+  int name_size = ds~load_uint(8);
+  slice name = ds~load_bits(name_size * 8);
+  int symbol_size = ds~load_uint(8);
+  slice symbol = ds~load_bits(symbol_size * 8);
+  var result = (name, symbol, ds~load_uint(8), ds~load_grams(), ds~load_dict(), ds~load_dict(), ds~load_uint(1));
+  ds.end_parse();
+  return result;
+}
+
+() store_data(slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, int initialized) impure {
+  set_data(begin_cell()
+    .store_uint(name.slice_bits() / 8, 8)
+    .store_slice(name)
+    .store_uint(symbol.slice_bits() / 8, 8)
+    .store_slice(symbol)
+    .store_uint(decimals, 8)
+    .store_grams(total_supply)
+    .store_dict(balances)
+    .store_dict(allowed)
+    .store_uint(initialized, initialized)
+    .end_cell()
+  );
+}
+
+int _get_balance(cell balances, slice address) {
+  (slice balance_slice, int found) = balances.dict_get?(264, address);
+  if (found) {
+    return balance_slice~load_grams();
+  } else {
+    return 0;
+  }
+}
+
+(cell, ()) ~set_balance(cell balances, slice address, int value) {
+  balances~dict_set_builder(264, address, begin_cell().store_grams(value));
+  return (balances, ());
+}
+
+int _get_allowance(cell allowed, slice owner, slice spender) {
+  (slice owner_slice, int owner_found) = allowed.dict_get?(264, owner);
+  if (owner_found) {
+    cell dict = owner_slice~load_dict();
+    (slice spender_slice, int spender_found) = dict.dict_get?(264, spender);
+    if (spender_found) {
+      return spender_slice~load_grams();
+    } else {
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+}
+
+(cell, ()) ~set_allowance(cell allowed, slice owner, slice spender, int value) {
+  (slice owner_slice, int owner_found) = allowed.dict_get?(264, owner);
+
+  cell dict = owner_found ? owner_slice~load_dict() : new_dict();
+
+  dict~dict_set_builder(264, spender, begin_cell().store_grams(value));
+
+  allowed~dict_set_builder(264, owner, begin_cell().store_dict(dict));
+
+  return (allowed, ());
+}
+
+;; sender - raw address
+() send_message_back(slice sender, int action, int query_id, int query_action) impure {
+  ;; int_msg_info ihr_disabled:1 bounce:1 bounced:0 src:MsgAddress -> 011000
+  var msg = begin_cell()
+      .store_uint(0x18, 6)
+      .store_slice(sender)
+      .store_grams(0)
+      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+      .store_uint(action, 32)
+      .store_uint(query_id, 64)
+      .store_uint(query_action, 32);
+
+  send_raw_message(msg.end_cell(), 64); ;; carry all the remaining value of the inbound message
+}
+
+;; to_addr - 264bit address
+;; address - 264bit address
+() send_message(slice to_addr,
+                int action, int query_id,
+                slice address,
+                int value,
+                builder payload) impure {
+  ;; int_msg_info ihr_disabled:1 bounce:1 bounced:0 src:MsgAddress -> 011000
+  var msg = begin_cell()
+      .store_uint(0x10, 6)
+      .store_uint(0x4, 3)
+      .store_slice(to_addr)
+      .store_grams(0)
+      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+      .store_uint(action, 32)
+      .store_uint(query_id, 64)
+      .store_slice(address)
+      .store_grams(value);
+
+  if (payload.builder_bits() + msg.builder_bits() > 1023) {
+    msg = msg.store_builder_ref(payload);
+  } else {
+    msg = msg.store_builder(payload);
+  }
+  raw_reserve(operational_balance + 100000, 0);
+  send_raw_message(msg.end_cell(), 128);
+}
+
+;; value - MUST BE NON-NEGATIVE
+(cell, ()) ~transfer(cell balances, slice from, slice to, int value) impure {
+  ;;int from_balance = _get_balance(balances, from);
+
+   int from_balance = value;
+  ;;throw_unless(100, value <= from_balance);
+
+  balances~set_balance(from, from_balance - value);
+  balances~set_balance(to, _get_balance(balances, to) + value);
+
+  return (balances, ());
+}
+
+;; delta_value - can be negative
+(cell, int) ~increase_allowance(cell allowed, slice sender, slice spender, int delta_value) impure {
+  int old_allowed = _get_allowance(allowed, sender, spender);
+  int new_allowed = old_allowed + delta_value;
+  throw_unless(103, new_allowed >= 0);
+
+  allowed~set_allowance(sender, spender, new_allowed);
+
+  return (allowed, new_allowed);
+}
+
+() process_rollback(slice sender, int action,  slice cs) impure {
+  slice rollback_address = cs~load_bits(264);
+  int rollback_value = cs~load_grams();
+
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, int initialized) = load_data(get_data());
+
+  if (action == 0x20000001) { ;; transfer
+    balances~transfer(sender, rollback_address, rollback_value);
+  } elseif (action == 0x20000002) { ;; transfer from
+    allowed~increase_allowance(sender, rollback_address, rollback_value);
+  }
+
+  store_data(name, symbol, decimals, total_supply, balances, allowed, initialized);
+
+}
+
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+ operational_balance = pair_first(get_balance()) - msg_value;
+  slice cs = in_msg_cell.begin_parse();
+  int flags = cs~load_uint(4);
+  slice sender_raw = cs~load_msg_addr();
+  (int sender_wc, slice sender_addr) = parse_var_addr(sender_raw);
+  slice sender = pack_addr(sender_wc, sender_addr);
+
+
+
+  cs = in_msg;
+  if (cs.slice_bits() == 0) {  ;; just accept grams
+    return ();
+  }
+
+  int action = cs~load_uint(32);
+
+  if (action == 0xffffffff) { ;; 'not supported' response
+    int query_id = cs~load_uint(64);
+    int query_action = cs~load_uint(32);
+    process_rollback(sender, query_action, cs);
+    return ();
+  }
+
+  if (flags & 1) {
+    int query_id = cs~load_uint(64);
+    process_rollback(sender, action, cs);
+    return ();
+  }
+
+  if ((action == 0) & (cs.slice_bits() == 0)) { ;; just accept grams
+    return ();
+  }
+
+  (action, cs) = parse_msg(action, cs);
+
+  int query_id = cs~load_uint(64);
+
+  if (action > 6) {
+    if (action < 0x80000000) { ;; not response
+      send_message_back(sender_raw, 0xffffffff, query_id, action); ;; operation not supported
+    }
+    return ();
+  }
+
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, int initialized) = load_data(get_data());
+
+
+
+  slice to = null();
+  int value = 0;
+  int event_action = 0;
+  if (action == 1) { ;; transfer
+
+    to = cs~load_bits(264);
+    value = cs~load_grams();
+
+    balances~transfer(sender, to, value);
+
+    event_action = 0x20000001;
+
+  } elseif (action == 2) { ;; transfer_from
+
+    slice from = cs~load_bits(264);
+    to = cs~load_bits(264);
+    value = cs~load_grams();
+
+    allowed~increase_allowance(from, sender, - value);
+    balances~transfer(from, to, value);
+
+    event_action = 0x20000002;
+
+  } elseif (action == 3) { ;; approve
+
+    slice spender = cs~load_bits(264);
+    to = spender;
+    value = cs~load_grams();
+
+    int old_allowed = _get_allowance(allowed, sender, spender);
+
+    throw_unless(102, (old_allowed == 0) | (value == 0));
+
+    allowed~set_allowance(sender, spender, value);
+
+    event_action = 0x20000003;
+
+  } elseif (action == 4) { ;; increase/decrease allowance
+
+    int is_decrease = cs~load_uint(1);
+    slice spender = cs~load_bits(264);
+    to = spender;
+    int delta_value = cs~load_grams();
+
+    value = allowed~increase_allowance(sender, spender, is_decrease ? - delta_value : delta_value);
+
+    event_action = 0x20000003;
+
+  } elseif (action == 5) {  ;; mint 750,000 incremntly
+
+    int user_balance = _get_balance(balances, sender);
+    int mint_amount = 750000000000;
+    balances~set_balance(sender, mint_amount + user_balance);
+    total_supply = total_supply + mint_amount;
+    ;; callback params
+    event_action = 0x20000004;
+    to = sender;
+  }
+
+
+  store_data(name, symbol, decimals, total_supply, balances, allowed, initialized);
+
+  send_message(to, event_action, query_id, sender, value, begin_cell().store_slice(cs));
+}
+
+() recv_external(slice in_msg) impure {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, int initialized) = load_data(get_data());
+  throw_unless(60, initialized == 0);
+  accept_message();
+  store_data(name, symbol, decimals, total_supply, balances, allowed, 1);
+}
+
+;; Returns the name of the token.
+slice get_name() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return clone_slice(name);
+}
+
+;; Returns the symbol of the token.
+slice get_symbol() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return clone_slice(symbol);
+}
+
+;; Returns the number of decimals the token uses.
+int get_decimals() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return decimals;
+}
+
+;; Returns the total token supply.
+int get_total_supply() method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return total_supply;
+}
+
+;; Returns the account balance of another account with address _owner.
+int balance_of(slice owner) method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return _get_balance(balances, owner);
+}
+
+
+
+;; Returns the amount which _spender is still allowed to withdraw from _owner.
+;; @param _owner The address of the account owning tokens.
+;; @param _spender The address of the account able to transfer the tokens.
+int allowance(slice owner, slice spender) method_id {
+  (slice name, slice symbol, int decimals, int total_supply, cell balances, cell allowed, _) = load_data(get_data());
+
+  return _get_allowance(allowed, owner, spender);
+}
+
+;; TEST
+
+int ibalance_of(int owner_wc, int owner_addr) method_id {
+  slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
+  return balance_of(owner);
+}
+
+int iallowance(int owner_wc, int owner_addr, int spender_wc, int spender_addr) method_id {
+  slice owner = begin_cell().store_int(owner_wc, 8).store_uint(owner_addr, 256).end_cell().begin_parse();
+  slice spender = begin_cell().store_int(spender_wc, 8).store_uint(spender_addr, 256).end_cell().begin_parse();
+  return allowance(owner, spender);
+}
+
+int test_recv_external(slice in_msg) method_id {
+  recv_external(in_msg);
+  return 0;
+}
+
+int test_recv_internal(int value, cell in_msg_cell, slice in_msg) method_id {
+  recv_internal(value, in_msg_cell, in_msg);
+  return 0;
+}

@@ -21,6 +21,7 @@ import {readCurrencyCollection, readMessage} from "./messageUtils";
 export type SendMsgOutAction = { type: 'send_msg', message: RawMessage, mode: number }
 export type ReserveCurrencyAction = { type: 'reserve_currency', mode: number, currency: RawCurrencyCollection }
 export type UnknownOutAction = { type: 'unknown' }
+const decimals = new BN('1000000000');
 
 export type OutAction =
     | SendMsgOutAction
@@ -88,6 +89,24 @@ export function parseTrc20Transfer(msgBody: Cell) {
     }
 }
 
+export function parseTrc20TransferRecipt(msgBody: Cell) {
+    let slice = msgBody.beginParse();
+    var op = slice.readUint(32);
+    var query = slice.readUint(64);
+    var to = sliceToAddress(slice);
+
+    var grams = slice.readCoins();
+    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
+    console.log('parseTrc20Transfer',  to)
+    return {
+        op: op.toString(10),
+        query: query.toString(10),
+        to: to,
+        amount:grams
+        // amount: fees
+    }
+}
+
 
 export function toUnixTime(timeInMS: number) {
     return Math.round( timeInMS / 1000);
@@ -96,6 +115,15 @@ export function toUnixTime(timeInMS: number) {
 export function sliceToString(s: Slice) {
     let data = s.readRemaining()
     return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
+}
+
+export function addressToSlice264(a: Address) {
+    let c = new Cell();
+    c.bits.writeAddress(a);
+    const s = c.beginParse();
+    const _anyCast = s.readUint(3);
+    const addr = s.readUint(264);
+    return addr;
 }
 
 export function sliceToAddress267(s :Slice) {
@@ -108,4 +136,17 @@ export function sliceToAddress(s :Slice) {
     const addr = s.readUint(256);
     const address = new Address(wc.toNumber(), addr.toBuffer());
     return address;
+}
+
+export function toDecimals(num: number) {
+    return (new BN(num)).mul(decimals);
+}
+
+export function fromDecimals(num: BN) {
+    return num.div(decimals).toString(10);
+}
+
+export function stripBoc(bocStr :string) {
+    //console.log(`parsing boc ${bocStr}`);
+    return bocStr.substr(2, bocStr.length - 4 );
 }
