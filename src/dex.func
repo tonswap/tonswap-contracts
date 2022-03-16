@@ -33,8 +33,8 @@ int op::swap_in() asm "7 PUSHINT";        ;; sub op of trc20:transfer
 int op::swap_out() asm "8 PUSHINT";
 int op::update_token_data() asm "9 PUSHINT";
 int op::update_protocol_data() asm "10 PUSHINT";
-int op::transfer_recipt() asm "2147483649 PUSHINT";
-int op::transfer_from_recipt() asm "2147483649 PUSHINT";
+int op::transfer_recipt() asm "536870913 PUSHINT";
+int op::transfer_from_recipt() asm "536870914 PUSHINT";
 
 int erorr::trc20_insufficent_transfer()  asm "1000 PUSHINT";
 int erorr::trc20_bad_source_address()    asm "0x40001 PUSHINT";
@@ -48,8 +48,6 @@ builder store_builder_ref(builder to, builder what) asm(what to) "STBREFR";
 (slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
 
 
-;; TODO remove them using Macros/replace (can be on )
-global slice my_address_x; ;; Testing , this a replacemnet my_address()
 
 ;; =============== GAS Functions =============================
 
@@ -105,7 +103,6 @@ int _get_balance(cell balances, slice address) {
 }
 
 (cell, ()) ~set_balance(cell balances, slice address, int value)  {
-  
    throw_if(erorr::trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
   if(value > 0) {
     balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(block_lt(), 32));
@@ -312,23 +309,20 @@ int squareRoot(int number)  {
 }
 
 () send_grams(slice address, int amount) impure {
-	;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
-    cell msg = begin_cell()
-    ;;	.store_uint(0, 1) ;; 0 <= format indicator int_msg_info$0 
-    ;;	.store_uint(1, 1) ;; 1 <= ihr disabled
-    ;;	.store_uint(1, 1) ;; 1 <= bounce = true
-    ;;	.store_uint(0, 1) ;; 0 <= bounced = false
-    ;;	.store_uint(4, 5)  ;; 00100 <= address flags, anycast = false, 8-bit workchain
-        .store_uint (196, 9)
-        .store_slice(address)
-        .store_grams(amount)
-        .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
-        .end_cell(); 
-    send_raw_message(msg, 3); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
+
+    builder msg = begin_cell()
+          .store_uint(0xc4, 9)
+          .store_slice(address) ;; 264 bit address
+          .store_grams(amount)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+
+        send_raw_message(msg.end_cell(), 2);
+
+
 }
 
 ;; ============= Dex Functions =============================
-
+;; sender : address
 (int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice sender) impure {
     int storage_fee = 0;
     
@@ -421,11 +415,10 @@ int squareRoot(int number)  {
   return (balances, 0);
 }
 
-(cell, int, int, int, int) mint_lp(cell balances, slice sender, int price, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) impure {
-    
+(cell, int, int, int, int) mint_lp(cell balances, slice sender, int ton_amount, int token_amount, int token_reserves, int ton_reserves, int total_lp_supply) inline {
     int new_liquidity = 0;
     int storage_fee = 0;
-    int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
+    int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000
 
     ;; TODO fix handle liquidtiy supply on its own param
     if( token_reserves == 0  ) {
@@ -441,11 +434,11 @@ int squareRoot(int number)  {
 
     token_reserves = token_amount + token_reserves;
     ton_reserves = ton_amount + ton_reserves;
-    
+
     total_lp_supply = new_liquidity + total_lp_supply;
     int old_senders_liquidity = _get_balance(balances, sender);
     balances~set_balance(sender, new_liquidity + old_senders_liquidity);
-    
+
     if ( old_senders_liquidity == 0 ) {
       storage_fee += cell_storage_fee();
     }
@@ -482,7 +475,7 @@ int squareRoot(int number)  {
   if reserve {
     raw_reserve(reserve, 0);
   }
-  send_raw_message(msg.end_cell(), 128);
+  send_raw_message(msg.end_cell(), 2);
 }
 
 (int) recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
@@ -500,10 +493,7 @@ int squareRoot(int number)  {
     slice sender_raw = cs~load_msg_addr();
     (int sender_wc, int sender_addr) = parse_std_addr(sender_raw);
     slice sender = pack_addr(sender_wc, sender_addr);
-    
-    ;; TODO  This hack is only for testing purposes 
-    slice my_f_address = pack_addr(-1, sender_addr);
-    my_address_x = my_f_address;
+
     
     cs = in_msg;
     if (cs.slice_bits() == 0) { ;; just accept grams
@@ -529,6 +519,7 @@ int squareRoot(int number)  {
     int return_value = 0;
 
     if(action == 101) {
+
       balances = new_dict();
       allowances = new_dict();
       store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
@@ -602,37 +593,25 @@ int squareRoot(int number)  {
       protocol_alloc_points = cs~load_grams();
       return_value = protocol_alloc_points;
     } elseif ( ( ( action == op::transfer_recipt() ) | ( action == op::transfer_from_recipt() ) )  ) {  ;; TRC20 RECIPTS and validate source token
-        ;; cast address to 264 bit 
-        slice trc_sender_raw = cs~load_msg_addr();
-        (int trc_sender_wc, int trc_sender_addr) = parse_std_addr(trc_sender_raw);
-        slice trc_sender = pack_addr(trc_sender_wc, trc_sender_addr);
-
+        slice trc_sender = cs~load_bits(264);
         int trc_amount = cs~load_grams();
+        cs = cs~load_ref().begin_parse();
         int sub_op = cs~load_uint(8);
-        if (sub_op == op::add_liquidity() ) { 
-            int token_new_liquidity = trc_amount;
+        if (sub_op == op::add_liquidity() ) {
             int slipage = cs~load_uint(64);
-            
-            throw_if(98, 0 >= token_new_liquidity);
+            throw_if(98, 0 >= trc_amount);
             throw_if(99, 0 >= msg_value);
 
-            int msg_price = token_new_liquidity / msg_value;
-            ;; check slipage only for the first time
-            int reserves_price = 0;
-            int price_delta = 0;
-            
             if ( token_reserves > 0 ) {
-              reserves_price = token_reserves / ton_reserves ;
-              price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
-              throw_if(103,  price_delta > slipage );
+                int msg_price = trc_amount / msg_value;
+
+                int price_delta =  ( ( msg_price / (token_reserves / ton_reserves) ) - 1 ) * 100;
+                throw_if(103,  price_delta > slipage );
             }
 
-            int rewards = balances~claim_rewards(trc_sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
-            send_token_to(token_address, trc_sender, rewards, 1);
-            (balances, total_supply, token_reserves, ton_reserves, int fee) = mint_lp(balances, trc_sender, reserves_price, msg_value, token_new_liquidity, token_reserves, ton_reserves, total_supply);
-            int newliq = _get_balance(balances, trc_sender);
-            return_value = newliq;
-            
+            ;;int rewards = balances~claim_rewards(trc_sender, token_alloc_points, protocol_alloc_points, total_supply, token_reserves);
+            ;;send_token_to(token_address, trc_sender, rewards, 1);
+            (balances, total_supply, token_reserves, ton_reserves, int fee) = mint_lp(balances, trc_sender, msg_value, trc_amount, token_reserves, ton_reserves, total_supply);
             storage_fee += fee;
         } elseif (sub_op == op::swap_out() ) {  ;; swap TRC20 -> TON
           ;; <b 10TON , min_amount_out=99 b>
@@ -644,7 +623,7 @@ int squareRoot(int number)  {
     
     store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
     ;; ensure that receipt carries at least 10k gas
-    (int cells, int bits, int refs) = cs.slice_compute_data_size(10);
+    ;;(int cells, int bits, int refs) = cs.slice_compute_data_size(10);
     ;; msg value has enough coins to pay for 
     ;;  1) storing cells created during tx plus
     ;;  2) this tx gas costs
