@@ -105,7 +105,7 @@ int _get_balance(cell balances, slice address) {
 (cell, ()) ~set_balance(cell balances, slice address, int value)  {
    throw_if(erorr::trc20_insufficent_transfer(), value < 0);  ;; Explicit error code
   if(value > 0) {
-    balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(block_lt(), 32));
+    balances~dict_set_builder(264, address, begin_cell().store_grams(value).store_uint(now(), 64));
   } else {
     balances~dict_delete?(264, address);
   }
@@ -409,7 +409,7 @@ int squareRoot(int number)  {
 
   if (found) {
     (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_reward_rate, protocol_reward_rate);
-    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 32));
+    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 64));
     return (balances, user_rewards);
   }
   return (balances, 0);
