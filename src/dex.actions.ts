@@ -140,11 +140,11 @@ export class DexActions {
 
 
 
-async function init() {
-    const LP = 'EQDhcoe80JQwKGnppe2nJXEUjjLSsnXhS-imzJ693TOZXjxL'; // v13
-    const TOKEN = 'EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUcbUg0pYK0u'; //LUNA
+async function init(amm: string, token ='EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUcbUg0pYK0u') {
 
-    const lpAddress = Address.parseFriendly(LP).address;
+
+
+    const lpAddress = Address.parseFriendly(amm).address;
     // let x = await DexActions.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
     // console.log(x);
 
@@ -158,7 +158,7 @@ async function init() {
     let transfer = await DexActions.transfer(lpAddress, new BN(1))
     const transferStr = transfer.toString();
     const bocT = stripBoc(transferStr);
-    const deeplinkTransfer =  `ton://transfer/${TOKEN}?amount=100000000&text=${bocT}`;
+    const deeplinkTransfer =  `ton://transfer/${token}?amount=100000000&text=${bocT}`;
     console.log(`simple TOKEN transfer`, deeplinkTransfer)
 
     // let transferLong = await DexActions.transferLong(lpAddress, new BN(1))
@@ -171,13 +171,13 @@ async function init() {
     let initData = await DexActions.initData()
     const initDataStr = initData.toString();
     const bocI = stripBoc(initDataStr);
-    const initTransfer =  `ton://transfer/${LP}?amount=100000000&text=${bocI}`;
+    const initTransfer =  `ton://transfer/${amm}?amount=100000000&text=${bocI}`;
     console.log(`
     LP init data ${initTransfer}`)
 
     const transferAndLiq = await DexActions.transferAndAddLiquidity(lpAddress, toDecimals(10), 10 )
     const boc2 = stripBoc(transferAndLiq.toString());
-    const deeplink2 =  `ton://transfer/${TOKEN}?amount=250000000&text=${boc2}`;
+    const deeplink2 =  `ton://transfer/${token}?amount=250000000&text=${boc2}`;
     console.log(`*** ADD-LIQUIDITY *** 
     transfer-erc20 -> add-liquditiy-> 
     ${deeplink2}`);
@@ -185,7 +185,7 @@ async function init() {
 
     const swAction = await DexActions.transferAndSwapOut(lpAddress, toDecimals(1), new BN(10) )
     const boc3 = stripBoc(swAction.toString());
-    const deeplink3 =  `ton://transfer/${TOKEN}?amount=250000000&text=${boc3}`;
+    const deeplink3 =  `ton://transfer/${token}?amount=250000000&text=${boc3}`;
     console.log(`*** swap token to TON *** 
     transfer-erc20 -> swap out->
     ${deeplink3}`);
@@ -194,7 +194,8 @@ async function init() {
 }
 
 (async ()=> {
-    init();
+    const AMM = 'EQDbhtPZi05FKB4ajx6twLoA3wo8j_6RAgBHybJChoW9nyno';//AMM V20
+    init(AMM);
 })()
 
 /*
