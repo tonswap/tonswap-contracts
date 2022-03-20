@@ -394,7 +394,7 @@ int squareRoot(int number)  {
 
 (int, int) calc_rewards(slice liquidity_slice, int total_supply, int token_reserves, int token_reward_rate, int protocol_reward_rate) {
   int lp_amount =  liquidity_slice~load_grams();
-  int timestamp =  liquidity_slice~load_uint(32);
+  int timestamp =  liquidity_slice~load_uint(64);
 
   int seconds_staked =  (block_lt() - timestamp);
   int token_rewards = calc_rewards_seconds(seconds_staked, token_reward_rate, lp_amount, token_reserves, total_supply);
