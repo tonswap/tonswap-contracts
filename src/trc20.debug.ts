@@ -21,7 +21,7 @@ const addressB = Address.parseFriendly('EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX
 
 
 const TRC20_TRANSFER = 1;
-
+const SWAP_OUT_SUB_OP = 8;
 
 export class Trc20Debug {
     private constructor(public readonly contract: SmartContract) {}
@@ -121,7 +121,7 @@ export class Trc20Debug {
         const to264 = addressToSlice264(to);
         messageBody.bits.writeUint(to264, 264);
         messageBody.bits.writeCoins(amount); // sent amount
-        messageBody.bits.writeUint(subOp, 8); // sub-op
+        messageBody.bits.writeUint(subOp, SWAP_OUT_SUB_OP); // sub-op
         messageBody.bits.writeUint(slippage, 64) // slippage
 
 

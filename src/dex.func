@@ -168,17 +168,19 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
     (int wc, int addr) = parse_std_addr(token_address);
     slice token_packed = pack_addr(wc, addr);
 
-   int fee = 10000000;
+   int fee = 10000; ;; 10k for send message , should assert
    builder msg = begin_cell()
-      .store_uint(0xc4, 9)
-      .store_slice(token_packed) ;; 264 bit address
-      .store_grams(fee)
-      .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-      .store_uint(1, 32) ;; transfer action
-      .store_uint(query_id, 64)
-      .store_slice(to)
-      .store_grams(token_amount);
-    send_raw_message(msg.end_cell(), 2);
+         .store_uint(0x18, 6)
+         .store_uint(0x4, 3)
+         .store_slice(token_packed)
+         .store_grams(fee)
+         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+         .store_uint(1, 32) ;; transfer action
+         .store_uint(query_id, 64)
+         .store_slice(to)
+         .store_grams(token_amount);
+
+   send_raw_message(msg.end_cell(), 2);
 }
 
 ;; value - MUST BE NON-NEGATIVE
@@ -396,7 +398,7 @@ int squareRoot(int number)  {
   int lp_amount =  liquidity_slice~load_grams();
   int timestamp =  liquidity_slice~load_uint(64);
 
-  int seconds_staked =  (block_lt() - timestamp);
+  int seconds_staked = (now() - timestamp);
   int token_rewards = calc_rewards_seconds(seconds_staked, token_reward_rate, lp_amount, token_reserves, total_supply);
   int protocol_rewards = calc_rewards_seconds(seconds_staked, protocol_reward_rate, lp_amount, token_reserves, total_supply);
   int rewards = token_rewards + protocol_rewards;
@@ -409,7 +411,7 @@ int squareRoot(int number)  {
 
   if (found) {
     (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_reward_rate, protocol_reward_rate);
-    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(block_lt(), 64));
+    balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now(), 64));
     return (balances, user_rewards);
   }
   return (balances, 0);

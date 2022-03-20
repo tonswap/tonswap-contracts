@@ -14,8 +14,9 @@
     "@babel/preset-typescript": "^7.16.7",
     "bn.js": "^5.2.0",
     "jest": "^27.5.1",
-    "ton": "^8.1.1",
+    "ton": "8.1.1",
     "ton-contract-executor": "0.2.7",
+    "tonweb": "^0.0.35",
     "typescript": "^4.5.5"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/bn.js": "^5.1.0",
-    "@types/jest": "^27.4.0"
+    "@types/jest": "^27.4.0",
+    "ts-node": "^10.7.0"
   }
 }

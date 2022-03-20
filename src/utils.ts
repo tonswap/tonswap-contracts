@@ -117,6 +117,17 @@ export function sliceToString(s: Slice) {
     return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
 }
 
+export function cellToString(s: Cell) {
+    let data = s.beginParse().readRemaining()
+    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
+}
+
+export function base64StrToCell(str: string): Cell[] {
+    let buf = Buffer.from(str, 'base64');
+    return Cell.fromBoc(buf);
+}
+
+
 export function addressToSlice264(a: Address) {
     let c = new Cell();
     c.bits.writeAddress(a);
