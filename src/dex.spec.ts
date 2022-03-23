@@ -3,7 +3,7 @@ import {readFile} from "fs/promises";
 import {DexConfig} from "./dex.data";
 import { DexDebug } from "./dex.debug";
 import BN from "bn.js";
-import {SendMsgOutAction, parseTrc20Transfer, toUnixTime, sliceToString, toDecimals, fromDecimals} from "./utils"
+import {SendMsgOutAction, parseTrc20Transfer, toUnixTime, unFmt18, toDecimals, fromDecimals, fmt18} from "./utils"
 import { init as initJestHelpers } from "./test-utils";
 import {Trc20Debug} from "./trc20.debug";
 
@@ -15,6 +15,7 @@ const PROTOCOL_ADMIN = Address.parseFriendly('EQDrjaLahLkMB-hMCmkzOyBuHJ139ZUYmP
 const SUSHI_TOKEN_V2 = Address.parseFriendly('kQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nk1x').address;
 const TOKEN_ADMIN = Address.parseFriendly('EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe').address;
 
+const MESSAGE_COST = new BN(100000); // 1
 
 /*  OP+Actions */
 const ONE_HOUR = 3600;
@@ -25,7 +26,7 @@ const OP_UPDATE_TOKEN_REWARDS = 9;
 const OP_UPDATE_PROTOCOL_REWARDS = 10;
 const ADD_LIQUIDITY_SUB_OP = new BN(2);
 
-const DEFAULT_FEE = 10000;
+const DEFAULT_FEE = new BN(100000);
 var configData = {
     name: 'LP Token',
     symbol: 'LP',
@@ -126,32 +127,40 @@ describe('SmartContract', () => {
     //     expect(liq1).eqBN(baseLP);
     // });
 
-    it('should Add Liquidity multiple times', async () => {
+
+    it('should call get_amount_out_lp and getamount it', async () => {
         const contract = await DexDebug.create(configData)
-        
         const res0 = await contract.initTestData(bobAddress)
         expect(res0.exit_code).toBe(0);
-        
+
+        const initialTONLiquidity = new BN('21056993542381') //WET
+
+        const initialTokenLiquidity = new BN('2449266714292922') //TOKE
+
         // Add liquidity take #1
-        const res = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress,  toDecimals(10), toDecimals(100), 2);
+
+        const res = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress,  initialTONLiquidity, initialTokenLiquidity, 2);
         expect(res.exit_code).toBe(0)
 
-        const liq1 = await contract.balanceOf(bobAddress);
-        expect(liq1).eqBN(baseLP);
-        
-        // // Add liquidity take #2
-        const res2 = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress, toDecimals(10), toDecimals(100), 2);
-        expect(res2.exit_code).toBe(0);
-        
-        const liq2 = await contract.balanceOf(bobAddress);
-        expect(liq2.cmp( baseLP.mul( new BN(2)) )) .toBe(0);
-        // // Add liquidity take #3 with 3x of the amounts
-        const res3 = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress, toDecimals(30), toDecimals(300), 2);
-        expect(res3.exit_code).toBe(0);
-        
-        // // Expect liquidity to be 
-        const liq3 = await contract.balanceOf(bobAddress);
-        expect(liq3).eqBN(baseLP.mul(new BN(5)));
+        const tokenOut = new BN('115963860443'); //toke
+        const TONin = toDecimals('1'); //ETH
+
+        const minAmountOut = await contract.minAmountOut(TONin, false);
+
+        console.log('minAmountOut', minAmountOut.toString())
+        console.log(`minAmountOut for in:${fromDecimals(TONin) } to result:${ fromDecimals(minAmountOut) } [should be 1]`);
+
+
+
+        const minAmountIn = await contract.minAmountIn(tokenOut, false);
+        console.log(`minAmountIn tokenIn ${fromDecimals(tokenOut)}  => ${ fromDecimals(minAmountIn)} `);
+
+        // console.log(`minAmountIn for in ${toDecimals(5)} results:${minAmountIn.toString(10)} `);
+
+        // const minAmountOut2 = await contract.minAmountOut(minAmountIn, false);
+        // console.log(`checking minAmountIn result in ${minAmountIn.toString(10)} => ${minAmountOut2.toString(10)}`);
+
+
     })
     
     it('should Add Liquidity and remove liquidity', async () => {
@@ -181,21 +190,21 @@ describe('SmartContract', () => {
         console.log(removeResponse);
         
         //Message #1  sending TON to user  
-        const messageOutputTonValue = removeResponse.actions[2] as SendMsgOutAction;
+        const messageOutputTonValue = removeResponse.actions[0] as SendMsgOutAction;
         const msgTonValue = messageOutputTonValue.message.info.value.coins;
         const sendTonMessage = messageOutputTonValue.message.info.dest;        
         console.log('output message destination' , messageOutputTonValue.message.info.dest?.toFriendly());
         console.log('messageOutputTonValue.message.info.value.coins' , fromDecimals(msgTonValue) ,'TON');
         expect(sendTonMessage?.toFriendly()).toEqual(bobAddress.toFriendly());
-        expect(msgTonValue).eqBN(TON_SIDE);
+        expect(msgTonValue).eqBN(TON_SIDE.sub(DEFAULT_FEE));
         
         //Message #2 sending TOKEN to User
-        const sendTokenMessage = removeResponse.actions[3] as SendMsgOutAction;
+        const sendTokenMessage = removeResponse.actions[2] as SendMsgOutAction;
         const msgTokenDest = sendTokenMessage.message.info.dest;
         expect(msgTokenDest?.toFriendly()).toEqual(SUSHI_TOKEN_V2.toFriendly());
-
         const msgBody = parseTrc20Transfer(sendTokenMessage.message.body);
         expect( msgBody.amount).eqBN(TOKEN_SIDE);
+
         // TRC20 Validation
         expect( msgBody.to.equals(bobAddress)).toBe(true);
         expect( msgBody.amount).eqBN(TOKEN_SIDE);
@@ -218,7 +227,7 @@ describe('SmartContract', () => {
         
         const res = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress, toDecimals(TON_SIDE), toDecimals(TOKEN_SIDE), 2);
         expect(res.exit_code).toBe(0);
-        expect(res.actions.length).toBe(2);  //
+
         const liq1 = await contract.balanceOf(bobAddress);
         expect(liq1.cmp(baseLP)).toBe(0);
 
@@ -230,7 +239,7 @@ describe('SmartContract', () => {
 
 
         expect(res2.exit_code).toBe(0);
-        expect(res2.actions.length).toBe(3);
+        expect(res2.actions.length).toBe(2);
 
         const rewardsAfterAddLiquidity = await contract.getRewards(bobAddress);
         expect(rewardsAfterAddLiquidity).eqBN(new BN(0));
@@ -245,9 +254,8 @@ describe('SmartContract', () => {
         
         const swap = await contract.swapIn(bobAddress, toDecimals(3), toDecimals(22))
         expect(swap.exit_code).toBe(0)
-        expect(swap.actions.length).toBe(3);
-
-        const messageOutputTonValue = swap.actions[2] as SendMsgOutAction;
+        expect(swap.actions.length).toBe(2);
+        const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
 
         const tokenContract = messageOutputTonValue.message.info.dest;
         expect(tokenContract?.toFriendly()).toEqual(SUSHI_TOKEN_V2.toFriendly());
@@ -283,7 +291,7 @@ describe('SmartContract', () => {
 
         const res = await contract.addLiquidity(SUSHI_TOKEN_V2, bobAddress,  toDecimals(10), toDecimals(100), 2);
         expect(res.exit_code).toBe(0)
-        const expectedResult = new BN('3326659993');
+        let expectedResult = new BN('3326659993');
         const minAmountOut = await contract.minAmountOut(toDecimals(50), true);
 
         expect(minAmountOut).eqBN(expectedResult)
@@ -291,13 +299,14 @@ describe('SmartContract', () => {
         console.log(swap);
 
         expect(swap.exit_code).toBe(0);
-        expect(swap.actions.length).toBe(3);
+        expect(swap.actions.length).toBe(2);
 
-        const messageOutputTonValue = swap.actions[2] as SendMsgOutAction;
+        const messageOutputTonValue = swap.actions[0] as SendMsgOutAction;
         const msgTonValue = messageOutputTonValue.message.info?.value?.coins;
         const messageTonDest = messageOutputTonValue.message.info.dest;
         //expect(messageTonDest.toFriendly()).toEqual(bobAddress.toFriendly());
-        expect( msgTonValue).eqBN(expectedResult);
+        const expectedResultAfterFees = expectedResult.sub(MESSAGE_COST)
+        expect( msgTonValue).eqBN(expectedResultAfterFees);
     });
 
     it('should claim rewards ', async () => {
@@ -315,7 +324,7 @@ describe('SmartContract', () => {
 
         const claimResponse = await contract.claimRewards(bobAddress);
         expect(claimResponse.exit_code).toBe(0);
-        expect(claimResponse.actions.length).toBe(3);
+        expect(claimResponse.actions.length).toBe(2);
         expect(claimResponse.rewards).toBeBNcloseTo(expectedRewards, DUST);
     });
     
@@ -337,7 +346,7 @@ describe('SmartContract', () => {
         const claimResponse2 = await contract.claimRewards(bobAddress);
         expect(claimResponse2.exit_code).toBe(0);
         //verify send token to message
-        expect(claimResponse2.actions.length).toBe(3);
+        expect(claimResponse2.actions.length).toBe(2);
 
         expect(claimResponse2.rewards).toBeBNcloseTo(expectedRewards.mul(new BN(days)), DUST );
     });
@@ -360,7 +369,7 @@ describe('SmartContract', () => {
 
         const claimResponse = await contract.claimRewards(bobAddress);
         expect(claimResponse.exit_code).toBe(0);
-        expect(claimResponse.actions.length).toBe(3);
+        expect(claimResponse.actions.length).toBe(2);
 
         expect(claimResponse.rewards).toBeBNcloseTo(expectedRewards, DUST);
 
@@ -375,7 +384,7 @@ describe('SmartContract', () => {
         const claimResponse2 = await contract.claimRewards(bobAddress);
         expect(claimResponse2.exit_code).toBe(0);
         //verify send token to message
-        expect(claimResponse2.actions.length).toBe(3);
+        expect(claimResponse2.actions.length).toBe(2);
         expect(claimResponse2.rewards).toBeBNcloseTo(expectedRewards.mul(new BN(days-1)), DUST );
     });
 
@@ -401,7 +410,7 @@ describe('SmartContract', () => {
 
         const claimResponse = await contract.claimRewards(bobAddress);
         expect(claimResponse.exit_code).toBe(0);
-        expect(claimResponse.actions.length).toBe(3);
+        expect(claimResponse.actions.length).toBe(2);
         
         expect(claimResponse.rewards).toBeBNcloseTo(expectedRewards, DUST);
 
@@ -416,7 +425,7 @@ describe('SmartContract', () => {
         const claimResponse2 = await contract.claimRewards(bobAddress);
         expect(claimResponse2.exit_code).toBe(0);
         //verify send token to message
-        expect(claimResponse2.actions.length).toBe(3);
+        expect(claimResponse2.actions.length).toBe(2);
 
         expect(claimResponse2.rewards).toBeBNcloseTo(expectedRewards.mul( new BN(days-1)), DUST);
     });
@@ -447,9 +456,8 @@ describe('SmartContract', () => {
         expect(rewards).toBeBNcloseTo(expectedRewards, DUST);
 
         const claimResponse = await contract.claimRewards(bobAddress);
-        console.log(claimResponse.logs);
         expect(claimResponse.exit_code).toBe(0);
-        expect(claimResponse.actions.length).toBe(3);
+        expect(claimResponse.actions.length).toBe(2);
         expect(claimResponse.rewards).toBeBNcloseTo(expectedRewards, DUST);
 
         const rewardsAfterWithdraw = await contract.getRewards(bobAddress);

@@ -168,19 +168,22 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
     (int wc, int addr) = parse_std_addr(token_address);
     slice token_packed = pack_addr(wc, addr);
 
-   int fee = 10000; ;; 10k for send message , should assert
-   builder msg = begin_cell()
+
+    int msg_cost = 100000; ;; 10k for send message , should assert
+    builder msg = begin_cell()
          .store_uint(0x18, 6)
          .store_uint(0x4, 3)
          .store_slice(token_packed)
-         .store_grams(fee)
+         .store_grams(msg_cost)
          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
          .store_uint(1, 32) ;; transfer action
          .store_uint(query_id, 64)
          .store_slice(to)
          .store_grams(token_amount);
 
-   send_raw_message(msg.end_cell(), 2);
+   raw_reserve(msg_cost, 0);
+   send_raw_message(msg.end_cell(), 64);
+
 }
 
 ;; value - MUST BE NON-NEGATIVE
@@ -312,15 +315,16 @@ int squareRoot(int number)  {
 
 () send_grams(slice address, int amount) impure {
 
+    int msg_cost = 100000;
     builder msg = begin_cell()
           .store_uint(0xc4, 9)
           .store_slice(address) ;; 264 bit address
-          .store_grams(amount)
+          .store_grams(amount - msg_cost)
           .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
 
-        send_raw_message(msg.end_cell(), 2);
 
-
+    raw_reserve(msg_cost, 0);
+    send_raw_message(msg.end_cell(), 64);
 }
 
 ;; ============= Dex Functions =============================
@@ -408,7 +412,6 @@ int squareRoot(int number)  {
 
 (cell, int) ~claim_rewards(cell balances, slice address, int token_reward_rate, int protocol_reward_rate, int total_supply, int token_reserves) {
   (slice liquidity_slice, int found) = balances.dict_get?(264, address);
-
   if (found) {
     (int user_rewards, int lp_amount) = calc_rewards(liquidity_slice, total_supply, token_reserves, token_reward_rate, protocol_reward_rate);
     balances~dict_set_builder(264, address, begin_cell().store_grams(lp_amount).store_uint(now(), 64));
@@ -476,7 +479,7 @@ int squareRoot(int number)  {
   if reserve {
     raw_reserve(reserve, 0);
   }
-  send_raw_message(msg.end_cell(), 2);
+  send_raw_message(msg.end_cell(), 64);
 }
 
 (int) recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
@@ -631,21 +634,22 @@ int squareRoot(int number)  {
 
     ;;(int cells, int bits, int refs) = cs.slice_compute_data_size(10);
 
-    ;; msg value has enough coins to pay for 
+    ;; msg value has enough coins to pay for
     ;;  1) storing cells created during tx plus
     ;;  2) this tx gas costs
     ;;  3) 10k gas for processing of outcoming message
     ;;  4) forward fee for outcoming message
-    
+
     ;;throw_unless(111, msg_value > storage_fee + gas_to_coins(chain_id, gas_limit + 10000) + msg_fwd_price(cells, bits, chain_id));
-    
+
+    if( action < 4) { ;; send recipts only for trc20 actions
       send_receipt(to,
                    action, query_id,
                    sender,
                    sign, 0,
                    10000000, ;; TODO fix gas 0.01TON fees for message.
                    begin_cell().store_slice(cs));
-    
+    }
     return return_value;
 }
 
@@ -681,16 +685,24 @@ int allowance(slice owner, slice spender) method_id {
 
 ;;====================== DEX Helpers =====================================
 
-var get_amount_out_lp(int amountIn, int is_token_src) method_id {
+var get_amount_out_lp(int amount_in, int is_token_src) method_id {
   (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
-  int amountInWithFee = amountIn * 997;
+  int amountInWithFee = amount_in * 997;
   int reserveIn = is_token_src ? token_reserves : ton_reserves;
   int reserveOut = is_token_src ? ton_reserves : token_reserves;
-  
   int numerator =  amountInWithFee * reserveOut;
-  int denominator = reserveIn * 1000 + amountInWithFee;
+  int denominator = (reserveIn * 1000) + amountInWithFee;
   return numerator / denominator;
+}
 
+var get_amount_in_lp(int amount_out, int is_token_src) method_id {
+  (slice name, slice symbol, int decimals, int total_supply, int token_reserves, int ton_reserves, cell balances, cell allowances, slice token_address, int initialized, _, _ , _, _) = load_data(get_data());
+  int reserveIn = is_token_src ? token_reserves : ton_reserves;
+  int reserveOut = is_token_src ? ton_reserves : token_reserves;
+
+  int numerator =  reserveIn * amount_out * 1000;
+  int denominator = (reserveOut - amount_out) * 997;
+  return ( numerator / denominator ) + 1;
 }
 
 (int, int, int, int, int, int) get_admin_data() method_id {

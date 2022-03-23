@@ -22,6 +22,8 @@ export type SendMsgOutAction = { type: 'send_msg', message: RawMessage, mode: nu
 export type ReserveCurrencyAction = { type: 'reserve_currency', mode: number, currency: RawCurrencyCollection }
 export type UnknownOutAction = { type: 'unknown' }
 const decimals = new BN('1000000000');
+const decimals18 = new BN('1000000000000000000');
+
 
 export type OutAction =
     | SendMsgOutAction
@@ -149,12 +151,23 @@ export function sliceToAddress(s :Slice) {
     return address;
 }
 
-export function toDecimals(num: number) {
+export function toDecimals(num: number | string) {
     return (new BN(num)).mul(decimals);
 }
 
 export function fromDecimals(num: BN) {
-    return num.div(decimals).toString(10);
+    const numStr = num.toString();
+    const dotIndex = numStr.length - (9);
+    const formmatedStr = numStr.substring(0, dotIndex)+'.'+ numStr.substring(dotIndex, numStr.length);
+    return formmatedStr;
+}
+
+export function fmt18(num: number | string) {
+    return (new BN(num)).mul(decimals18);
+}
+
+export function unFmt18(num: BN) {
+    return (new BN(num)).div(decimals18);
 }
 
 export function stripBoc(bocStr :string) {
