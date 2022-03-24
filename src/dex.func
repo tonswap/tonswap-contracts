@@ -182,7 +182,7 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
          .store_grams(token_amount);
 
    ;;raw_reserve(msg_cost, 0);
-   send_raw_message(msg.end_cell(), 64);
+   send_raw_message(msg.end_cell(), 2);
 
 }
 
