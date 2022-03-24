@@ -169,19 +169,19 @@ int _get_allowance(cell allowances, slice owner, slice spender) inline {
     slice token_packed = pack_addr(wc, addr);
 
 
-    int msg_cost = 100000; ;; 10k for send message , should assert
+    int fee = 100000000; ;; 0.1TON for send message , should assert
     builder msg = begin_cell()
          .store_uint(0x18, 6)
          .store_uint(0x4, 3)
          .store_slice(token_packed)
-         .store_grams(msg_cost)
+         .store_grams(fee)
          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
          .store_uint(1, 32) ;; transfer action
          .store_uint(query_id, 64)
          .store_slice(to)
          .store_grams(token_amount);
 
-   raw_reserve(msg_cost, 0);
+   ;;raw_reserve(msg_cost, 0);
    send_raw_message(msg.end_cell(), 64);
 
 }
@@ -342,16 +342,16 @@ int squareRoot(int number)  {
     if(is_ton_src == true) {
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
+      store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
       send_token_to(token_address, sender, amount_out, 1);
       ;; TODO think of query ID purpose
       ;; TODO SEND RECIPT
     } else {
       ton_reserves = trgt_resvers - amount_out;
       token_reserves = src_resvers + transferd_amount;
+      store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
       send_grams(sender, amount_out);
     }
-
-    store_data(name, symbol, decimals, total_supply, token_reserves, ton_reserves, balances, allowances, token_address, initialized, token_rewards_admin, token_alloc_points, protocol_rewards_admin, protocol_alloc_points);
     return amount_out;
 }
 
@@ -505,6 +505,9 @@ int squareRoot(int number)  {
     }
 
     int action = cs~load_uint(32);
+
+    (action, cs) = parse_msg(action, cs);
+
     int query_id = cs~load_uint(64);
     ;; TODO support gas limit as an input paramter
     ;; int gas_limit = cs~load_grams();
