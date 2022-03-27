@@ -1,17 +1,14 @@
 import {Address, Cell, ContractSource, TonClient, contractAddress} from "ton";
 import {compileFunc} from "ton-compiler";
 import {readFile} from "fs/promises";
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
 import {buildDataCell, DexConfig} from "./dex.data";
 import BN from "bn.js";
 import {stripBoc, toDecimals} from "./utils";
 import {DexActions} from "./dex.actions";
+import * as fs from "fs";
 
 
 const MAIN_NET_RPC = 'https://scalable-api.tonwhales.com/jsonRPC';
-const LOCAL_RPC = '';
-
 
 //const USDC_ADDRESS = 'kQA2aQA7gHRQmR0qNnLwPA0LtHOltHbE6YFBj9bk2aQ1Diwr';
 const LUNA_ADDRESS = 'EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUcbUg0pYK0u';
@@ -41,7 +38,8 @@ function init(conf: DexConfig) {
 
 async function deploy(dataCell: Cell) {
     let funcSource = (await readFile('src/dex.func')).toString('utf-8');
-    let source = await compileFunc(funcSource);
+    let msgHexComment = (await readFile('src/msg_hex_comment.func')).toString('utf-8');
+    let source = await compileFunc( msgHexComment + funcSource );
     let sourceCell = Cell.fromBoc(source.cell)[0];
 
     console.log(Cell.fromBoc(source.cell))
@@ -82,17 +80,60 @@ async function deploy(dataCell: Cell) {
 }
 
 async function logDeepLinks(address: Address) {
-    console.log(`https://tonwhales.com/explorer/address/${address.toFriendly()}`);
-    console.log(`fund contract ton://transfer/${address.toFriendly()}?amount=100000000`);
-    console.log(`init data ton://transfer/${address.toFriendly()}?amount=100000000`)
+    const contractLink = `https://tonwhales.com/explorer/address/${address.toFriendly()}`;
+    console.log(contractLink);
+    const fundLink = `fund contract ton://transfer/${address.toFriendly()}?amount=100000000`;
+    console.log(fundLink);
+
+    const initData = await DexActions.initData()
+    const bocData = stripBoc(initData.toString());
+    const initLink = `ton://transfer/${address.toFriendly()}?amount=100000000&text=${bocData}`;
+    console.log(`init data ${initLink}`);
 
     const TOKEN = 'EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUcbUg0pYK0u'; //LUNA
     const transferAndLiq = await DexActions.transferAndAddLiquidity(address, toDecimals(10), 10 )
-    const boc2 = stripBoc(transferAndLiq.toString());
-    const deeplink =  `ton://transfer/${TOKEN}?amount=250000000&text=${boc2}`;
+    const addLiquidityBoc = stripBoc(transferAndLiq.toString());
+    const ALdeeplink =  `ton://transfer/${TOKEN}?amount=250000000&text=${addLiquidityBoc}`;
+
     console.log(`*** ADD-LIQUIDITY ***
-    transfer-erc20 -> add-liquditiy->
-    ${deeplink}`);
+    transfer-erc20 -> add-liquditiy-> 
+    ${ALdeeplink}`);
+
+    // Swap 13 Luna  for 1 TON
+    const swapOut = await DexActions.transferAndSwapOut(address,  toDecimals(13), toDecimals(1))
+    const swapOutBoc = stripBoc(swapOut.toString());
+    const swapOutLink =  `ton://transfer/${TOKEN}?amount=250000000&text=${swapOutBoc}`;
+
+    // Swap 1 TON for 10 LUNA
+    const swapIn = await DexActions.swapIn(toDecimals(8))
+    const swapInBoc = stripBoc(swapIn.toString());
+    const swapInLink =  `ton://transfer/${address.toFriendly()}?amount=250000000&text=${swapInBoc}`;
+
+    const html = `<!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title></title>
+    </head>
+    <body>
+      <h3>DEPLOY FOR ${address.toFriendly()}</h3>
+      <h3>Explorer Link</h3>
+      <a class="href" href="${contractLink}">${contractLink}</a>
+      <h3>fund Contract by sending ton</h3>
+      <a class="href" href="${fundLink}">fund contract with TON</a>
+      <h3>ADD LIQUIDITY DEEP LINK</h3>
+      <a class="href" href="${ALdeeplink}">add liquidity</a>
+      <h3>SWAP: 10 LUNA -> 1 TON</h3>
+      <a class="href" href="${swapOutLink}">10 LUNA -> 1 TON</a>
+      <h3> SWAP: 1 TON - > 10 LUNA</h3>
+      <a class="href" href="${swapInLink}"> 1 TON - > 10 LUNA</a>
+    </body>
+    </html>`;
+
+    const file = `./deployed-html/${address.toFriendly()}.html`;
+    fs.writeFileSync(file, html, 'utf-8');
+    console.log(`html file `+file);
 }
 
 
