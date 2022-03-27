@@ -1,0 +1,251 @@
+
+int equal_slices (slice s1, slice s2) asm "SDEQ";
+int min_tons_for_storage() asm "10000000 PUSHINT";
+int gas_consumption() asm "10000000 PUSHINT";
+
+{-
+  Storage
+  storage#_ balance:Coins owner:MsgAddressInt jetton_master:MsgAddressInt code:tokenCode = Storage;
+-}
+
+{-
+  {-
+    Note, currently we use fwd_fee of incoming send_tokens message as upper bound of
+    sending message fee.
+    It is cheap and cover all current use-cases when all actors are in one chain (basechain).
+    However in principle, it is possible, that some token holders will be in other chains.
+    In that case there are two solutions:
+      1) use more expensive but universal function below to calculate message fee for arbitrary destination
+      2) use token holder proxies in target chain (that way even 'non-universal' token can be used from any chainn)
+  -}
+  ;; See crypto/block/transaction.cpp:L1499
+  int msg_fwd_fee(slice destination, cell message_body, cell init_state, int max_viewed_cells) inline {
+    (int wc, _) = parse_std_addr(destination);
+    throw_unless(107, (workchain == -1) | (workchain == 0) );
+    int config_index = 25 + workchain;
+    slice cfg = config_param(config_index).begin_parse().skip_bits(8);
+    int lump_price = cfg~load_uint(64);
+    int bit_price = cfg~load_uint(64);
+    int cell_price = cfg~load_uint(64);
+    (int cells, int bits, _) = compute_data_size(message_body, max_viewed_cells);
+    cells -= 1;
+    bits -= message_body.slice_bits();
+
+    (int is_cells, int is_bits, _) = compute_data_size(init_state, max_viewed_cells);
+    is_cells -= 1;
+    is_bits -= init_state.slice_bits();
+    return lump_price + (((bits + is_bits) * bit_price + (cells + is_cells) * cell_price + 65535) >> 16 );
+  }
+
+-}
+
+() force_chain(slice adr) impure {
+  (int wc, _) = parse_std_addr(adr);
+  throw_unless(333, wc == workchain());
+}
+
+(int, slice, slice, cell) load_data () {
+  slice ds = get_data().begin_parse();
+  return (ds~load_coins(), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
+}
+
+() save_data (int balance, slice owner, slice jetton_master, cell token_wallet_code) impure {
+  set_data(pack_wallet_data(balance, owner, jetton_master, token_wallet_code));
+}
+
+
+{-
+  transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
+           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
+           forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
+           = InternalMsgBody;
+  internal_transfer  query_id:uint64 amount:(VarUInteger 16) from:MsgAddress
+                     response_address:MsgAddress
+                     forward_ton_amount:(VarUInteger 16)
+                     forward_payload:(Either Cell ^Cell)
+                     = InternalMsgBody;
+-}
+
+() send_tokens (slice in_msg, slice sender, int msg_value, int fwd_fee) impure {
+  int query_id = in_msg~load_uint(64);
+  int token_amount = in_msg~load_coins();
+  slice to = in_msg~load_msg_addr();
+  force_chain(to);
+  (int balance, slice owner, slice jetton_master, cell token_wallet_code) = load_data();
+  balance -= token_amount;
+
+  throw_unless(705, equal_slices(owner, sender));
+  throw_unless(706, balance >= 0);
+
+  cell state_init = calculate_token_state_init(to, jetton_master, token_wallet_code);
+  slice to_wallet = calc_address(state_init);
+  slice response = in_msg~load_msg_addr();
+  force_chain(response);
+  cell custom_payload = in_msg~load_dict();
+  int forward_ton_amount = in_msg~load_coins();
+  slice either_forward_payload = in_msg;
+  var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(to_wallet)
+    .store_coins(0)
+    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+    .store_ref(state_init);
+  var msg_body = begin_cell()
+    .store_uint(op::internal_transfer(), 32)
+    .store_uint(query_id, 64)
+    .store_coins(token_amount)
+    .store_slice(owner)
+    .store_slice(response)
+    .store_coins(forward_ton_amount)
+    .store_slice(either_forward_payload)
+    .end_cell();
+
+  msg = msg.store_ref(msg_body);
+  throw_unless(709, msg_value >
+                     forward_ton_amount +
+                     ;; 3 messages: wal1->wal2,  wal2->owner, wal2->response
+                     ;; but last one is optional (it is ok if it fails)
+                     2 * fwd_fee +
+                     (2 * gas_consumption() + min_tons_for_storage()));
+                     ;; universal message send fee calculation may be activated here
+                     ;; by using this instead of fwd_fee
+                     ;; msg_fwd_fee(to_wallet, msg_body, state_init, 15)
+
+  send_raw_message(msg.end_cell(), 64); ;; revert on errors
+  return save_data(balance, owner, jetton_master, token_wallet_code);
+}
+
+{-
+  internal_transfer  query_id:uint64 amount:(VarUInteger 16) from:MsgAddress
+                     response_address:MsgAddress
+                     forward_ton_amount:(VarUInteger 16)
+                     forward_payload:(Either Cell ^Cell)
+                     = InternalMsgBody;
+-}
+
+() receive_tokens (slice in_msg, slice sender) impure {
+  ;; NOTE we can not allow fails in action phase since in that case there will be
+  ;; no bounce. Thus check and throw in computation phase.
+  (int balance, slice owner, slice jetton_master, cell token_wallet_code) = load_data();
+  int query_id = in_msg~load_uint(64);
+  int token_amount = in_msg~load_coins();
+  balance += token_amount;
+  slice from = in_msg~load_msg_addr();
+  slice response = in_msg~load_msg_addr();
+  throw_unless(707,
+      equal_slices(calc_user_wallet(from, jetton_master, token_wallet_code), sender)
+      |
+      equal_slices(jetton_master, sender)
+  );
+  int forward_ton_amount = in_msg~load_coins();
+  slice either_forward_payload = in_msg;
+  if(forward_ton_amount) {
+    var msg = begin_cell()
+      .store_uint(0x18, 6)
+      .store_slice(owner)
+      .store_coins(forward_ton_amount)
+      .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+    var msg_body = begin_cell()
+      .store_uint(op::transfer_notification(), 32)
+      .store_uint(query_id, 64)
+      .store_coins(token_amount)
+      .store_slice(jetton_master)
+      .store_slice(from)
+      .store_slice(either_forward_payload)
+      .end_cell();
+    msg = msg.store_ref(msg_body);
+    send_raw_message(msg.end_cell(), 1);
+  }
+  raw_reserve(min_tons_for_storage(), 2);
+  var msg = begin_cell()
+    .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+    .store_slice(response)
+    .store_coins(0)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(op::excesses(), 32)
+    .store_uint(query_id, 64);
+  send_raw_message(msg.end_cell(), 2 + 128);
+  return save_data(balance, owner, jetton_master, token_wallet_code);
+}
+
+() burn_tokens (slice in_msg, slice sender, int msg_value, int fwd_fee) impure {
+  ;; NOTE we can not allow fails in action phase since in that case there will be
+  ;; no bounce. Thus check and throw in computation phase.
+  (int balance, slice owner, slice jetton_master, cell token_wallet_code) = load_data();
+  int query_id = in_msg~load_uint(64);
+  int token_amount = in_msg~load_coins();
+  slice response = in_msg~load_msg_addr();
+  ;; ignore custom payload
+  ;; slice custom_payload = in_msg~load_dict();
+  balance -= token_amount;
+  throw_unless(705, equal_slices(owner, sender));
+  throw_unless(706, balance >= 0);
+  throw_unless(707, msg_value > fwd_fee + 2 * gas_consumption());
+
+  var msg_body = begin_cell()
+      .store_uint(op::burn_notification(), 32)
+      .store_uint(query_id, 64)
+      .store_coins(token_amount)
+      .store_slice(owner)
+      .store_slice(response)
+      .end_cell();
+
+  var msg = begin_cell()
+    .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+    .store_slice(jetton_master)
+    .store_coins(0)
+    .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_ref(msg_body);
+
+  send_raw_message(msg.end_cell(), 64);
+
+  save_data(balance, owner, jetton_master, token_wallet_code);
+}
+
+() on_bounce (slice in_msg) impure {
+  in_msg~skip_bits(32); ;; 0xFFFFFFFF
+  (int balance, slice owner, slice jetton_master, cell token_wallet_code) = load_data();
+  int op = in_msg~load_uint(32);
+  throw_unless(709, (op == op::inner_transfer()) | (op == op::burn_notification()));
+  int op = in_msg~load_uint(64);
+  int value = in_msg~load_coins();
+  balance += value;
+  return save_data(balance, owner, jetton_master, token_wallet_code);
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+
+  slice cs = in_msg_cell.begin_parse();
+  int flags = cs~load_uint(4);
+  if (flags & 1) {
+    return on_bounce(in_msg);
+  }
+  slice sender = cs~load_msg_addr();
+  cs~load_msg_addr(); ;; skip dst
+  cs~load_coins(); ;; skip value
+  cs~skip_bits(1); ;; skip extracurrency collection
+  cs~load_coins(); ;; skip ihr_fee
+  int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs
+
+  int op = in_msg~load_uint(32);
+
+  if(op == op::master_request()) { ;; jetton master command
+    ;; master is trusted like it is an other wallet
+    return receive_tokens(in_msg, sender);
+  }
+
+  if(op == op::transfer()) { ;; outgoing transfer
+    return send_tokens(in_msg, sender, msg_value, fwd_fee);
+  }
+  if(op == op::internal_transfer()) { ;; incoming transfer
+    return receive_tokens(in_msg, sender);
+  }
+  if(op == op::burn()) { ;; burn
+    return burn_tokens(in_msg, sender, msg_value, fwd_fee);
+  }
+  throw(0xffff);
+}
+
+(int, slice, slice, cell) get_wallet_data() method_id {
+  return load_data();
+}
