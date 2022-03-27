@@ -289,7 +289,9 @@ export class DexDebug {
 
     static async create(config: DexConfig) {
         let source = (await readFile('./src/dex.func')).toString('utf-8')
-        let contract = await SmartContract.fromFuncSource(source, buildDataCell(config), { getMethodsMutate: true })
+        let msgHexComment = (await readFile('src/msg_hex_comment.func')).toString('utf-8');
+
+        let contract = await SmartContract.fromFuncSource(msgHexComment+source, buildDataCell(config), { getMethodsMutate: true })
         const contractDebug = new DexDebug(contract);
         contractDebug.setUnixTime(toUnixTime(Date.now()));
         return contractDebug;

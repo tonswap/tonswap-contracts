@@ -168,42 +168,26 @@ int _get_allowance(cell allowed, slice owner, slice spender) {
 
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
- operational_balance = pair_first(get_balance()) - msg_value;
-  slice cs = in_msg_cell.begin_parse();
-  int flags = cs~load_uint(4);
-  slice sender_raw = cs~load_msg_addr();
-  (int sender_wc, slice sender_addr) = parse_var_addr(sender_raw);
-  slice sender = pack_addr(sender_wc, sender_addr);
+   (int chain_id, _) = parse_std_addr(my_address());
+
+   slice cs = in_msg_cell.begin_parse();
+   int flags = cs~load_uint(4);
+   if (flags & 1) { ;; ignore bounces
+     return ();
+   }
+   slice sender_raw = cs~load_msg_addr();
+   (int sender_wc, int sender_addr) = parse_std_addr(sender_raw);
+   slice sender = pack_addr2(sender_wc, sender_addr);
+
+   cs = in_msg;
+   if (cs.slice_bits() == 0) {  ;; just accept coins
+     return ();
+   }
+   (action, cs) = parse_msg(action, cs);
 
 
-
-  cs = in_msg;
-  if (cs.slice_bits() == 0) {  ;; just accept grams
-    return ();
-  }
-
-  int action = cs~load_uint(32);
-
-  if (action == 0xffffffff) { ;; 'not supported' response
-    int query_id = cs~load_uint(64);
-    int query_action = cs~load_uint(32);
-    process_rollback(sender, query_action, cs);
-    return ();
-  }
-
-  if (flags & 1) {
-    int query_id = cs~load_uint(64);
-    process_rollback(sender, action, cs);
-    return ();
-  }
-
-  if ((action == 0) & (cs.slice_bits() == 0)) { ;; just accept grams
-    return ();
-  }
-
-  (action, cs) = parse_msg(action, cs);
-
-  int query_id = cs~load_uint(64);
+   int action = cs~load_uint(32);
+   int query_id = cs~load_uint(64);
 
   if (action > 6) {
     if (action < 0x80000000) { ;; not response
