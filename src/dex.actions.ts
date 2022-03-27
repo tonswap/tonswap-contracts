@@ -57,7 +57,7 @@ export class DexActions {
     // }
 
 
-    static async addLiquidity(tokenContract: Address, tokenSender: Address, tonAmount: BN, tokenAmount: BN, slippage: number) {
+    static async addLiquidity(tokenContract: Address, tokenSender: Address, tokenAmount: BN, slippage: number) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(TRC20_TRANSFER_RECIPT, 32) // action
         messageBody.bits.writeUint(1, 64) // query-id
@@ -148,18 +148,19 @@ async function init(amm: string, token ='EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUc
     // let x = await DexActions.addLiquidity(KILO_TOKEN, bobAddress,  toDecimals(10), toDecimals(100), 2);
     // console.log(x);
 
-    // let mint = await DexActions.mx();
-    // const mintData = mint.toString();
-    // const boc = stripBoc(mintData);
-    // const deeplink =  `ton://transfer/${TOKEN}?amount=100000000&text=${boc}`;
-    // console.log('mint TOKEN',deeplink);
+    let mint = await DexActions.mx();
+    const mintData = mint.toString();
+    const boc = stripBoc(mintData);
+    const deeplink =  `ton://transfer/${token}?amount=100000000&text=${boc}`;
+    console.log('mint TOKEN',deeplink);
 
-
-    let transfer = await DexActions.transfer(lpAddress, new BN(1))
+    let transfer = await DexActions.transfer(Address.parse('EQCKmN319As-1NoqByUwf4IgR82LNhyDB18aDZEURmAilUwt') , new BN('87542939'))
     const transferStr = transfer.toString();
     const bocT = stripBoc(transferStr);
     const deeplinkTransfer =  `ton://transfer/${token}?amount=100000000&text=${bocT}`;
-    console.log(`simple TOKEN transfer`, deeplinkTransfer)
+    console.log(`simple TOKEN transfer
+    ${deeplinkTransfer}`)
+
 
     // let transferLong = await DexActions.transferLong(lpAddress, new BN(1))
     // const transferStr2 = transferLong.toString();
@@ -190,23 +191,25 @@ async function init(amm: string, token ='EQAycqbigAAkekkGG1A_3LSVGS1RfvJb4YavqUc
     transfer-erc20 -> swap out->
     ${deeplink3}`);
 
-    // ton://transfer/EQA2aQA7gHRQmR0qNnLwPA0LtHOltHbE6YFBj9bk2aQ1Dpeh?amount=100000000&text=000000050000000000000000
+    const swInAction = await DexActions.swapIn(new BN(9) )
+    const boc5 = stripBoc(swInAction.toString());
+    const deeplink5 =  `ton://transfer/${amm}?amount=10000000&text=${boc5}`;
+    console.log(`*** swap In *** 
+    Wallet TON -> AMM -> TRC20
+    ${deeplink5}`);
+
+
+    const claimAction = await DexActions.claimRewards()
+    const boc4 = stripBoc(claimAction.toString());
+    const deeplink4 =  `ton://transfer/${amm}?amount=250000000&text=${boc4}`;
+    console.log(`*** Claim Rewrads *** 
+    ${deeplink4}`);
+
+
 }
 
 (async ()=> {
-    const AMM = 'EQDbhtPZi05FKB4ajx6twLoA3wo8j_6RAgBHybJChoW9nyno';//AMM V20
+    const AMM = 'EQCSOxDQI94b0vGCN2Lc3DPan8v3P_JRt-z4PJ9Af2_BPHx5';//AMM V28
     init(AMM);
 })()
-
-/*
-ton://transfer/EQBasP-MyMyesmwoNvJrL6KS27bbjNHLavlRcI1jU35TQdyG?amount=100000000&text=00000001000000000000000100B53F755142BBCAF2C7FFE5A320838209E9A4C4972C37D3D97785D4ED7EA718AF502540BE400020000000000000004
-ton://transfer/kQA2aQA7gHRQmR0qNnLwPA0LtHOltHbE6YFBj9bk2aQ1Diwr?amount=250000000&text=000000010000000000000000009D54BB16C50AC99A3DEAF124D93F70496198450069CCA61184380116EA20F17D52E90EDD000
-
-ton://transfer/EQBasP-MyMyesmwoNvJrL6KS27bbjNHLavlRcI1jU35TQdyG?amount=100000000&text=00000001000000000000000000B53F755142BBCAF2C7FFE5A320838209E9A4C4972C37D3D97785D4ED7EA718AF502540BE400020000000000000004
-
-query 1
-ton://transfer/EQBasP-MyMyesmwoNvJrL6KS27bbjNHLavlRcI1jU35TQdyG?amount=250000000&text=000000010000000000000000009D54BB16C50AC99A3DEAF124D93F70496198450069CCA61184380116EA20F17D52E90EDD000
-
-simple transfer
- ton://transfer/EQBasP-MyMyesmwoNvJrL6KS27bbjNHLavlRcI1jU35TQdyG?amount=100000000&text=00000001000000000000000000B53F755142BBCAF2C7FFE5A320838209E9A4C4972C37D3D97785D4ED7EA718AF502540BE400
- */
+// ton://transfer/EQAD_a-sO8tOY1bH5UtO4ipItuLwQ3oNkej0ByVL5d_9WE53?amount=100000000&text=000000010000000000000000008A98DDF5F40B3ED4DA2A0725307F822047CD8B361C83075F1A0D91144660229540537CC9B

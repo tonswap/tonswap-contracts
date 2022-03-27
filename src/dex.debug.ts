@@ -79,7 +79,7 @@ export class DexDebug {
     }
 
     async addLiquidity(tokenContract: Address, tokenSender: Address, tonAmount: BN, tokenAmount: BN, slippage: number) {
-        const b = await DexActions.addLiquidity(tokenContract,tokenSender,tonAmount,tokenAmount,slippage);
+        const b = await DexActions.addLiquidity(tokenContract, tokenSender, tokenAmount, slippage);
 
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             to: contractAddress,
@@ -227,6 +227,35 @@ export class DexDebug {
         let minAmountOut = await this.contract.invokeGetMethod('get_amount_out_lp', [
             { type: 'int', value: amountIn.toString(10) },
             { type: 'int', value: isTokenSource ? '1': '0' },
+        ]);
+        console.log(minAmountOut.result)
+        return (minAmountOut.result[0] as BN);
+    }
+
+    async minAmountOut2(amountIn: BN, TONRESERVES: BN, tokenReserves: BN) {
+
+        let minAmountOut = await this.contract.invokeGetMethod('get_amount_out', [
+            { type: 'int', value: amountIn.toString(10) },
+            { type: 'int', value: TONRESERVES.toString(10) },
+            { type: 'int', value: tokenReserves.toString(10) },
+        ]);
+        console.log(minAmountOut.result)
+        return (minAmountOut.result[0] as BN);
+    }
+
+    async minAmountOut3(amountIn: BN, reserveIn: BN, reserveOut: BN) {
+
+        const amountInWithFee = amountIn.mul(new BN(997));
+        const numerator =  amountInWithFee.mul(reserveOut);
+        const denominator = reserveIn.mul(new BN(1000)).add(amountInWithFee);
+        return numerator.div(denominator);
+    }
+
+    async minAmountIn(amountOut: BN, isTokenSource: boolean) {
+
+        let minAmountOut = await this.contract.invokeGetMethod('get_amount_in_lp', [
+            { type: 'int', value: amountOut.toString(10) },
+            { type: 'int', value: isTokenSource ? '1': '0' },
         ])
         return (minAmountOut.result[0] as BN);
     }
@@ -239,7 +268,7 @@ export class DexDebug {
             { type: 'int', value: wc.toString(10) },
             { type: 'int', value: address.toString(10) },
         ])
-        console.log(balanceResult)
+
         return (balanceResult.result[0] as BN);
     }
 
