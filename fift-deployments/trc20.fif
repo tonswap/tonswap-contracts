@@ -1,0 +1,53 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <workchain-id> <name> <symbol> <decimals> <total_supply> <owner_addr_file>" cr
+  ."Creates a new basic TRC20 token in specified workchain" cr 1 halt
+} : usage
+$# dup 6 < swap 6 > or ' usage if
+
+$1 parse-workchain-id =: wc
+$2 =: name
+$3 =: symbol
+$4 parse-int =: decimals
+$5 parse-int =: total_supply
+$6 =: owner_addr_file
+
+owner_addr_file load-address 2dup 2constant owner_addr
+
+"./build/trc20.fif" include =: code
+
+<b total_supply Gram, b> <s <b owner_addr addr, b> <s dictnew 264 sdict! drop =: balances
+
+null =: allowed
+
+<b name $len 8 u,
+   name $,
+   symbol $len 8 u,
+   symbol $,
+   decimals 8 u,
+   total_supply Gram,
+   balances dict,
+   allowed dict,
+   0 1 u,
+b> =: data
+
+null =: libs
+
+<b b{0011} s, code ref, data ref, libs dict, b> =: state_init
+
+state_init hashu wc swap 2dup 2constant contract_addr
+
+."owner address = " owner_addr .addr cr
+name type ." address = " 2dup .addr cr
+2dup name +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+
+<b  b> =: init_msg
+
+<b b{1000100} s, contract_addr addr, b{000010} s, state_init <s s, b{0} s, init_msg <s s, b> =: external_msg
+external_msg 2 boc+>B
+name +".boc" tuck B>file
+."(Saved token creating query to file " type .")" cr

@@ -1,8 +1,8 @@
 {
-  "name": "TONswap Amm",
+  "name": "tonswap",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
+  "repository": "git@github.com:tonswap/dex.git",
   "scripts": {
     "build": "./scripts/build.sh",
     "test-fift": "./scripts/test-dex.sh",

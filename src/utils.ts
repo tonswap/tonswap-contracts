@@ -109,6 +109,29 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
     }
 }
 
+export function parseJettonTransfer(msgBody: Cell) {
+    // refs[0] is stateInit
+    console.log(msgBody.refs);
+    
+    let msg = msgBody.refs[1];
+
+    let slice = msg.beginParse();
+    var op = slice.readUint(32);
+    var query = slice.readUint(64);
+    var to = sliceToAddress(slice);
+
+    var grams = slice.readCoins();
+    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
+    console.log('parseTrc20Transfer',  to)
+    return {
+        op: op.toString(10),
+        query: query.toString(10),
+        to: to,
+        amount:grams
+        // amount: fees
+    }
+}
+
 
 export function toUnixTime(timeInMS: number) {
     return Math.round( timeInMS / 1000);
@@ -144,12 +167,17 @@ export function sliceToAddress267(s :Slice) {
     return sliceToAddress(s);
 }
 
-export function sliceToAddress(s :Slice) {
+export function sliceToAddress(s :Slice, isAnyCastAddress=false) {
+    if(isAnyCastAddress) {
+        s.skip(3);
+    }
     const wc = new BN(s.readUint(8));
     const addr = s.readUint(256);
     const address = new Address(wc.toNumber(), addr.toBuffer());
     return address;
 }
+
+
 
 export function toDecimals(num: number | string) {
     return (new BN(num)).mul(decimals);
