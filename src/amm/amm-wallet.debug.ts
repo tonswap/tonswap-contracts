@@ -12,7 +12,7 @@ import {
     serializeDict
 } from "ton";
 import BN from "bn.js";
-import {parseActionsList, sliceToAddress267, toUnixTime, sliceToString, addressToSlice264} from "./utils";
+import {parseActionsList, sliceToAddress267, toUnixTime, sliceToString, addressToSlice264} from "../utils";
 
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')

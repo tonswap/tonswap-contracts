@@ -3,10 +3,10 @@ import {
     Address, Cell, CellMessage, CommonMessageInfo, InternalMessage,
 } from "ton";
 import BN from "bn.js";
-import { JettonMinter } from "./jetton-minter.deubg";
-import { parseActionsList, SendMsgOutAction, parseJettonTransfer } from "./utils";
+import { JettonMinter } from "../jetton/jetton-minter.debug";
+import { parseActionsList, SendMsgOutAction, parseJettonTransfer } from "../utils";
 import { SmartContract } from "ton-contract-executor";
-import { JettonWallet } from "./jetton-wallet.deubg";
+import { JettonWallet } from "./amm-wallet.debug";
 
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
@@ -35,15 +35,13 @@ const SWAP_OUT_SUB_OP = 8;
 
 describe('Jetton Minter ', () => {
     
-    it("init data", async () => {
+    it("mint USDC", async () => {
 
-        const masterJetton = await JettonMinter.create(new BN(0), alice, "https://ipfs.io/ipfs/dasadas");
-
-        const data = await masterJetton.getJettonData();
-        const mintResponse = await masterJetton.mint(alice, bob, new BN(1500));
-        const mintMessage = mintResponse.actions[0] as SendMsgOutAction;
-
+        const masterUSDC = await JettonMinter.create(new BN(0), alice, "https://ipfs.io/ipfs/dasadas");
+        const mintResponse = await masterUSDC.mint(alice, bob, new BN(1500));
         
+        const mintMessage = mintResponse.actions[0] as SendMsgOutAction;
+        console.log(mintMessage);
         
         //send the transfer message to the contract
         let initMsg = new CommonMessageInfo( { body: new CellMessage(mintMessage.message?.body) });
@@ -54,28 +52,30 @@ describe('Jetton Minter ', () => {
             bounce: false,
             body: initMsg
         })
-        let jWallet = await JettonWallet.createFromMessage(mintMessage.message?.init?.code as Cell, mintMessage.message?.init?.data as Cell, msg);
+        // Deploy USDC Sub wallet based on the output action from the mint result, 
+        // so we take the output message and initiate a contract based on the code data and init state and save reference to it
+        let usdcSubWallet = await JettonWallet.createFromMessage(mintMessage.message?.init?.code as Cell, mintMessage.message?.init?.data as Cell, msg);
     
-        const jettonWalletResponse = await jWallet.getData();
+        const jettonWalletResponse = await usdcSubWallet.getData();
         console.log(`jettonWalletResponse  (after send) balance:${jettonWalletResponse.balance.toString()}`);
 
-        ///////// Send another Jetton 
-
-        const mintResponse2 = await masterJetton.mint(alice, bob, new BN(2505));
+        ///////// mint again
+        const mintResponse2 = await masterUSDC.mint(alice, bob, new BN(2505));
         const mintMessage2 = mintResponse2.actions[0] as SendMsgOutAction;
-        let initMsg2 = new CommonMessageInfo( { body: new CellMessage(mintMessage2.message?.body) });
+        let mintMessageInfo2 = new CommonMessageInfo( { body: new CellMessage(mintMessage2.message?.body) });
 
-
-        const msg2 = new InternalMessage({
+        const mintMessageRAW = new InternalMessage({
             to: bob,
             from: contractAddress,
             value: new BN(1000000000), // 0.1 TON
             bounce: false,
-            body: initMsg2
+            body: mintMessageInfo2
         })
         
-        const jettonWalletResponse2 = await jWallet.sendInternalMessage(msg2);
-        const data2 = await jWallet.getData();
+        const mintMessageResponse2 = await usdcSubWallet.sendInternalMessage(mintMessageRAW);
+        expect(mintMessageResponse2.exit_code).toBe(0);
+        
+        const data2 = await usdcSubWallet.getData();
         console.log(`jettonWalletResponse2  (after send #2) balance:${ data2.balance.toString()}`);
     })
 

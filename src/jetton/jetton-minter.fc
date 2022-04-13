@@ -23,11 +23,8 @@
           );
 }
 
-() mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg, slice admin_address) impure {
-  ~dump to_address;
-  slice addr = my_address();
-  
-  ;; hack admin_address should be my_address() cause it doesnt work on tvm
+() mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
+  ;; hack (remove the usauge of my_address)
   cell state_init = calculate_jetton_wallet_state_init(to_address, to_address, jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
   var msg = begin_cell()
@@ -65,7 +62,7 @@
         slice master_msg_cs = master_msg.begin_parse();
         master_msg_cs~skip_bits(32 + 64); ;; op + query_id
         int jetton_amount = master_msg_cs~load_coins();
-        mint_tokens(to_address, jetton_wallet_code, amount, master_msg, admin_address);
+        mint_tokens(to_address, jetton_wallet_code, amount, master_msg);
         save_data(total_supply + jetton_amount, admin_address, content, jetton_wallet_code);
         return ();
     }
@@ -74,7 +71,8 @@
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         throw_unless(74,
-            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
+        ;;TODO remove the use of my_address
+            equal_slices(calculate_user_jetton_wallet_address(from_address, from_address, jetton_wallet_code), sender_address)
         );
         save_data(total_supply - jetton_amount, admin_address, content, jetton_wallet_code);
         slice response_address = in_msg_body~load_msg_addr();

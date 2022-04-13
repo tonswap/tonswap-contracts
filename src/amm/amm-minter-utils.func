@@ -1,0 +1,107 @@
+;; =============  Using babylonian method for Math.sqrt
+int squareRoot(int number)  {
+    if(number < 3) {
+      return 1;
+    }
+    int lo = 0;
+    int hi = number;
+    while( lo <= hi ) {
+         var mid = (lo + hi) / 2;
+         if( mid * mid > number) {
+           hi = mid - 1;
+         } else {
+           lo = mid + 1;
+         } 
+    }
+    return hi;
+}
+
+() send_grams(slice address, int amount) impure {
+    cell msg = begin_cell()
+        .store_uint(196, 9)
+        .store_slice(address)
+        .store_grams(amount)
+        .store_uint(0, 107)
+        .end_cell();
+    send_raw_message(msg, 3); 
+}
+
+;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
+;;           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
+;;           forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
+;;           = InternalMsgBody;
+() send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) {
+     var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(jetton_wallet_address)
+    .store_coins(0)
+    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+    .store_ref(null());
+     
+    var msg_body = begin_cell()
+    .store_uint(op::transfer(), 32)
+    .store_uint(query_id, 64)
+    .store_coins(jetton_amount)
+    .store_slice(to)
+    .store_slice(to)
+    .store_coins(0)
+    .store_slice(null())
+    .end_cell();
+
+    msg = msg.store_ref(msg_body);
+
+    send_raw_message(msg.end_cell(), 64); ;; revert on errors
+}
+
+int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
+  int amountInWithFee = amountIn * 997; ;; lp fees 0.3% 
+  int numerator =  amountInWithFee * reserveOut;
+  int denominator = reserveIn * 1000 + amountInWithFee;
+  return numerator / denominator;
+}
+
+(int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address) impure {
+    
+    int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
+    int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
+    int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
+    throw_if(601, amount_out < min_amount_out);
+
+    if(is_ton_src == true) {
+      ton_reserves = src_resvers + transferd_amount;
+      token_reserves = trgt_resvers - amount_out;
+        ;;TODO add queryId
+      send_tokens(0, token_wallet_address, swap_sender, amount_out);
+    } else {
+      ton_reserves = trgt_resvers - amount_out;
+      token_reserves = src_resvers + transferd_amount;
+      send_grams(swap_sender, amount_out);
+    }
+    
+    return (ton_reserves, token_reserves);
+}
+
+
+(int, int, int, int) mint_lp(int price, int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
+    
+    int new_liquidity = 0;
+    int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
+
+    ;; TODO fix handle liquidtiy supply on its own param
+    if( token_reserves == 0  ) {
+      ;; calc the user share  Sushi (Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);)
+      new_liquidity = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
+    } else {
+      ;; liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
+      int ton_share = (ton_amount * total_lp_supply) / ton_reserves;
+      int token_share = (token_amount * total_lp_supply) / token_reserves;
+      new_liquidity = min(ton_share, token_share);
+    }
+
+    token_reserves = token_amount + token_reserves;
+    ton_reserves = ton_amount + ton_reserves;
+    total_lp_supply = new_liquidity + total_lp_supply;    
+    return (new_liquidity, total_lp_supply, ton_reserves, token_reserves);
+ }
+
+
