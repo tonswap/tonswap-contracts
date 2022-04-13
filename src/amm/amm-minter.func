@@ -104,12 +104,17 @@
 
       int jetton_amount = in_msg_body~load_coins();
       slice jetton_sender = in_msg_body~load_msg_addr();
-      cell payload = in_msg_body~load_ref();
-      cs = payload.begin_parse();
-      int sub_op = cs~load_uint(32);
+      int len = in_msg_body~slice_bits();
+      ~dump len;
+      if len == 0 {
+        return ();
+      }
+      
+      int sub_op = in_msg_body~load_uint(32);
+      
       
       if( sub_op == op::add_liquidity() ) {
-          int slipage = cs~load_uint(32);
+          int slipage = in_msg_body~load_uint(32);
           
           throw_if(98, 0 >= jetton_amount);
           throw_if(99, 0 >= msg_value);
