@@ -104,18 +104,18 @@
 
       int jetton_amount = in_msg_body~load_coins();
       slice jetton_sender = in_msg_body~load_msg_addr();
-      int len = in_msg_body~slice_bits();
-      ~dump len;
-      if len == 0 {
+      
+      int eitherPayload = in_msg_body~load_uint(1); 
+      
+      if (eitherPayload == -1 ) {
         return ();
       }
-      
       int sub_op = in_msg_body~load_uint(32);
-      
-      
+
       if( sub_op == op::add_liquidity() ) {
+
           int slipage = in_msg_body~load_uint(32);
-          
+
           throw_if(98, 0 >= jetton_amount);
           throw_if(99, 0 >= msg_value);
 
@@ -131,7 +131,18 @@
 
           (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(reserves_price, msg_value ,jetton_amount ,ton_reserves, token_reserves, total_supply);
                                                                        ;;TODO should put null instead of payload
-          mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, payload);
+          ;; end wallet is expecting the amount and owner,
+          cell mint_msg = begin_cell()
+            .store_uint(op::internal_transfer(), 32)
+            .store_uint(query_id, 64)
+            .store_coins(new_liquidity)
+            .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
+            .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
+            .store_coins(0)
+            .store_uint(0, 1)
+            .end_cell();
+
+          mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
           return ();
 

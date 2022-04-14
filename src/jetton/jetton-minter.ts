@@ -106,7 +106,7 @@ export class JettonMinter {
         }))
 
         let successResult = res as SuccessfulExecutionResult;
-        console.log(res);
+        
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[1] as BN,

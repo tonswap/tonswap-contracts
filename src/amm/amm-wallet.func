@@ -111,6 +111,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   ;;    |
   ;;    equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
   ;;);
+
   int forward_ton_amount = in_msg_body~load_coins();
 
   msg_value -= gas_consumption();
