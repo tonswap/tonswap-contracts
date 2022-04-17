@@ -24,8 +24,6 @@ const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmq
 const JETTON_TRANSFER = 0xf8a7ea5;
 const SWAP_OUT_SUB_OP = 8;
 
-
-
 const OP_ADD_LIQUIDITY = 22;
 const OP_SWAP_TOKEN = 24;
 const OP_MINT = 21;
