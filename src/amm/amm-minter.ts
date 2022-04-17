@@ -32,19 +32,33 @@ const INTERNAL_TRANSFER = 0x178d4519;
 export class AmmMinter {
     private constructor(public readonly contract: SmartContract) {}
 
+
+    // ds~load_coins(), ;; total_supply
+    //   ds~load_msg_addr(), ;; token_wallet_address
+    //   ds~load_coins(), ;; ton_reserves
+    //   ds~load_coins(), ;; token_reserves
+    //   ds~load_ref(), ;; content
+    //   ds~load_ref()  ;; jetton_wallet_code
     async getData() {
-        let res = await this.contract.invokeGetMethod('get_wallet_data', []);
-        const totalSupply = sliceToString(res.result[0] as BN);
-        const wc = res.result[1] as BN;
-        const jettonMaster = res.result[2] as Slice;
+        let res = await this.contract.invokeGetMethod('get_jetton_data', []);
+        
+        const totalSupply = res.result[0] as BN;
+        const mintable = res.result[1] as BN;
+        const tokenAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
+        const tonReserves = res.result[3] as BN;
+        const tokenReserves = res.result[4] as BN;
         const content = res.result[2] as Cell;
         const code = res.result[3] as Cell;
 
+
+
         return  {
             totalSupply,
-            wc,
-            jettonMaster,
-            code
+            mintable,
+            tokenAddress,
+            tonReserves,
+            tokenReserves,
+            content
         }
     }
 

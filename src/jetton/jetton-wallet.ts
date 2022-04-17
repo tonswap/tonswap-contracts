@@ -14,6 +14,7 @@ import {
 } from "ton";
 import BN from "bn.js";
 import {parseActionsList, sliceToAddress267, toUnixTime, sliceToString, addressToSlice264, toDecimals, OutAction} from "../utils";
+import { OPS } from "../amm/ops";
 
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
@@ -23,9 +24,15 @@ const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmq
 const JETTON_TRANSFER = 0xf8a7ea5;
 const SWAP_OUT_SUB_OP = 8;
 
+
+
 const OP_ADD_LIQUIDITY = 22;
+const OP_SWAP_TOKEN = 24;
 const OP_MINT = 21;
 const BURN_NOTIFICATION = 0x7bdd97de;
+
+type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
+
 
 export class JettonWallet {
 
@@ -57,7 +64,7 @@ export class JettonWallet {
 //    forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
 //    = InternalMsgBody;
 
-    async transfer(from: Address, to: Address, amount: BN, responseDestination: Address, customPayload: Cell | undefined, forwardTonAmount: BN = new BN(0), forwardPayload?: Cell) {
+    async transferOverloaded(from: Address, to: Address, amount: BN, responseDestination: Address, customPayload: Cell | undefined, forwardTonAmount: BN = new BN(0), overloadOp: UsdcTransferNextOp, overloadValue: BN ) {
 
         let messageBody = new Cell();
         messageBody.bits.writeUint(JETTON_TRANSFER, 32) // action
@@ -68,14 +75,13 @@ export class JettonWallet {
         messageBody.bits.writeBit(false); // null custom_payload
         messageBody.bits.writeCoins(forwardTonAmount);
         messageBody.bits.writeBit(false); // forward_payload in this slice, not separate messageBody
-        if (forwardPayload) {
-            // guess
-            //messageBody.bits.writeBitString(forwardPayload.bits);
-           // messageBody.bits.writeBit(false); // null custom_payload
-
-            messageBody.bits.writeUint(OP_ADD_LIQUIDITY ,32);
-            messageBody.bits.writeUint(new BN(5) ,32);  // slippage
+        messageBody.bits.writeUint(new BN(overloadOp) ,32);
+        if (overloadOp == OPS.ADD_LIQUIDITY){
+            messageBody.bits.writeUint(overloadOp ,32);  // slippage
+        } else if (overloadOp == OPS.SWAP_TOKEN) {
+            messageBody.bits.writeCoins(overloadValue);  // min amount out
         }
+        
         let res = await this.contract.sendInternalMessage(new InternalMessage({
             from: from,
             to: to,

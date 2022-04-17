@@ -18,12 +18,12 @@ int squareRoot(int number)  {
 
 () send_grams(slice address, int amount) impure {
     cell msg = begin_cell()
-        .store_uint(196, 9)
-        .store_slice(address)
+        .store_uint (0x18, 6)
+        .store_slice(address) ;; 267bit address
         .store_grams(amount)
-        .store_uint(0, 107)
-        .end_cell();
-    send_raw_message(msg, 3); 
+        .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
+        .end_cell(); 
+    send_raw_message(msg, 3); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
 }
 
 ;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
@@ -61,18 +61,21 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 }
 
 (int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address) impure {
-    
+
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
+
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     throw_if(601, amount_out < min_amount_out);
 
     if(is_ton_src == true) {
+      
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
         ;;TODO add queryId
       send_tokens(0, token_wallet_address, swap_sender, amount_out);
     } else {
+      
       ton_reserves = trgt_resvers - amount_out;
       token_reserves = src_resvers + transferd_amount;
       send_grams(swap_sender, amount_out);

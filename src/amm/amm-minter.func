@@ -111,7 +111,7 @@
         return ();
       }
       int sub_op = in_msg_body~load_uint(32);
-
+      
       if( sub_op == op::add_liquidity() ) {
 
           int slipage = in_msg_body~load_uint(32);
@@ -142,6 +142,7 @@
             .store_uint(0, 1)
             .end_cell();
 
+
           mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
           return ();
@@ -150,7 +151,7 @@
 
       if (sub_op == op::swap_token() ) {  ;; swap TRC20 -> TON
           ;; <b 10TON , min_amount_out=99 b>
-          int min_amount_out = cs~load_grams();
+          int min_amount_out = in_msg_body~load_grams();
           (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
           return ();

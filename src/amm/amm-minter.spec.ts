@@ -4,12 +4,14 @@ import {
 } from "ton";
 import BN from "bn.js";
 import { JettonMinter } from "../jetton/jetton-minter";
-import { AmmMinter } from "../amm/amm-minter";
+import { AmmMinter } from "./amm-minter";
 import { parseActionsList, SendMsgOutAction, parseJettonTransfer, sliceToAddress267 } from "../utils";
 // @ts-ignore
 import { SmartContract, ExecutionResult, Suc } from "ton-contract-executor";
 import { JettonWallet } from "../jetton/jetton-wallet";
 import { LpWallet } from "./amm-wallet";
+import { actionToInternalMessage, addLiquidityCell, parseAmmResp, swapTokenCell } from "./amm-utils";
+import { OPS } from "./ops";
 
 
 const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
@@ -60,7 +62,7 @@ describe('Jetton Minter ', () => {
         let aliceData = await aliceUSDC.getData();
         console.log(`alice owner: ${sliceToAddress267(aliceData.owner).toFriendly()}`);
         
-        const transferResponse = await aliceUSDC.transfer(alice, amm, new BN(502), amm, undefined);
+        const transferResponse = await aliceUSDC.transferOverloaded(alice, amm, new BN(502), amm, undefined, new BN(100000000), OPS.ADD_LIQUIDITY, new BN(5));
         
         const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
         
@@ -75,56 +77,78 @@ describe('Jetton Minter ', () => {
     })
 
     it("alice adds Liquidity", async () => {
-        const {
-            aliceUSDC,
-            masterAMM
-        } = await initEnvironment();
-
-        let aliceData = await aliceUSDC.getData();
-        console.log(`alice owner: ${sliceToAddress267(aliceData.owner).toFriendly()}`);
         
-        const addLiquidityExtraData = addLiquidityCell();
-
-        const transferResponse = await aliceUSDC.transfer(alice, amm, new BN(502),  amm, undefined, new BN(101), addLiquidityExtraData);
-        const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
-        
-        const jettonMsg = actionToInternalMessage(amm, contractAddress, transferMessage.message?.body);
-        const ammUSDC = await JettonWallet.createFromMessage(
-            transferMessage.message?.init?.code as Cell,
-            transferMessage.message?.init?.data as Cell,
-            jettonMsg);
-            
-        const bobUsdcData = await ammUSDC.getData();
-        console.log(`bobUsdcData after transfer balance:${ bobUsdcData.balance.toString()}  owner: ${ sliceToAddress267(bobUsdcData.owner).toFriendly()}`);
-        
-        const transferNotification = ammUSDC.initMessageResult.actions[2] as SendMsgOutAction;
-      //  console.log(transferNotification);
-
-        const msgUsdcToAmm = actionToInternalMessage(amm, contractAddress, transferNotification.message?.body );
-
-        let ammRespRaw = await masterAMM.sendInternalMessage(msgUsdcToAmm)
-        let ammRes = parseAmmResp(ammRespRaw)
-
-        let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
-        console.log(mintLpMessage);
-        
-        const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
-        const lpWallet = await LpWallet.createFromMessage(
-            mintLpMessage.message?.init?.code as Cell,
-            mintLpMessage.message?.init?.data as Cell,
-            lpMsg);
-        
-        let lpData = await lpWallet.getData();
-    
-        expect(lpData.balance.toString()).toBe("708519"); // lp amount
+        await addLiquidity();
         
     })
 
+    it.only("alice removes liquidity", async () => {
+        const expectedOutPut = '332665999';
 
-    it("alice mints usdc to TON", async () => {
+        const {
+            aliceUSDC,
+            masterAMM,
+            ammUsdcWallet,
+            lpWallet
+        } = await addLiquidity();  //create 
+
+        console.log(await lpWallet.getData());
+        
+    });
+
+    it.only("alice swaps usdc to TON", async () => {
+        const expectedOutPut = '332665999';
+
+        const {
+            aliceUSDC,
+            masterAMM,
+            ammUsdcWallet
+        } = await addLiquidity();  //create 
+        
+
+        const minAmountOut = new BN(expectedOutPut);
+        const transferResponse = await aliceUSDC.transferOverloaded(alice, amm, new BN(251),  amm, undefined, new BN(101), OPS.SWAP_TOKEN, minAmountOut);
+        const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
+        
+        const jettonMsg = actionToInternalMessage(amm, contractAddress, transferMessage.message?.body);
+        const transferUsdcResultRaw = await ammUsdcWallet.sendInternalMessage(jettonMsg);
+        const transferUsdcResult = parseAmmResp(transferUsdcResultRaw);
+            
+        const bobUsdcData = await ammUsdcWallet.getData();
+        console.log(`bobUsdcData after transfer balance:${ bobUsdcData.balance.toString()}  owner: ${ sliceToAddress267(bobUsdcData.owner).toFriendly()}`);
+
+        
+        console.log(transferUsdcResult.actions);
+        
+        const transferNotification = transferUsdcResult.actions[2] as SendMsgOutAction;
+        const msgTransferUsdcToAmm = actionToInternalMessage(amm, contractAddress, transferNotification.message?.body );
+
+        let ammSwapTokenResponseRaw = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
+        
+        console.log(ammSwapTokenResponseRaw);
+        
+        let ammSwapTokenResponse = parseAmmResp(ammSwapTokenResponseRaw);
+        console.log(ammSwapTokenResponse.actions);
+        
+
+        let sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
+        console.log('sendTonAfterSwapMessage value=',sendTonAfterSwapMessage.message.info?.value.coins.toString());
+        expect(sendTonAfterSwapMessage.message.info?.value.coins.toString()).toBe(expectedOutPut);
 
     });
 
+    
+
+    it.only("alice swaps TON to USDC", async () => {
+        const expectedOutPut = '332665999';
+
+        const {
+            aliceUSDC,
+            masterAMM,
+            ammUsdcWallet
+        } = await addLiquidity();  //create 
+
+    });
 });
 
 
@@ -149,40 +173,58 @@ async function initEnvironment() {
 
 
 
-function actionToInternalMessage(to: Address, from:Address, messageBody: Cell, messageValue = new BN(1000000000), bounce = false) {
-    let msg = new CommonMessageInfo( { body: new CellMessage(messageBody) });
-    return new InternalMessage({
-        to,
-        from,
-        value: messageValue,
-        bounce,
-        body: msg
-    })
-}
+async function addLiquidity() {
+    const {
+        aliceUSDC,
+        masterAMM
+    } = await initEnvironment();
 
+    let aliceData = await aliceUSDC.getData();
+    console.log(`alice owner: ${sliceToAddress267(aliceData.owner).toFriendly()}`);
 
-function parseAmmResp(result: ExecutionResult) {
-    // @ts-ignore
-    let res = result as SuccessfulExecutionResult;
-    //console.log(res);
+    const transferResponse = await aliceUSDC.transferOverloaded(alice, amm, new BN(502),  amm, undefined, new BN(101), OPS.ADD_LIQUIDITY, new BN(5));
+    const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
+    
+    const jettonMsg = actionToInternalMessage(amm, contractAddress, transferMessage.message?.body);
+    const ammUsdcWallet = await JettonWallet.createFromMessage(
+        transferMessage.message?.init?.code as Cell,
+        transferMessage.message?.init?.data as Cell,
+        jettonMsg);
+        
+    const bobUsdcData = await ammUsdcWallet.getData();
+    console.log(`bobUsdcData after transfer balance:${ bobUsdcData.balance.toString()}  owner: ${ sliceToAddress267(bobUsdcData.owner).toFriendly()}`);
+    //@ts-ignore
+    const transferNotification = ammUsdcWallet.initMessageResult.actions[2] as SendMsgOutAction;
+  //  console.log(transferNotification);
+
+    const msgUsdcToAmm = actionToInternalMessage(amm, contractAddress, transferNotification.message?.body );
+
+    let ammRespRaw = await masterAMM.sendInternalMessage(msgUsdcToAmm)
+    const ammData = await masterAMM.getData();
+    console.log(`ammData 
+        tonReservers:${ammData.tonReserves.toString()}
+        tokenReserves:${ammData.tokenReserves.toString()}
+        totalSupply:${ammData.totalSupply.toString()}
+    `);
+    
+    let ammRes = parseAmmResp(ammRespRaw)
+
+    let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
+    
+    const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
+    const lpWallet = await LpWallet.createFromMessage(
+        mintLpMessage.message?.init?.code as Cell,
+        mintLpMessage.message?.init?.data as Cell,
+        lpMsg);
+    
+    let lpData = await lpWallet.getData();
+
+    expect(lpData.balance.toString()).toBe("708519"); // lp amount
+
     return {
-        "exit_code": res.exit_code,
-        returnValue: res.result[1] as BN,
-        logs: res.logs,
-        actions: parseActionsList(res.action_list_cell)
+        aliceUSDC,
+        masterAMM,
+        ammUsdcWallet,
+        lpWallet,
     }
-}
-
-function swapTokenCell(minAmountOut: BN) {
-    let extra_data = new Cell();
-    extra_data.bits.writeUint(OP_ADD_LIQUIDITY ,32);
-    extra_data.bits.writeUint(minAmountOut ,32);  // minAmountOut
-    return extra_data;
-}
-
-function addLiquidityCell() {
-    let extra_data = new Cell();
-    extra_data.bits.writeUint(OP_ADD_LIQUIDITY ,32);
-    extra_data.bits.writeUint(new BN(5) ,32);  // slippage
-    return extra_data;
 }
