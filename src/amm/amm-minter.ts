@@ -1,5 +1,7 @@
 import {readFile} from "fs/promises";
+//@ts-ignore
 import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
+import { parseAmmResp } from "../utils";
 
 import {
     Address,
@@ -33,7 +35,7 @@ export class AmmMinter {
     private constructor(public readonly contract: SmartContract) {}
 
 
-    // ds~load_coins(), ;; total_supply
+    //   ds~load_coins(), ;; total_supply
     //   ds~load_msg_addr(), ;; token_wallet_address
     //   ds~load_coins(), ;; ton_reserves
     //   ds~load_coins(), ;; token_reserves
@@ -44,6 +46,7 @@ export class AmmMinter {
         
         const totalSupply = res.result[0] as BN;
         const mintable = res.result[1] as BN;
+        //@ts-ignore
         const tokenAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
@@ -63,7 +66,9 @@ export class AmmMinter {
     }
 
     async sendInternalMessage(message: InternalMessage)  {
-        return this.contract.sendInternalMessage(message);
+        let res = await this.contract.sendInternalMessage(message);
+        
+        return parseAmmResp(res);
     }
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16) 

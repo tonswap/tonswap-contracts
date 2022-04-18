@@ -30,13 +30,20 @@ int squareRoot(int number)  {
 ;;           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
 ;;           forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
 ;;           = InternalMsgBody;
-() send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) {
+
+
+      
+
+() send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
      var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
     .store_coins(0)
-    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
-    .store_ref(null());
+    .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1); ;; 7 - 108
+    
+    ;;.store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1 ); ;; 107 bits
+    ;;.store_uint(0, 1); ;; message body is in a seperate cell
+    
      
     var msg_body = begin_cell()
     .store_uint(op::transfer(), 32)
@@ -44,8 +51,9 @@ int squareRoot(int number)  {
     .store_coins(jetton_amount)
     .store_slice(to)
     .store_slice(to)
-    .store_coins(0)
-    .store_slice(null())
+    .store_uint(0, 1) ;; null custom_payload
+    .store_coins(0) ;; 0 forward_ton_amount
+    .store_uint(0, 1) ;; bit is on - empty forward payload 
     .end_cell();
 
     msg = msg.store_ref(msg_body);

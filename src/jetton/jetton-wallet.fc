@@ -49,9 +49,6 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   balance -= jetton_amount;
 
-  ~dump owner_address;
-  ~dump sender_address;
-
   
   throw_unless(705, equal_slices(owner_address, sender_address));
   throw_unless(706, balance >= 0);
@@ -203,9 +200,12 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+  ~dump msg_value;
   if (in_msg_body.slice_empty?()) { ;; ignore empty messages
     return ();
   }
+
+  ~dump in_msg_body;
 
   slice cs = in_msg_full.begin_parse();
   int flags = cs~load_uint(4);

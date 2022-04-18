@@ -1,4 +1,5 @@
 import {readFile} from "fs/promises";
+//@ts-ignore
 import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 
 import {
@@ -34,6 +35,7 @@ export class JettonMinter {
 
     async getData() {
         let res = await this.contract.invokeGetMethod('get_wallet_data', []);
+        //@ts-ignore
         const totalSupply = sliceToString(res.result[0] as BN);
         const wc = res.result[1] as BN;
         const jettonMaster = res.result[2] as Slice;
@@ -106,7 +108,7 @@ export class JettonMinter {
         }))
 
         let successResult = res as SuccessfulExecutionResult;
-        
+
         return {
             "exit_code": res.exit_code,
             returnValue: res.result[1] as BN,

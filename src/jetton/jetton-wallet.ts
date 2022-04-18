@@ -1,6 +1,7 @@
 import {readFile} from "fs/promises";
 // @ts-ignore
 import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
+import { parseAmmResp } from "../utils";
 
 import {
     Address,
@@ -21,7 +22,7 @@ const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmq
 
 
 
-const JETTON_TRANSFER = 0xf8a7ea5;
+
 const SWAP_OUT_SUB_OP = 8;
 
 const OP_ADD_LIQUIDITY = 22;
@@ -54,7 +55,8 @@ export class JettonWallet {
     }
 
    async sendInternalMessage(message: InternalMessage)  {
-       return this.contract.sendInternalMessage(message);
+       const res = await this.contract.sendInternalMessage(message);
+       return parseAmmResp(res);
    }
 
 //    transfer#f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
@@ -65,7 +67,7 @@ export class JettonWallet {
     async transferOverloaded(from: Address, to: Address, amount: BN, responseDestination: Address, customPayload: Cell | undefined, forwardTonAmount: BN = new BN(0), overloadOp: UsdcTransferNextOp, overloadValue: BN ) {
 
         let messageBody = new Cell();
-        messageBody.bits.writeUint(JETTON_TRANSFER, 32) // action
+        messageBody.bits.writeUint(OPS.Transfer, 32) // action
         messageBody.bits.writeUint(1, 64) // query-id
         messageBody.bits.writeCoins(amount)
         messageBody.bits.writeAddress(to);

@@ -19,17 +19,6 @@ export function actionToInternalMessage(to: Address, from:Address, messageBody: 
 }
 
 
-export  function parseAmmResp(result: ExecutionResult) {
-    // @ts-ignore
-    let res = result as SuccessfulExecutionResult;
-    //console.log(res);
-    return {
-        "exit_code": res.exit_code,
-        returnValue: res.result[1] as BN,
-        logs: res.logs,
-        actions: parseActionsList(res.action_list_cell)
-    }
-}
 
 export  function swapTokenCell(minAmountOut: BN) {
     let extra_data = new Cell();

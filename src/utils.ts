@@ -2,6 +2,8 @@
 import BN from "bn.js";
 import {Address, Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
 import {readCurrencyCollection, readMessage} from "./messageUtils";
+// @ts-ignore
+import { SmartContract, ExecutionResult } from "ton-contract-executor";
 
 // out_list_empty$_ = OutList 0;
 // out_list$_ {n:#} prev:^(OutList n) action:OutAction
@@ -201,4 +203,17 @@ export function unFmt18(num: BN) {
 export function stripBoc(bocStr :string) {
     //console.log(`parsing boc ${bocStr}`);
     return bocStr.substr(2, bocStr.length - 4 );
+}
+
+
+export  function parseAmmResp(result: ExecutionResult) {
+    // @ts-ignore
+    let res = result as SuccessfulExecutionResult;
+    //console.log(res);
+    return {
+        "exit_code": res.exit_code,
+        returnValue: res.result[1] as BN,
+        logs: res.logs,
+        actions: parseActionsList(res.action_list_cell)
+    }
 }
