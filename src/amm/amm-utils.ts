@@ -2,33 +2,33 @@ import BN from "bn.js";
 import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "ton";
 import { OPS } from "./ops";
 
-
-
-export function actionToInternalMessage(to: Address, from:Address, messageBody: Cell, messageValue = new BN(1000000000), bounce = false) {
-    let msg = new CommonMessageInfo( { body: new CellMessage(messageBody) });
+export function actionToInternalMessage(
+    to: Address,
+    from: Address,
+    messageBody: Cell,
+    messageValue = new BN(1000000000),
+    bounce = false
+) {
+    let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
     return new InternalMessage({
         to,
         from,
         value: messageValue,
         bounce,
-        body: msg
-    })
+        body: msg,
+    });
 }
 
-
-
-export  function swapTokenCell(minAmountOut: BN) {
+export function swapTokenCell(minAmountOut: BN) {
     let extra_data = new Cell();
-    extra_data.bits.writeUint(OPS.SWAP_TOKEN ,32);
-    extra_data.bits.writeUint(minAmountOut ,32);  // minAmountOut
+    extra_data.bits.writeUint(OPS.SWAP_TOKEN, 32);
+    extra_data.bits.writeUint(minAmountOut, 32); // minAmountOut
     return extra_data;
 }
 
 export function addLiquidityCell() {
     let extra_data = new Cell();
-    extra_data.bits.writeUint(OPS.ADD_LIQUIDITY ,32);
-    extra_data.bits.writeUint(new BN(5) ,32);  // slippage
+    extra_data.bits.writeUint(OPS.ADD_LIQUIDITY, 32);
+    extra_data.bits.writeUint(new BN(5), 32); // slippage
     return extra_data;
 }
-
-

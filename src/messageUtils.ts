@@ -1,15 +1,14 @@
-import {RawCommonMessageInfo, RawCurrencyCollection, RawMessage, RawStateInit, Slice} from "ton";
+import { RawCommonMessageInfo, RawCurrencyCollection, RawMessage, RawStateInit, Slice } from "ton";
 
 export function readCurrencyCollection(slice: Slice): RawCurrencyCollection {
     const coins = slice.readCoins();
     if (slice.readBit()) {
-        throw Error('Currency collctions are not supported yet');
+        throw Error("Currency collctions are not supported yet");
     }
     return { coins };
 }
 
 function readCommonMsgInfo(slice: Slice): RawCommonMessageInfo {
-
     if (!slice.readBit()) {
         // Internal
         let ihrDisabled = slice.readBit();
@@ -23,7 +22,7 @@ function readCommonMsgInfo(slice: Slice): RawCommonMessageInfo {
         let createdLt = slice.readUint(64);
         let createdAt = slice.readUintNumber(32);
         return {
-            type: 'internal',
+            type: "internal",
             ihrDisabled,
             bounce,
             bounced,
@@ -33,8 +32,8 @@ function readCommonMsgInfo(slice: Slice): RawCommonMessageInfo {
             ihrFee,
             fwdFee,
             createdLt,
-            createdAt
-        }
+            createdAt,
+        };
     } else if (slice.readBit()) {
         // Outgoing external
         let src = slice.readAddress();
@@ -42,39 +41,39 @@ function readCommonMsgInfo(slice: Slice): RawCommonMessageInfo {
         let createdLt = slice.readUint(64);
         let createdAt = slice.readUintNumber(32);
         return {
-            type: 'external-out',
+            type: "external-out",
             src,
             dest,
             createdLt,
-            createdAt
-        }
+            createdAt,
+        };
     } else {
         // Incoming external
         let src = slice.readAddress();
         let dest = slice.readAddress();
-        let importFee = slice.readCoins()
+        let importFee = slice.readCoins();
         return {
-            type: 'external-in',
+            type: "external-in",
             src,
             dest,
-            importFee
-        }
+            importFee,
+        };
     }
 }
 
 function readStateInit(slice: Slice) {
     if (slice.readBit()) {
-        throw Error('Unsupported');
+        throw Error("Unsupported");
     }
     if (slice.readBit()) {
-        throw Error('Unsupported');
+        throw Error("Unsupported");
     }
     const hasCode = slice.readBit();
     const code = hasCode ? slice.readCell() : null;
     const hasData = slice.readBit();
     const data = hasData ? slice.readCell() : null;
     if (slice.readBit()) {
-        throw Error('Unsupported');
+        throw Error("Unsupported");
     }
 
     return { data, code };
@@ -96,6 +95,6 @@ export function readMessage(slice: Slice): RawMessage {
     return {
         info,
         init,
-        body
+        body,
     };
 }

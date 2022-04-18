@@ -1,4 +1,4 @@
-export enum OPS  {
+export enum OPS {
     Transfer = 0xf8a7ea5,
     Transfer_notification = 0x7362d09c,
     Internal_transfer = 0x178d4519,
@@ -7,6 +7,5 @@ export enum OPS  {
     Burn_notification = 0x7bdd97de,
     ADD_LIQUIDITY = 22,
     REMOVE_LIQUIDITY = 23,
-    SWAP_TOKEN = 24
+    SWAP_TOKEN = 24,
 }
-

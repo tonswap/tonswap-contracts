@@ -1,7 +1,7 @@
 //https://github.com/tonwhales/ton-nft/blob/main/packages/utils/parseActionsList.ts
 import BN from "bn.js";
-import {Address, Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
-import {readCurrencyCollection, readMessage} from "./messageUtils";
+import { Address, Cell, RawCurrencyCollection, RawMessage, Slice } from "ton";
+import { readCurrencyCollection, readMessage } from "./messageUtils";
 // @ts-ignore
 import { ExecutionResult } from "ton-contract-executor";
 
@@ -20,60 +20,59 @@ import { ExecutionResult } from "ton-contract-executor";
 //
 // out_list_node$_ prev:^Cell action:OutAction = OutListNode;
 
-export type SendMsgOutAction = { type: 'send_msg', message: RawMessage, mode: number }
-export type ReserveCurrencyAction = { type: 'reserve_currency', mode: number, currency: RawCurrencyCollection }
-export type UnknownOutAction = { type: 'unknown' }
-const decimals = new BN('1000000000');
-const decimals18 = new BN('1000000000000000000');
+export type SendMsgOutAction = { type: "send_msg"; message: RawMessage; mode: number };
+export type ReserveCurrencyAction = {
+    type: "reserve_currency";
+    mode: number;
+    currency: RawCurrencyCollection;
+};
+export type UnknownOutAction = { type: "unknown" };
+const decimals = new BN("1000000000");
+const decimals18 = new BN("1000000000000000000");
 
+export type OutAction = SendMsgOutAction | ReserveCurrencyAction | UnknownOutAction;
 
-export type OutAction =
-    | SendMsgOutAction
-    | ReserveCurrencyAction
-    | UnknownOutAction
+export function parseActionsList(actions: Slice | Cell): OutAction[] {
+    let list: any[] = [];
 
-export function parseActionsList(actions: Slice|Cell): OutAction[] {
-    let list: any[] = []
+    let ref: Slice;
 
-    let ref: Slice
+    let outAction: OutAction;
 
-    let outAction: OutAction
-
-    let slice
+    let slice;
     if (actions instanceof Cell) {
-        slice = Slice.fromCell(actions)
+        slice = Slice.fromCell(actions);
     } else {
-        slice = actions
+        slice = actions;
     }
 
     try {
-        ref = slice.readRef()
+        ref = slice.readRef();
     } catch (e) {
-        return list
+        return list;
     }
 
-    let magic = slice.readUint(32).toNumber()
+    let magic = slice.readUint(32).toNumber();
     if (magic === 0x0ec3c86d) {
         outAction = {
-            type: 'send_msg',
+            type: "send_msg",
             mode: slice.readUint(8).toNumber(),
-            message: readMessage(slice.readRef())
-        }
+            message: readMessage(slice.readRef()),
+        };
     } else if (magic === 0x36e6b809) {
         outAction = {
-            type: 'reserve_currency',
+            type: "reserve_currency",
             mode: slice.readUint(8).toNumber(),
-            currency: readCurrencyCollection(slice)
-        }
+            currency: readCurrencyCollection(slice),
+        };
     } else {
-        outAction = { type: 'unknown' }
+        outAction = { type: "unknown" };
     }
 
-    list.push(outAction)
-    list.push(...parseActionsList(ref))
-    return list
+    list.push(outAction);
+    list.push(...parseActionsList(ref));
+    return list;
 }
-
 
 export function parseTrc20Transfer(msgBody: Cell) {
     let slice = msgBody.beginParse();
@@ -82,15 +81,15 @@ export function parseTrc20Transfer(msgBody: Cell) {
     var to = sliceToAddress(slice);
 
     var grams = slice.readCoins();
-    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
-    console.log('parseTrc20Transfer',  to)
+    console.log("parseTrc20Transfer amount", grams.toString(10));
+    console.log("parseTrc20Transfer", to);
     return {
         op: op.toString(10),
         query: query.toString(10),
         to: to,
-        amount:grams
+        amount: grams,
         // amount: fees
-    }
+    };
 }
 
 export function parseTrc20TransferRecipt(msgBody: Cell) {
@@ -100,21 +99,21 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
     var to = sliceToAddress(slice);
 
     var grams = slice.readCoins();
-    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
-    console.log('parseTrc20Transfer',  to)
+    console.log("parseTrc20Transfer amount", grams.toString(10));
+    console.log("parseTrc20Transfer", to);
     return {
         op: op.toString(10),
         query: query.toString(10),
         to: to,
-        amount:grams
+        amount: grams,
         // amount: fees
-    }
+    };
 }
 
 export function parseJettonTransfer(msgBody: Cell) {
     // refs[0] is stateInit
     console.log(msgBody.refs);
-    
+
     let msg = msgBody.refs[1];
 
     let slice = msg.beginParse();
@@ -123,37 +122,35 @@ export function parseJettonTransfer(msgBody: Cell) {
     var to = sliceToAddress(slice);
 
     var grams = slice.readCoins();
-    console.log('parseTrc20Transfer amount' ,  grams.toString(10))
-    console.log('parseTrc20Transfer',  to)
+    console.log("parseTrc20Transfer amount", grams.toString(10));
+    console.log("parseTrc20Transfer", to);
     return {
         op: op.toString(10),
         query: query.toString(10),
         to: to,
-        amount:grams
+        amount: grams,
         // amount: fees
-    }
+    };
 }
 
-
 export function toUnixTime(timeInMS: number) {
-    return Math.round( timeInMS / 1000);
+    return Math.round(timeInMS / 1000);
 }
 
 export function sliceToString(s: Slice) {
-    let data = s.readRemaining()
-    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
+    let data = s.readRemaining();
+    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString();
 }
 
 export function cellToString(s: Cell) {
-    let data = s.beginParse().readRemaining()
-    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString()
+    let data = s.beginParse().readRemaining();
+    return data.buffer.slice(0, Math.ceil(data.cursor / 8)).toString();
 }
 
 export function base64StrToCell(str: string): Cell[] {
-    let buf = Buffer.from(str, 'base64');
+    let buf = Buffer.from(str, "base64");
     return Cell.fromBoc(buf);
 }
-
 
 export function addressToSlice264(a: Address) {
     let c = new Cell();
@@ -164,13 +161,13 @@ export function addressToSlice264(a: Address) {
     return addr;
 }
 
-export function sliceToAddress267(s :Slice) {
+export function sliceToAddress267(s: Slice) {
     const _anyCast = new BN(s.readUint(3)); //ignore anycast bits
     return sliceToAddress(s);
 }
 
-export function sliceToAddress(s :Slice, isAnyCastAddress=false) {
-    if(isAnyCastAddress) {
+export function sliceToAddress(s: Slice, isAnyCastAddress = false) {
+    if (isAnyCastAddress) {
         s.skip(3);
     }
     const wc = new BN(s.readUint(8));
@@ -179,41 +176,39 @@ export function sliceToAddress(s :Slice, isAnyCastAddress=false) {
     return address;
 }
 
-
-
 export function toDecimals(num: number | string) {
-    return (new BN(num)).mul(decimals);
+    return new BN(num).mul(decimals);
 }
 
 export function fromDecimals(num: BN) {
     const numStr = num.toString();
-    const dotIndex = numStr.length - (9);
-    const formmatedStr = numStr.substring(0, dotIndex)+'.'+ numStr.substring(dotIndex, numStr.length);
+    const dotIndex = numStr.length - 9;
+    const formmatedStr =
+        numStr.substring(0, dotIndex) + "." + numStr.substring(dotIndex, numStr.length);
     return formmatedStr;
 }
 
 export function fmt18(num: number | string) {
-    return (new BN(num)).mul(decimals18);
+    return new BN(num).mul(decimals18);
 }
 
 export function unFmt18(num: BN) {
-    return (new BN(num)).div(decimals18);
+    return new BN(num).div(decimals18);
 }
 
-export function stripBoc(bocStr :string) {
+export function stripBoc(bocStr: string) {
     //console.log(`parsing boc ${bocStr}`);
-    return bocStr.substr(2, bocStr.length - 4 );
+    return bocStr.substr(2, bocStr.length - 4);
 }
 
-
-export  function parseAmmResp(result: ExecutionResult) {
+export function parseAmmResp(result: ExecutionResult) {
     // @ts-ignore
     let res = result as SuccessfulExecutionResult;
     //console.log(res);
     return {
-        "exit_code": res.exit_code,
+        exit_code: res.exit_code,
         returnValue: res.result[1] as BN,
         logs: res.logs,
-        actions: parseActionsList(res.action_list_cell)
-    }
+        actions: parseActionsList(res.action_list_cell),
+    };
 }

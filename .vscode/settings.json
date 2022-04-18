@@ -1,5 +1,7 @@
 {
     "cSpell.words": [
         "mintable"
-    ]
+    ],
+    "prettier.requireConfig": true,
+    "prettier.tabWidth": 4
 }
