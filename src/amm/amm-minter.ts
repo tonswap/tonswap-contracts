@@ -23,6 +23,7 @@ import {
     sliceToAddress,
 } from "../utils";
 import { compileFuncToB64 } from "../funcToB64";
+import { OPS } from "./ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const addressA = Address.parseFriendly("kQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nk1x").address;
@@ -71,12 +72,41 @@ export class AmmMinter {
         return parseAmmResp(res);
     }
 
+    async swapTon(from: Address, tonToSwap: BN, minAmountOut: BN) {
+        const fee = new BN(100000000);
+
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(OPS.SWAP_TON, 32); // action
+        messageBody.bits.writeUint(1, 64); // query-id
+        messageBody.bits.writeCoins(tonToSwap); // swapping amount of tons
+        messageBody.bits.writeCoins(minAmountOut); // minimum received
+
+        let res = await this.contract.sendInternalMessage(
+            new InternalMessage({
+                from,
+                to: contractAddress,
+                value: tonToSwap.add(fee),
+                bounce: false,
+                body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
+            })
+        );
+
+        console.log(res);
+        let successResult = res as SuccessfulExecutionResult;
+        return {
+            exit_code: res.exit_code,
+            returnValue: res.result[1] as BN,
+            logs: res.logs,
+            actions: parseActionsList(successResult.action_list_cell),
+        };
+    }
+
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
     //           = InternalMsgBody;
     async receiveBurn(subwalletOwner: Address, sourceWallet: Address, amount: BN) {
         let messageBody = new Cell();
-        messageBody.bits.writeUint(BURN_NOTIFICATION, 32); // action
+        messageBody.bits.writeUint(OPS.Burn_notification, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
         messageBody.bits.writeCoins(amount); // jetton amount received
         messageBody.bits.writeAddress(sourceWallet);
@@ -137,7 +167,14 @@ export class AmmMinter {
         this.contract.setUnixTime(time);
     }
 
-    static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
+    static async create(
+        tokenAdmin: Address,
+        content: string,
+        rewardsWallet: Address,
+        rewardsRate: BN,
+        protocolRewardsWallet: Address,
+        protocolRewardsRate: BN = new BN(0)
+    ) {
         let msgHexComment = (await readFile("./src/amm/msg_hex_comment.func")).toString("utf-8");
         let jettonAMM = (await readFile("./src/amm/amm-minter-utils.func")).toString("utf-8");
         let jettonMinter = (await readFile("./src/amm/amm-minter.func")).toString("utf-8");
@@ -160,7 +197,15 @@ export class AmmMinter {
         ]);
         const ammWalletCode = Cell.fromBoc(ammWalletCodeB64);
 
-        const data = await buildDataCell(totalSupply, tokenAdmin, content, ammWalletCode[0]);
+        const data = await buildCell(
+            tokenAdmin,
+            content,
+            ammWalletCode[0],
+            rewardsWallet,
+            rewardsRate,
+            protocolRewardsWallet,
+            protocolRewardsRate
+        );
 
         const combinedCode = [
             stdlib,
@@ -181,11 +226,14 @@ export class AmmMinter {
     }
 }
 
-async function buildDataCell(
-    totalSupply: BN,
+async function buildCell(
     token_wallet_address: Address,
     content: string,
-    tokenCode: Cell
+    tokenCode: Cell,
+    rewardsWallet: Address,
+    rewardsRate: BN,
+    protocolRewardsWallet: Address,
+    protocolRewardsRate: BN
 ) {
     //   ds~load_coins(), ;; total_supply
     //   ds~load_msg_addr(), ;; token_wallet_address
@@ -197,12 +245,19 @@ async function buildDataCell(
     const contentCell = new Cell();
     contentCell.bits.writeString(content);
 
-    let dataCell = new Cell();
-    dataCell.bits.writeCoins(totalSupply);
+    const adminData = new Cell();
+    adminData.bits.writeAddress(rewardsWallet);
+    adminData.bits.writeUint(rewardsRate, 64);
+    adminData.bits.writeAddress(protocolRewardsWallet);
+    adminData.bits.writeUint(protocolRewardsRate, 64);
+
+    const dataCell = new Cell();
+    dataCell.bits.writeCoins(0);
     dataCell.bits.writeAddress(token_wallet_address);
     dataCell.bits.writeCoins(0);
     dataCell.bits.writeCoins(0);
     dataCell.refs.push(contentCell);
     dataCell.refs.push(tokenCode);
+    dataCell.refs.push(adminData);
     return dataCell;
 }
