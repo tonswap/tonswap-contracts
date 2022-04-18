@@ -1,4 +1,3 @@
-import {readFile} from "fs/promises";
 // @ts-ignore
 import {SmartContract, SuccessfulExecutionResult} from "ton-contract-executor";
 import { parseAmmResp } from "../utils";
@@ -9,26 +8,13 @@ import {
     CellMessage,
     InternalMessage,
     Slice,
-    CommonMessageInfo,
-    ExternalMessage,
-    serializeDict
+    CommonMessageInfo
 } from "ton";
 import BN from "bn.js";
-import {parseActionsList, sliceToAddress267, toUnixTime, sliceToString, addressToSlice264, toDecimals, OutAction} from "../utils";
+import {parseActionsList, toUnixTime, toDecimals, OutAction} from "../utils";
 import { OPS } from "../amm/ops";
 
 
-const contractAddress = Address.parse('EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t')
-
-
-
-
-const SWAP_OUT_SUB_OP = 8;
-
-const OP_ADD_LIQUIDITY = 22;
-const OP_SWAP_TOKEN = 24;
-const OP_MINT = 21;
-const BURN_NOTIFICATION = 0x7bdd97de;
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 

@@ -1,11 +1,9 @@
 
-import {
-    Address, Cell, CellMessage, CommonMessageInfo, InternalMessage, RawCommonMessageInfo,
-} from "ton";
+import { Address, Cell} from "ton";
 import BN from "bn.js";
 import { JettonMinter } from "../jetton/jetton-minter";
 import { AmmMinter } from "./amm-minter";
-import { parseActionsList, SendMsgOutAction, parseJettonTransfer, sliceToAddress267 } from "../utils";
+import { SendMsgOutAction, sliceToAddress267 } from "../utils";
 import { JettonWallet } from "../jetton/jetton-wallet";
 import { LpWallet } from "./amm-wallet";
 import { actionToInternalMessage as actionToMessage } from "./amm-utils";
@@ -22,9 +20,7 @@ const ALICE_INITIAL_BALANCE = 1500;
 const aliceSubwallet = Address.parseFriendly('EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7').address;
 
 describe('Jetton Minter ', () => {
-    
 
-    
     it("mint USDC", async () => {
 
         const {

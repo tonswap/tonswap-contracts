@@ -3,7 +3,7 @@ import BN from "bn.js";
 import {Address, Cell, RawCurrencyCollection, RawMessage, Slice} from "ton";
 import {readCurrencyCollection, readMessage} from "./messageUtils";
 // @ts-ignore
-import { SmartContract, ExecutionResult } from "ton-contract-executor";
+import { ExecutionResult } from "ton-contract-executor";
 
 // out_list_empty$_ = OutList 0;
 // out_list$_ {n:#} prev:^(OutList n) action:OutAction

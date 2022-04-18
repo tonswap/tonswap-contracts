@@ -1,8 +1,5 @@
 import BN from "bn.js";
 import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "ton";
-// @ts-ignore
-import { SmartContract, ExecutionResult } from "ton-contract-executor";
-import { parseActionsList, SendMsgOutAction, parseJettonTransfer, sliceToAddress267 } from "../utils";
 import { OPS } from "./ops";
 
 

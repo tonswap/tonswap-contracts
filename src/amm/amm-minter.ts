@@ -67,7 +67,6 @@ export class AmmMinter {
 
     async sendInternalMessage(message: InternalMessage)  {
         let res = await this.contract.sendInternalMessage(message);
-        
         return parseAmmResp(res);
     }
 

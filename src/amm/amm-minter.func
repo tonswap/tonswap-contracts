@@ -85,7 +85,7 @@
 
         send_tokens(0, token_wallet_address, from_address, share_in_token_reserves);        
         send_grams(from_address ,share_in_ton_reserves);
-
+;;TODO fix
 ;;        throw_unless(74,
 ;;            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
 ;;        );
