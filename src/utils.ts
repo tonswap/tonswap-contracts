@@ -110,25 +110,34 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
     };
 }
 
-export function parseJettonTransfer(msgBody: Cell) {
+// var msg_body = begin_cell()
+//     .store_uint(op::transfer(), 32)
+//     .store_uint(query_id, 64)
+//     .store_coins(jetton_amount)
+//     .store_slice(to)
+//     .store_slice(to)
+//     .store_uint(0, 1) ;; null custom_payload
+//     .store_coins(0) ;; 0 forward_ton_amount
+//     .store_uint(0, 1) ;; bit is on - empty forward payload
+//     .end_cell();
+export function parseJettonTransfer(msg: Cell) {
     // refs[0] is stateInit
-    console.log(msgBody.refs);
+    // console.log(msgBody.refs);
 
-    let msg = msgBody.refs[1];
+    // let msg = msgBody.refs[1];
 
     let slice = msg.beginParse();
     var op = slice.readUint(32);
     var query = slice.readUint(64);
-    var to = sliceToAddress(slice);
+    var amount = slice.readCoins();
+    var to = slice.readAddress();
+    var to2 = slice.readAddress();
 
-    var grams = slice.readCoins();
-    console.log("parseTrc20Transfer amount", grams.toString(10));
-    console.log("parseTrc20Transfer", to);
     return {
         op: op.toString(10),
         query: query.toString(10),
-        to: to,
-        amount: grams,
+        to,
+        amount,
         // amount: fees
     };
 }

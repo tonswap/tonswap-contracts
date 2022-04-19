@@ -2,7 +2,7 @@ import { Address, Cell } from "ton";
 import BN from "bn.js";
 import { JettonMinter } from "../jetton/jetton-minter";
 import { AmmMinter } from "./amm-minter";
-import { SendMsgOutAction, sliceToAddress267, toUnixTime } from "../utils";
+import { parseJettonTransfer, SendMsgOutAction, sliceToAddress267, toUnixTime } from "../utils";
 import { JettonWallet } from "../jetton/jetton-wallet";
 import { LpWallet } from "./amm-wallet";
 import { actionToInternalMessage, actionToMessage } from "./amm-utils";
@@ -232,24 +232,30 @@ describe("Jetton Minter ", () => {
         expect(rewards.protocolRewards.toString()).toBe(expectedRewards);
     });
 
-    it("claim rewards", async () => {
-        const expectedRewards = "172800";
-        const { masterAMM, lpWallet } = await initAMM(new BN(0), new BN(500)); //create
+    it.only("claim rewards", async () => {
+        const expectedRewards = "6601492966";
+        const { masterAMM, lpWallet } = await initAMM(new BN(500), new BN(0)); //create
 
         // fast forward time in 24 hours.
-        masterAMM.setUnixTime(toUnixTime(Date.now() + 3600000 * 24));
+        lpWallet.setUnixTime(toUnixTime(Date.now() + 3300746483 * 1000));
         const lpData = await lpWallet.getData();
 
         const oneDay = new BN(3600 * 24);
-        const rewards = await masterAMM.rewardsOf(lpData.balance, oneDay);
-        expect(rewards.protocolRewards.toString()).toBe(expectedRewards);
+        const rewards = await masterAMM.rewardsOf(lpData.balance, new BN(3300746483));
+        expect(rewards.tokenRewards.toString()).toBe(expectedRewards);
 
         const walletClaimRewardsResponse = await lpWallet.claimRewards(alice, amm);
         //console.log(walletClaimRewardsResponse);
 
         let msg = actionToMessage(alice, amm, walletClaimRewardsResponse.actions[0]);
         let ammResponse = await masterAMM.sendInternalMessage(msg);
-        console.log("ammResponse", ammResponse.actions[0]);
+        console.log(ammResponse);
+
+        let action = ammResponse.actions[0] as SuccessfulExecutionResult;
+        console.log(action.message.body);
+
+        const transferData = parseJettonTransfer(action.message.body);
+        expect(transferData.amount.toString()).toBe("6601492966");
     });
 });
 
