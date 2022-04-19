@@ -1,5 +1,6 @@
 import BN from "bn.js";
 import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "ton";
+import { OutAction } from "../utils";
 import { OPS } from "./ops";
 
 export function actionToInternalMessage(
@@ -10,6 +11,25 @@ export function actionToInternalMessage(
     bounce = false
 ) {
     let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
+    return new InternalMessage({
+        to,
+        from,
+        value: messageValue,
+        bounce,
+        body: msg,
+    });
+}
+
+export function actionToMessage(
+    to: Address,
+    from: Address,
+    action: OutAction,
+    messageValue = new BN(1000000000),
+    bounce = false
+) {
+    //@ts-ignore
+    const sendMessageAction = action as SendMsgOutAction;
+    let msg = new CommonMessageInfo({ body: new CellMessage(sendMessageAction.message?.body) });
     return new InternalMessage({
         to,
         from,

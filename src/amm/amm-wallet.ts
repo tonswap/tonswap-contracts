@@ -9,10 +9,9 @@ import {
     Slice,
     CommonMessageInfo,
     ExternalMessage,
-    serializeDict,
 } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, toDecimals } from "../utils";
+import { toUnixTime, toDecimals, parseInternalMessageResponse } from "../utils";
 import { OPS } from "./ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
@@ -75,14 +74,7 @@ export class LpWallet {
             })
         );
 
-        let successResult = res as SuccessfulExecutionResult;
-
-        return {
-            exit_code: res.exit_code,
-            returnValue: res.result[1] as BN,
-            logs: res.logs,
-            actions: parseActionsList(successResult.action_list_cell),
-        };
+        return parseInternalMessageResponse(res);
     }
 
     removeLiquidityMessage(amount: BN, responseAddress: Address) {
@@ -134,15 +126,25 @@ export class LpWallet {
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })
         );
+        return parseInternalMessageResponse(res);
+    }
 
-        let successResult = res as SuccessfulExecutionResult;
+    async claimRewards(from: Address, to: Address) {
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(OPS.ClaimRewards, 32); // action
+        messageBody.bits.writeUint(1, 64); // query-id
 
-        return {
-            exit_code: res.exit_code,
-            returnValue: res.result[1] as BN,
-            logs: res.logs,
-            actions: parseActionsList(successResult.action_list_cell),
-        };
+        let res = await this.contract.sendInternalMessage(
+            new InternalMessage({
+                from: from,
+                to: to,
+                value: toDecimals(1),
+                bounce: false,
+                body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
+            })
+        );
+
+        return parseInternalMessageResponse(res);
     }
 
     setUnixTime(time: number) {

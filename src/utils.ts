@@ -201,7 +201,7 @@ export function stripBoc(bocStr: string) {
     return bocStr.substr(2, bocStr.length - 4);
 }
 
-export function parseAmmResp(result: ExecutionResult) {
+export function parseInternalMessageResponse(result: ExecutionResult) {
     // @ts-ignore
     let res = result as SuccessfulExecutionResult;
     //console.log(res);

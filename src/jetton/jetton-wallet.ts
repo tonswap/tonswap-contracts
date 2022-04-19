@@ -1,6 +1,6 @@
 // @ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { parseAmmResp } from "../utils";
+import { parseInternalMessageResponse } from "../utils";
 
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo } from "ton";
 import BN from "bn.js";
@@ -31,7 +31,7 @@ export class JettonWallet {
 
     async sendInternalMessage(message: InternalMessage) {
         const res = await this.contract.sendInternalMessage(message);
-        return parseAmmResp(res);
+        return parseInternalMessageResponse(res);
     }
 
     //    transfer#f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress

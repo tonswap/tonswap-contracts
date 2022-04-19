@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { parseAmmResp } from "../utils";
+import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
+import { parseInternalMessageResponse } from "../utils";
 
 import {
     Address,
@@ -69,7 +69,7 @@ export class AmmMinter {
 
     async sendInternalMessage(message: InternalMessage) {
         let res = await this.contract.sendInternalMessage(message);
-        return parseAmmResp(res);
+        return parseInternalMessageResponse(res);
     }
 
     async swapTon(from: Address, tonToSwap: BN, minAmountOut: BN) {
@@ -138,15 +138,22 @@ export class AmmMinter {
         };
     }
 
-    async balanceOf(owner: Address) {
-        // let wc = owner.workChain;
-        // let address = new BN(owner.hash)
-        // let balanceResult = await this.contract.invokeGetMethod('ibalance_of', [
-        //     { type: 'int', value: wc.toString(10) },
-        //     { type: 'int', value: address.toString(10) },
-        // ])
-        // //console.log(balanceResult)
-        // return (balanceResult.result[0] as BN);
+    async rewardsOf(lpAmount: BN, secondsStaked: BN) {
+        console.log(lpAmount.toString(), secondsStaked.toString());
+
+        let data = await this.contract.invokeGetMethod("get_rewards_by", [
+            { type: "int", value: lpAmount.toString() },
+            { type: "int", value: secondsStaked.toString() },
+        ]);
+
+        const tokenRewards = data.result[0] as Slice;
+        const protocolRewards = data.result[1] as Slice;
+
+        // const admin = new Address(0, new BN(rawAddress).toBuffer() );
+        return {
+            tokenRewards,
+            protocolRewards,
+        };
     }
 
     async getJettonData() {
