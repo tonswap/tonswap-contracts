@@ -153,6 +153,7 @@ export class AmmMinter {
         return {
             tokenRewards,
             protocolRewards,
+            logs: data.logs,
         };
     }
 

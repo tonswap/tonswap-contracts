@@ -99,8 +99,6 @@
     if (op == op::swap_ton() ) {
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
-        ~dump token_reserves;
-        ~dump min_amount_out;
         throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
 
         (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address);

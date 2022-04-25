@@ -21,6 +21,7 @@ const addressB = Address.parseFriendly("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
 export class LpWallet {
+    private initTime: number;
     private constructor(public readonly contract: SmartContract) {}
 
     async getData() {
@@ -148,7 +149,14 @@ export class LpWallet {
     }
 
     setUnixTime(time: number) {
+        this.initTime = time;
         this.contract.setUnixTime(time);
+    }
+
+    forwardTime(time: number, contractCurrentTime?: number) {
+        let newTime = contractCurrentTime || this.initTime + time;
+        this.contract.setUnixTime(newTime);
+        return newTime;
     }
 
     // static async create(totalSupply: BN, tokenAdmin: Address, content: string) {

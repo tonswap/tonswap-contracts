@@ -233,29 +233,32 @@ describe("Jetton Minter ", () => {
     });
 
     it.only("claim rewards", async () => {
-        const expectedRewards = "6601492966";
+        const expectedRewards = "172800";
         const { masterAMM, lpWallet } = await initAMM(new BN(500), new BN(0)); //create
 
         // fast forward time in 24 hours.
-        lpWallet.setUnixTime(toUnixTime(Date.now() + 3300746483 * 1000));
+        const oneDaySeconds = 3600 * 24;
+
+        lpWallet.forwardTime(oneDaySeconds);
         const lpData = await lpWallet.getData();
 
-        const oneDay = new BN(3600 * 24);
-        const rewards = await masterAMM.rewardsOf(lpData.balance, new BN(3300746483));
+        const rewards = await masterAMM.rewardsOf(lpData.balance, new BN(oneDaySeconds));
         expect(rewards.tokenRewards.toString()).toBe(expectedRewards);
+        console.log(rewards);
 
         const walletClaimRewardsResponse = await lpWallet.claimRewards(alice, amm);
-        //console.log(walletClaimRewardsResponse);
+        console.log(walletClaimRewardsResponse);
 
         let msg = actionToMessage(alice, amm, walletClaimRewardsResponse.actions[0]);
         let ammResponse = await masterAMM.sendInternalMessage(msg);
         console.log(ammResponse);
 
+        //@ts-ignore
         let action = ammResponse.actions[0] as SuccessfulExecutionResult;
         console.log(action.message.body);
 
         const transferData = parseJettonTransfer(action.message.body);
-        expect(transferData.amount.toString()).toBe("6601492966");
+        expect(transferData.amount.toString()).toBe(expectedRewards);
     });
 });
 

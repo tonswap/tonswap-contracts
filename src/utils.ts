@@ -110,16 +110,6 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
     };
 }
 
-// var msg_body = begin_cell()
-//     .store_uint(op::transfer(), 32)
-//     .store_uint(query_id, 64)
-//     .store_coins(jetton_amount)
-//     .store_slice(to)
-//     .store_slice(to)
-//     .store_uint(0, 1) ;; null custom_payload
-//     .store_coins(0) ;; 0 forward_ton_amount
-//     .store_uint(0, 1) ;; bit is on - empty forward payload
-//     .end_cell();
 export function parseJettonTransfer(msg: Cell) {
     // refs[0] is stateInit
     // console.log(msgBody.refs);

@@ -41,6 +41,7 @@ int squareRoot(int number)  {
     .store_coins(0)
     .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1); ;; 3 bits on 107 length message_body is a ref (message body is in a seperate cell)
      
+
     var msg_body = begin_cell()
     .store_uint(op::transfer(), 32)
     .store_uint(query_id, 64)
@@ -112,7 +113,6 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
  }
 
 (int) calc_rewards_seconds(int seconds_staked, int reward_rate, int lp_amount, int token_reserves, int total_supply) {
-    
     int daily_rewards =  token_reserves * reward_rate;
     int reward_per_second = daily_rewards / (3600 * 24);
     int period_rewards = reward_per_second * seconds_staked;
@@ -131,7 +131,6 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 
 ;;this method is optimistic, the amm is the owner
 () send_rewards(int query_id, int total_supply, int ton_reserves, int token_reserves, cell admin_data, slice rewards_owner ,int lp_amount ,int seconds_staked) impure {
-    
     (slice rewards_wallet_address, int rewards_rate, slice protocol_rewards_wallet_address, int protocol_rate) = unpack_admin_data(admin_data);
     int token_rewards = calc_rewards_seconds(seconds_staked, rewards_rate, lp_amount, token_reserves, total_supply);
     int protocol_rewards = calc_rewards_seconds(seconds_staked, protocol_rate, lp_amount, token_reserves, total_supply);

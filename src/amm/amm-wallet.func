@@ -149,7 +149,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
     send_raw_message(msg.end_cell(), 2);
   }
 
-  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, timestamp);
+  save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, now());
 }
 
 () burn_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
@@ -188,9 +188,13 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
 
 () claim_rewards(slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
     (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code, int timestamp) = load_data();    
-    int seconds_staked =  (block_lt() - timestamp);
+    ~dump timestamp;
+    ~dump timestamp;
+    ~dump timestamp;
+    int seconds_staked =  (now() - timestamp);
     int query_id = in_msg_body~load_uint(64);
-
+    ~dump seconds_staked;
+    
     ;;throw_unless(707, msg_value > fwd_fee + 2 * gas_consumption());
 
     var msg_body = begin_cell()
@@ -210,7 +214,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
 
     send_raw_message(msg.end_cell(), 64);
 
-    save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, block_lt());
+    save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, now());
 }
 
 () on_bounce (slice in_msg_body) impure {
@@ -260,7 +264,6 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   }
 
     if (op == op::claim_rewards()) { 
-        ~dump op;
         claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
         return ();
     }
