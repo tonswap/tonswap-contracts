@@ -132,11 +132,9 @@
           int price_delta = 0;
           
           if ( token_reserves > 0 ) {
-            ~dump slipage;
             ton_price = ton_reserves / token_reserves;
             ~dump ton_price;
             price_delta =  ( ( msg_price / ton_price ) - 1 ) * 100;
-            ~dump slipage;
             throw_if(103,  price_delta > slipage );
           }
 

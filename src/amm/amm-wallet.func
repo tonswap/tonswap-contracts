@@ -245,13 +245,16 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
     int op = in_msg_body~load_uint(32);
 
     if (op == op::transfer()) { ;; outgoing transfer
+        ;; auto claim rewards on transfer
+        claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
+
         send_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
         return ();
     }
 
     if (op == op::internal_transfer()) { ;; incoming transfer
         
-        ;; uppon every balance change the contracts claims rewards, before reseting the stake_start param which represent the time staked
+        ;; auto claim rewards on balance update
         claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
 
         receive_tokens(in_msg_body, sender_address, msg_value, fwd_fee);

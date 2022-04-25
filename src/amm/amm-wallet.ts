@@ -133,6 +133,35 @@ export class LpWallet {
         return parseInternalMessageResponse(res);
     }
 
+    async transfer(
+        from: Address,
+        to: Address,
+        amount: BN,
+        responseDestination: Address,
+        forwardTonAmount: BN = new BN(0)
+    ) {
+        let messageBody = new Cell();
+        messageBody.bits.writeUint(OPS.Transfer, 32); // action
+        messageBody.bits.writeUint(1, 64); // query-id
+        messageBody.bits.writeCoins(amount);
+        messageBody.bits.writeAddress(to);
+        messageBody.bits.writeAddress(responseDestination);
+        messageBody.bits.writeBit(false); // null custom_payload
+        messageBody.bits.writeCoins(forwardTonAmount);
+        messageBody.bits.writeBit(false); // forward_payload in this slice, not separate messageBody
+
+        let res = await this.contract.sendInternalMessage(
+            new InternalMessage({
+                from: from,
+                to: to,
+                value: toDecimals(1),
+                bounce: false,
+                body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
+            })
+        );
+        return parseInternalMessageResponse(res);
+    }
+
     async claimRewards(from: Address, to: Address) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.ClaimRewards, 32); // action

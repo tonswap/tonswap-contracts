@@ -287,7 +287,7 @@ describe("Jetton Minter ", () => {
         );
     });
 
-    it("auto claim rewards on lp balance change - rewards should be sent upon transfer", async () => {
+    it("auto claim rewards on lp balance change - rewards should be sent upon balance change", async () => {
         const expectedRewards = "172800";
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM(
             new BN(500),
@@ -321,10 +321,29 @@ describe("Jetton Minter ", () => {
         expect(msgSlice.readAddress()?.toFriendly()).toBe(alice.toFriendly());
         expect(msgSlice.readCoins().toString()).toBe(`${708519}`);
         expect(msgSlice.readUint(64).toString()).toBe(`${oneDaySeconds}`);
+    });
 
-        //      .store_slice(owner_address) ;; rewards_receiver is always account owner
-        //   .store_coins(balance) ;; amount staked , its is always 100% of the balance
-        //   .store_uint(seconds_staked, 64) ;; time staked in seconds
+    it("auto claim rewards on lp transfer - rewards should be sent upon transfer", async () => {
+        const expectedRewards = "172800";
+        const expectedLP = "708519";
+        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM(
+            new BN(500),
+            new BN(0)
+        ); //create
+
+        const lpData = await lpWallet.getData();
+        const { stakeStart, balance } = lpData;
+        const oneDaySeconds = 3600 * 24;
+        const time = lpWallet.forwardTime(oneDaySeconds);
+        expect(lpData.stakeStart.toNumber()).toBe(time - 3600 * 24);
+
+        expect(balance.toString()).toBe(expectedLP);
+
+        await lpWallet.transfer(alice, rewardsWallet, lpData.balance, amm, new BN(0));
+
+        const lpWalletAfterTransfer = await lpWallet.getData();
+        expect(lpWalletAfterTransfer.balance.toString()).toBe("0");
+        expect(lpWalletAfterTransfer.stakeStart.toNumber()).toBe(time);
     });
 });
 
