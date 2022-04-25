@@ -232,7 +232,7 @@ describe("Jetton Minter ", () => {
         expect(rewards.protocolRewards.toString()).toBe(expectedRewards);
     });
 
-    it.only("claim rewards", async () => {
+    it("claim rewards", async () => {
         const expectedRewards = "172800";
         const { masterAMM, lpWallet } = await initAMM(new BN(500), new BN(0)); //create
 
