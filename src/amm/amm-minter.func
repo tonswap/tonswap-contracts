@@ -126,18 +126,21 @@
           int slipage = in_msg_body~load_uint(32);
           throw_if(98, 0 >= jetton_amount);
           throw_if(99, 0 >= msg_value);
-
-          int msg_price = jetton_amount / msg_value;
-          int reserves_price = 0;
+          ;; TODO 
+          int msg_price = msg_value / jetton_amount;
+          int ton_price = 0;
           int price_delta = 0;
           
           if ( token_reserves > 0 ) {
-            reserves_price = token_reserves / ton_reserves;
-            price_delta =  ( ( msg_price / reserves_price ) - 1 ) * 100;
+            ~dump slipage;
+            ton_price = ton_reserves / token_reserves;
+            ~dump ton_price;
+            price_delta =  ( ( msg_price / ton_price ) - 1 ) * 100;
+            ~dump slipage;
             throw_if(103,  price_delta > slipage );
           }
 
-          (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(reserves_price, msg_value ,jetton_amount ,ton_reserves, token_reserves, total_supply);
+          (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(msg_value ,jetton_amount ,ton_reserves, token_reserves, total_supply);
                                                                        ;;TODO should put null instead of payload
           ;; end wallet is expecting the amount and owner,
           cell mint_msg = begin_cell()

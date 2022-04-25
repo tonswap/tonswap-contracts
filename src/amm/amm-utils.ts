@@ -23,7 +23,7 @@ export function actionToInternalMessage(
 export function actionToMessage(
     to: Address,
     from: Address,
-    action: OutAction,
+    action: OutAction | undefined,
     messageValue = new BN(1000000000),
     bounce = false
 ) {

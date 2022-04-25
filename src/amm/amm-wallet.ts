@@ -30,17 +30,20 @@ export class LpWallet {
         const owner = res.result[1] as Slice;
         const jettonMaster = res.result[2] as Slice;
         const code = res.result[3] as Cell;
+        const stakeStart = res.result[4] as BN;
 
         return {
             balance,
             owner,
             jettonMaster,
             code,
+            stakeStart,
         };
     }
 
     async sendInternalMessage(message: InternalMessage) {
-        return this.contract.sendInternalMessage(message);
+        const res = await this.contract.sendInternalMessage(message);
+        return parseInternalMessageResponse(res);
     }
 
     async init(fakeAddress: Address) {

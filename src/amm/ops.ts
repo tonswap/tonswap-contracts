@@ -10,6 +10,7 @@ export enum OPS {
     SWAP_TOKEN = 24,
     SWAP_TON = 25,
     ClaimRewards = 0x5a3e000,
+    ClaimRewardsNotification = 0x5a3e001,
 }
 
 export enum ERROR_CODES {

@@ -260,6 +260,72 @@ describe("Jetton Minter ", () => {
         const transferData = parseJettonTransfer(action.message.body);
         expect(transferData.amount.toString()).toBe(expectedRewards);
     });
+
+    it("auto claim rewards on lp balance change - data should be rested to now() after balance change", async () => {
+        const lpSize = 708519;
+        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM(
+            new BN(500),
+            new BN(0)
+        ); //create
+
+        // fast forward time in 24 hours.
+
+        const lpData = await lpWallet.getData();
+
+        const oneDaySeconds = 3600 * 24;
+        lpWallet.forwardTime(oneDaySeconds);
+
+        const { stakeStart } = lpData;
+        console.log(stakeStart);
+
+        await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`);
+
+        const lpWalletData = await lpWallet.getData();
+        // data should be rested to now() after balance change
+        expect(lpWalletData.stakeStart.toString()).toBe(
+            lpData.stakeStart.add(new BN(oneDaySeconds)).toString()
+        );
+    });
+
+    it("auto claim rewards on lp balance change - rewards should be sent upon transfer", async () => {
+        const expectedRewards = "172800";
+        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM(
+            new BN(500),
+            new BN(0)
+        ); //create
+
+        // fast forward time in 24 hours.
+
+        const lpData = await lpWallet.getData();
+
+        const oneDaySeconds = 3600 * 24;
+        lpWallet.forwardTime(oneDaySeconds);
+
+        const { stakeStart } = lpData;
+        console.log(stakeStart);
+
+        const { lpWalletResponse } = await addLiquidity(
+            aliceUSDC,
+            ammUsdcWallet,
+            masterAMM,
+            lpWallet,
+            `${708519 * 2}`
+        );
+
+        console.log(lpWalletResponse.actions);
+
+        const claimRewardsNotificationAction = lpWalletResponse.actions[2] as SendMsgOutAction;
+        const msgSlice = claimRewardsNotificationAction.message.body.beginParse();
+        expect(msgSlice.readUint(32).toNumber()).toBe(OPS.ClaimRewardsNotification);
+        msgSlice.readUint(64); //query-id
+        expect(msgSlice.readAddress()?.toFriendly()).toBe(alice.toFriendly());
+        expect(msgSlice.readCoins().toString()).toBe(`${708519}`);
+        expect(msgSlice.readUint(64).toString()).toBe(`${oneDaySeconds}`);
+
+        //      .store_slice(owner_address) ;; rewards_receiver is always account owner
+        //   .store_coins(balance) ;; amount staked , its is always 100% of the balance
+        //   .store_uint(seconds_staked, 64) ;; time staked in seconds
+    });
 });
 
 async function createBaseContracts(
@@ -318,7 +384,7 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
         undefined,
         new BN(101),
         OPS.ADD_LIQUIDITY,
-        new BN(5)
+        new BN(5) // slippage
     );
     const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
 
@@ -370,5 +436,59 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
         masterAMM,
         ammUsdcWallet,
         lpWallet,
+    };
+}
+
+async function addLiquidity(
+    aliceUSDC: JettonWallet,
+    ammUsdcWallet: JettonWallet,
+    masterAMM: AmmMinter,
+    lpWallet: LpWallet,
+    expectedLP: string
+) {
+    const transferResponse = await aliceUSDC.transferOverloaded(
+        alice,
+        amm,
+        new BN(502),
+        amm,
+        undefined,
+        new BN(101),
+        OPS.ADD_LIQUIDITY,
+        new BN(5) // slippage
+    );
+
+    const transferResponseAction = actionToMessage(
+        amm,
+        contractAddress,
+        transferResponse.actions[0]
+    );
+    ammUsdcWallet.sendInternalMessage(transferResponseAction);
+
+    const msgUsdcToAmm = actionToMessage(
+        amm,
+        contractAddress,
+        //@ts-ignore
+        ammUsdcWallet.initMessageResult.actions[2]
+    );
+
+    let ammRes = await masterAMM.sendInternalMessage(msgUsdcToAmm);
+
+    const ammData = await masterAMM.getData();
+    console.log(`ammData 
+        tonReservers:${ammData.tonReserves.toString()}
+        tokenReserves:${ammData.tokenReserves.toString()}
+        totalSupply:${ammData.totalSupply.toString()}
+    `);
+
+    let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
+
+    const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
+    const lpWalletResponse = await lpWallet.sendInternalMessage(lpMsg);
+
+    let lpData = await lpWallet.getData();
+
+    expect(lpData.balance.toString()).toBe(expectedLP); // lp amount
+    return {
+        lpWalletResponse,
     };
 }

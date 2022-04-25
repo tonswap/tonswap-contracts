@@ -90,7 +90,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 }
 
 
-(int, int, int, int) mint_lp(int price, int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
+(int, int, int, int) mint_lp(int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
     
     int new_liquidity = 0;
     int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
