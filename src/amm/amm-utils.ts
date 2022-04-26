@@ -39,6 +39,25 @@ export function actionToMessage(
     });
 }
 
+export function actionToMessage2(
+    from: Address,
+    action: OutAction | undefined,
+    messageValue = new BN(1000000000),
+    bounce = false
+) {
+    //@ts-ignore
+    const sendMessageAction = action as SendMsgOutAction;
+
+    let msg = new CommonMessageInfo({ body: new CellMessage(sendMessageAction.message?.body) });
+    return new InternalMessage({
+        to: sendMessageAction.message?.info.dest,
+        from,
+        value: messageValue,
+        bounce,
+        body: msg,
+    });
+}
+
 export function swapTokenCell(minAmountOut: BN) {
     let extra_data = new Cell();
     extra_data.bits.writeUint(OPS.SWAP_TOKEN, 32);

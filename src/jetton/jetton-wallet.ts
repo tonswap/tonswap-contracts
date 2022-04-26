@@ -11,6 +11,7 @@ type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
 export class JettonWallet {
     public initMessageResult: { logs?: string; actions?: OutAction[] } = {};
+    public address?: Address;
 
     private constructor(public readonly contract: SmartContract) {}
 
@@ -118,8 +119,8 @@ export class JettonWallet {
             logs: successResult.logs,
             actions: parseActionsList(successResult.action_list_cell),
         };
-
         contract.initMessageResult = initMessageResponse;
+        contract.address = initMessage.to;
         return contract;
     }
 }

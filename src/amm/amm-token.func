@@ -214,7 +214,7 @@ int gas_consumption() asm "10000000 PUSHINT";
 }
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
-
+  
   slice cs = in_msg_cell.begin_parse();
   int flags = cs~load_uint(4);
   if (flags & 1) {

@@ -1,5 +1,14 @@
 ;; Jettons minter smart contract
 
+slice my_static_address() {
+     return (begin_cell()
+        .store_uint(2, 2) 
+        .store_uint(0, 1)  
+        .store_uint(0, 8)  
+        .store_uint(0xa865484654654654, 256) 
+    ).end_cell().begin_parse();
+}
+
 ;; storage scheme
 ;; storage#_ total_supply:Coins admin_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
 
@@ -24,8 +33,8 @@
 }
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
-  ;; hack (remove the usauge of my_address)
-  cell state_init = calculate_jetton_wallet_state_init(to_address, to_address, jetton_wallet_code);
+
+  cell state_init = calculate_jetton_wallet_state_init(to_address, my_static_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
   var msg = begin_cell()
     .store_uint(0x18, 6)
@@ -71,8 +80,7 @@
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         throw_unless(74,
-        ;;TODO remove the use of my_address
-            equal_slices(calculate_user_jetton_wallet_address(from_address, from_address, jetton_wallet_code), sender_address)
+            equal_slices(calculate_user_jetton_wallet_address(from_address, my_static_address(), jetton_wallet_code), sender_address)
         );
         save_data(total_supply - jetton_amount, admin_address, content, jetton_wallet_code);
         slice response_address = in_msg_body~load_msg_addr();
@@ -99,5 +107,5 @@
 
 slice get_wallet_address(slice owner_address) method_id {
     (int total_supply, slice admin_address, cell content, cell jetton_wallet_code) = load_data();
-    return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code);
+    return calculate_user_jetton_wallet_address(owner_address, my_static_address(), jetton_wallet_code);
 }

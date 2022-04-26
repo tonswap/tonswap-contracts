@@ -5,7 +5,7 @@ import { AmmMinter } from "./amm-minter";
 import { parseJettonTransfer, SendMsgOutAction, sliceToAddress267, toUnixTime } from "../utils";
 import { JettonWallet } from "../jetton/jetton-wallet";
 import { LpWallet } from "./amm-wallet";
-import { actionToInternalMessage, actionToMessage } from "./amm-utils";
+import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "./amm-utils";
 import { ERROR_CODES, OPS } from "./ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
@@ -59,7 +59,11 @@ describe("Jetton Minter ", () => {
 
         const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
 
-        const msg = actionToInternalMessage(amm, contractAddress, transferMessage.message?.body);
+        const msg = actionToInternalMessage(
+            amm,
+            transferMessage.message?.info.dest,
+            transferMessage.message?.body
+        );
         const bobUSDC = await JettonWallet.createFromMessage(
             transferMessage.message?.init?.code as Cell,
             transferMessage.message?.init?.data as Cell,
@@ -96,10 +100,11 @@ describe("Jetton Minter ", () => {
 
         const removeLiquidityMessage = actionToMessage(
             amm,
-            contractAddress,
+            lpWallet.address as Address,
             removeLiquidityResponse.actions[0]
         );
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityMessage);
+        expect(ammResponse.exit_code).toBe(0);
 
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgOutAction;
         console.log(
@@ -148,13 +153,13 @@ describe("Jetton Minter ", () => {
             ).toFriendly()}`
         );
 
-        const msgTransferUsdcToAmm = actionToMessage(
-            amm,
-            contractAddress,
+        const msgTransferUsdcToAmm = actionToMessage2(
+            ammUsdcWallet.address as Address,
             transferUsdcResult.actions[2]
         );
 
         let ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
+        expect(ammSwapTokenResponse.exit_code).toBe(0);
         let sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
 
         console.log(
@@ -164,6 +169,43 @@ describe("Jetton Minter ", () => {
 
         //@ts-ignore
         expect(sendTonAfterSwapMessage.message.info?.value.coins.toString()).toBe(expectedOutPut);
+    });
+
+    it("swaps usdc to TON and revert", async () => {
+        const expectedOutPut = "3266599999999";
+        const minAmountOut = new BN(expectedOutPut);
+        const { aliceUSDC, masterAMM, ammUsdcWallet } = await initAMM(); //create
+
+        const jettonAmount = new BN(251);
+        const transferResponse = await aliceUSDC.transferOverloaded(
+            alice,
+            amm,
+            jettonAmount,
+            amm,
+            undefined,
+            new BN(101),
+            OPS.SWAP_TOKEN,
+            minAmountOut
+        );
+
+        const jettonMsg = actionToMessage2(
+            aliceUSDC.address as Address,
+            transferResponse.actions[0]
+        );
+        const transferUsdcResult = await ammUsdcWallet.sendInternalMessage(jettonMsg);
+
+        const msgTransferUsdcToAmm = actionToMessage2(
+            ammUsdcWallet.address as Address,
+            transferUsdcResult.actions[2]
+        );
+
+        let ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
+        expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
+        let sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
+        const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
+
+        //@ts-ignore
+        expect(amount.toString()).toBe(jettonAmount.toString());
     });
 
     it("swaps TON to USDC", async () => {
@@ -197,13 +239,15 @@ describe("Jetton Minter ", () => {
         const tokensAfterSwap = new BN("51");
         const { masterAMM } = await initAMM(); //create
 
-        const swapTonResp = await masterAMM.swapTon(
-            alice,
-            new BN(100000000),
-            new BN(tokensAfterSwap)
-        );
+        const amountOfTon = new BN(100000000);
+        const swapTonResp = await masterAMM.swapTon(alice, amountOfTon, new BN(tokensAfterSwap));
+        console.log(swapTonResp);
 
-        expect(swapTonResp.exit_code).toBe(ERROR_CODES.MinAmountOutIsInsufficient);
+        const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
+
+        expect(amountOfTon.toString()).toBe(
+            sendTonBackMessage.message.info?.value.coins.toString()
+        );
     });
 
     it("call rewards getter for token", async () => {
@@ -347,10 +391,7 @@ describe("Jetton Minter ", () => {
     });
 });
 
-async function createBaseContracts(
-    tokenRewardsRate = new BN(500),
-    protocolRewardsRate = new BN(0)
-) {
+async function createBaseContracts() {
     const masterUSDC = await JettonMinter.create(new BN(0), alice, "https://ipfs.io/ipfs/dasadas");
     const mintResponse = await masterUSDC.mint(alice, alice, new BN(ALICE_INITIAL_BALANCE));
     const mintMessage = mintResponse.actions[0] as SendMsgOutAction;
@@ -365,30 +406,33 @@ async function createBaseContracts(
     let aliceUSDC = await JettonWallet.createFromMessage(
         mintMessage.message?.init?.code as Cell,
         mintMessage.message?.init?.data as Cell,
-        initTransferMessage
+        initTransferMessage,
+        alice // todo add another
     );
 
-    const masterAMM = await AmmMinter.create(
-        alice,
+    return {
+        masterUSDC,
+        aliceUSDC,
+    };
+}
+
+async function createAmm(
+    usdcWallet: Address,
+    tokenRewardsRate = new BN(500),
+    protocolRewardsRate = new BN(0)
+) {
+    return await AmmMinter.create(
+        usdcWallet,
         "https://ipfs.io/ipfs/dasadas",
         rewardsWallet,
         tokenRewardsRate, // protocol rewards
         protocolWallet,
         protocolRewardsRate
     );
-
-    return {
-        masterUSDC,
-        aliceUSDC,
-        masterAMM,
-    };
 }
 
 async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new BN(0)) {
-    const { aliceUSDC, masterAMM } = await createBaseContracts(
-        tokenRewardsRate,
-        protocolRewardsRate
-    );
+    const { aliceUSDC } = await createBaseContracts();
 
     let aliceData = await aliceUSDC.getData();
     console.log(`
@@ -407,17 +451,23 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
     );
     const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
 
-    const jettonMsg = actionToInternalMessage(amm, contractAddress, transferMessage.message?.body);
+    const jettonMsg = actionToMessage2(amm, transferResponse.actions[0]);
     const ammUsdcWallet = await JettonWallet.createFromMessage(
         transferMessage.message?.init?.code as Cell,
         transferMessage.message?.init?.data as Cell,
         jettonMsg
     );
 
-    const bobUsdcData = await ammUsdcWallet.getData();
+    const masterAMM = await createAmm(
+        ammUsdcWallet.address as Address,
+        tokenRewardsRate,
+        protocolRewardsRate
+    );
+
+    const ammUsdcData = await ammUsdcWallet.getData();
     console.log(
-        `bobUsdcData after transfer balance:${bobUsdcData.balance.toString()}  owner: ${sliceToAddress267(
-            bobUsdcData.owner
+        `bobUsdcData after transfer balance:${ammUsdcData.balance.toString()}  owner: ${sliceToAddress267(
+            ammUsdcData.owner
         ).toFriendly()}`
     );
     //@ts-ignore
@@ -426,11 +476,14 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
 
     const msgUsdcToAmm = actionToInternalMessage(
         amm,
-        contractAddress,
+        ammUsdcWallet.address as Address,
         transferNotification.message?.body
     );
 
     let ammRes = await masterAMM.sendInternalMessage(msgUsdcToAmm);
+    console.log(ammRes);
+    expect(ammRes.exit_code).toBe(0);
+
     const ammData = await masterAMM.getData();
     console.log(`ammData 
         tonReservers:${ammData.tonReserves.toString()}
@@ -440,7 +493,11 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
 
     let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
 
-    const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
+    const lpMsg = actionToInternalMessage(
+        mintLpMessage.message?.info.dest as Address,
+        contractAddress,
+        mintLpMessage.message?.body
+    );
     const lpWallet = await LpWallet.createFromMessage(
         mintLpMessage.message?.init?.code as Cell,
         mintLpMessage.message?.init?.data as Cell,
@@ -476,21 +533,18 @@ async function addLiquidity(
         new BN(5) // slippage
     );
 
-    const transferResponseAction = actionToMessage(
-        amm,
-        contractAddress,
-        transferResponse.actions[0]
-    );
+    const transferResponseAction = actionToMessage2(amm, transferResponse.actions[0]);
     ammUsdcWallet.sendInternalMessage(transferResponseAction);
 
-    const msgUsdcToAmm = actionToMessage(
-        amm,
-        contractAddress,
+    const msgUsdcToAmm = actionToMessage2(
+        ammUsdcWallet.address as Address,
         //@ts-ignore
         ammUsdcWallet.initMessageResult.actions[2]
     );
 
     let ammRes = await masterAMM.sendInternalMessage(msgUsdcToAmm);
+    console.log(ammRes);
+    expect(ammRes.exit_code).toBe(0);
 
     const ammData = await masterAMM.getData();
     console.log(`ammData 

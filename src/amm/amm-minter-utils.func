@@ -71,7 +71,17 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
 
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
-    throw_if(601, amount_out < min_amount_out);
+    if( amount_out < min_amount_out ) {
+        if is_ton_src == true {
+            send_grams(swap_sender, transferd_amount);
+        } else {
+            ;; TODO pass query Id
+            send_tokens(0, token_wallet_address, swap_sender, transferd_amount);
+        }
+        return (ton_reserves, token_reserves);
+        ;; throw_if(601, true);
+    }
+    
 
     if(is_ton_src == true) {
       

@@ -22,6 +22,7 @@ type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
 export class LpWallet {
     private initTime: number;
+    public address?: Address;
     private constructor(public readonly contract: SmartContract) {}
 
     async getData() {
@@ -215,7 +216,7 @@ export class LpWallet {
         contract.setUnixTime(toUnixTime(Date.now()));
         const initMessageResponse = await ammWallet.sendInternalMessage(initMessage);
         //console.log('amm-wallet -> initMessageResponse', initMessageResponse);
-
+        contract.address = initMessage.to;
         return contract;
     }
 }
