@@ -3738,10 +3738,10 @@ ton@8.1.1, ton@^8.1.1:
     ton-crypto "2.0.2"
     tweetnacl "1.0.3"
 
-tonweb@^0.0.35:
-  version "0.0.35"
-  resolved "https://registry.yarnpkg.com/tonweb/-/tonweb-0.0.35.tgz#8ac380e7b4551c8640f0d6e51d4d75e97f906eb1"
-  integrity sha512-4uEVuvWl8JjCnxJRSpnkVvNxQA3N8CjSyJz+75OwddLAHrWCjXo07+Y5IjEBgYfUZ+rIraK2qRupSGjS3d9gzg==
+tonweb@^0.0.38:
+  version "0.0.38"
+  resolved "https://registry.yarnpkg.com/tonweb/-/tonweb-0.0.38.tgz#0f30f42ca38ca5cc9666687f4f87279259ff6767"
+  integrity sha512-553K+0LmsZcdhw+1SyGqlkMsncKjrgAe+88bKqhQ5b//G56mZc1KLvFKhpUQSR1GQZn54xpzZVqGZKhHiZK6vA==
   dependencies:
     "@ledgerhq/hw-transport-web-ble" "5.48.0"
     "@ledgerhq/hw-transport-webhid" "5.48.0"
