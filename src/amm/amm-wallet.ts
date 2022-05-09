@@ -18,7 +18,7 @@ import { compileFuncToB64 } from "../funcToB64";
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
 export class AmmLpWallet {
-    private initTime: number;
+    private initTime: number = Date.now();
     public address?: Address;
     private constructor(public readonly contract: SmartContract) {}
 

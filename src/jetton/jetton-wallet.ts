@@ -2,10 +2,19 @@
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 import { parseInternalMessageResponse } from "../utils";
 
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo } from "ton";
+import {
+    Address,
+    Cell,
+    CellMessage,
+    InternalMessage,
+    Slice,
+    CommonMessageInfo,
+    TonClient,
+} from "ton";
 import BN from "bn.js";
 import { parseActionsList, toUnixTime, toDecimals, OutAction } from "../utils";
 import { OPS } from "../amm/ops";
+import { bytesToAddress } from "../deploy/deploy-utils";
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
@@ -40,12 +49,10 @@ export class JettonWallet {
     //    forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
     //    = InternalMsgBody;
 
-    async transferOverloaded(
-        from: Address,
+    static TransferOverloaded(
         to: Address,
-        amount: BN,
+        jettonAmount: BN,
         responseDestination: Address,
-        customPayload: Cell | undefined,
         forwardTonAmount: BN = new BN(0),
         overloadOp: UsdcTransferNextOp,
         overloadValue: BN
@@ -53,7 +60,7 @@ export class JettonWallet {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Transfer, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
-        messageBody.bits.writeCoins(amount);
+        messageBody.bits.writeCoins(jettonAmount);
         messageBody.bits.writeAddress(to);
         messageBody.bits.writeAddress(responseDestination);
         messageBody.bits.writeBit(false); // null custom_payload
@@ -65,7 +72,27 @@ export class JettonWallet {
         } else if (overloadOp == OPS.SWAP_TOKEN) {
             messageBody.bits.writeCoins(overloadValue); // min amount out
         }
+        return messageBody;
+    }
 
+    async transferOverloaded(
+        from: Address,
+        to: Address,
+        amount: BN,
+        responseDestination: Address,
+        customPayload: Cell | undefined,
+        forwardTonAmount: BN = new BN(0),
+        overloadOp: UsdcTransferNextOp,
+        overloadValue: BN
+    ) {
+        const messageBody = JettonWallet.TransferOverloaded(
+            to,
+            amount,
+            responseDestination,
+            forwardTonAmount,
+            overloadOp,
+            overloadValue
+        );
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: from,
@@ -107,6 +134,19 @@ export class JettonWallet {
     //     instance.setUnixTime(toUnixTime(Date.now()));
     //     return instance;
     // }
+    static async GetData(client: TonClient, jettonWallet: Address) {
+        let res = await client.callGetMethod(jettonWallet, "get_wallet_data", []);
+
+        const balance = BigInt(res.stack[0][1]);
+        const owner = bytesToAddress(res.stack[1][1].bytes);
+        const jettonMaster = bytesToAddress(res.stack[2][1].bytes);
+
+        return {
+            balance,
+            owner,
+            jettonMaster,
+        };
+    }
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
         const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true });

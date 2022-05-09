@@ -10,37 +10,26 @@ import {
     Slice,
     CommonMessageInfo,
     ExternalMessage,
-    serializeDict,
+    toNano,
+    TonClient,
 } from "ton";
 import BN from "bn.js";
-import {
-    parseActionsList,
-    sliceToAddress267,
-    toUnixTime,
-    sliceToString,
-    addressToSlice264,
-    sliceToAddress,
-} from "../utils";
+import { parseActionsList, toUnixTime, sliceToAddress } from "../utils";
 import { compileFuncToB64 } from "../funcToB64";
+import { bytesToAddress } from "../deploy/deploy-utils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
-const addressA = Address.parseFriendly("kQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nk1x").address;
-const addressB = Address.parseFriendly("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe").address;
-
-const TRC20_TRANSFER = 0xf8a7ea5;
-const SWAP_OUT_SUB_OP = 8;
 
 const OP_MINT = 21;
 const BURN_NOTIFICATION = 0x7bdd97de;
-const INTERNAL_TRANSFER = 0x178d4519;
 
 export class JettonMinter {
     private constructor(public readonly contract: SmartContract) {}
 
     async getData() {
-        let res = await this.contract.invokeGetMethod("get_wallet_data", []);
+        let res = await this.contract.invokeGetMethod("get_jetton_data", []);
         //@ts-ignore
-        const totalSupply = sliceToString(res.result[0] as BN);
+        const totalSupply = res.result[0] as BN;
         const wc = res.result[1] as BN;
         const jettonMaster = res.result[2] as Slice;
         const content = res.result[2] as Cell;
@@ -84,12 +73,12 @@ export class JettonMinter {
     // transferBody.bits.writeCoins(new BN(0)); // forward_amount
     // transferBody.bits.writeBit(false); // forward_payload in this slice, not separate cell
 
-    async mint(sender: Address, receiver: Address, jettonAmount: BN) {
+    static Mint(receiver: Address, jettonAmount: BN, tonAmount = toNano(0.04)) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OP_MINT, 32); // action;
         messageBody.bits.writeUint(1, 64); // query;
         messageBody.bits.writeAddress(receiver);
-        messageBody.bits.writeCoins(jettonAmount);
+        messageBody.bits.writeCoins(tonAmount);
 
         const masterMessage = new Cell();
         masterMessage.bits.writeUint(0x178d4519, 32); // action;
@@ -101,14 +90,38 @@ export class JettonMinter {
         masterMessage.bits.writeBit(false); // forward_payload in this slice, not separate cell
 
         messageBody.refs.push(masterMessage);
+        return messageBody;
+    }
 
+    static async GetWalletAddress(
+        client: TonClient,
+        minterAddress: Address,
+        walletAddress: Address
+    ) {
+        try {
+            let cell = new Cell();
+            cell.bits.writeAddress(walletAddress);
+            let b64data = (await cell.toBoc({ idx: false })).toString("base64");
+
+            let res = await client.callGetMethod(minterAddress, "get_wallet_address", [
+                ["tvm.Slice", b64data],
+            ]);
+            return bytesToAddress(res.stack[0][1].bytes);
+        } catch (e) {
+            console.log("excption", e);
+        }
+    }
+
+    async mint(sender: Address, receiver: Address, jettonAmount: BN) {
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: sender,
                 to: contractAddress,
-                value: new BN(10000),
+                value: new BN(10001),
                 bounce: false,
-                body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
+                body: new CommonMessageInfo({
+                    body: new CellMessage(JettonMinter.Mint(receiver, jettonAmount)),
+                }),
             })
         );
 
@@ -125,7 +138,7 @@ export class JettonMinter {
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
     //           = InternalMsgBody;
-    async receiveBurn(subwalletOwner: Address, sourceWallet: Address, amount: BN) {
+    async receiveBurn(subWalletOwner: Address, sourceWallet: Address, amount: BN) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(BURN_NOTIFICATION, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
@@ -141,7 +154,7 @@ export class JettonMinter {
 
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
-                from: subwalletOwner,
+                from: subWalletOwner,
                 to: contractAddress,
                 value: new BN(10000),
                 bounce: false,
@@ -157,17 +170,6 @@ export class JettonMinter {
             logs: res.logs,
             actions: parseActionsList(successResult.action_list_cell),
         };
-    }
-
-    async balanceOf(owner: Address) {
-        // let wc = owner.workChain;
-        // let address = new BN(owner.hash)
-        // let balanceResult = await this.contract.invokeGetMethod('ibalance_of', [
-        //     { type: 'int', value: wc.toString(10) },
-        //     { type: 'int', value: address.toString(10) },
-        // ])
-        // //console.log(balanceResult)
-        // return (balanceResult.result[0] as BN);
     }
 
     async getJettonData() {
@@ -186,6 +188,21 @@ export class JettonMinter {
 
     setUnixTime(time: number) {
         this.contract.setUnixTime(time);
+    }
+
+    static async createDeployData(totalSupply: BN, tokenAdmin: Address, content: string) {
+        const jettonWalletCode = await serializeWalletCodeToCell();
+        const initDataCell = await buildStateInit(
+            totalSupply,
+            tokenAdmin,
+            content,
+            jettonWalletCode[0]
+        );
+        const minterSources = await serializeMinterCodeToCell();
+        return {
+            codeCell: minterSources,
+            initDataCell,
+        };
     }
 
     static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
@@ -219,6 +236,19 @@ async function serializeWalletCodeToCell() {
     return Cell.fromBoc(jettonWalletCodeB64);
 }
 
+async function serializeMinterCodeToCell(replaceMyAddress = true) {
+    if (replaceMyAddress) {
+    }
+    const jettonMinterCodeB64: string = compileFuncToB64([
+        "./src/jetton/stdlib.fc",
+        "./src/jetton/params.fc",
+        "./src/jetton/op-codes.fc",
+        "./src/jetton/jetton-utils.fc",
+        "./src/jetton/jetton-minter.fc",
+    ]);
+    return Cell.fromBoc(jettonMinterCodeB64);
+}
+
 async function concatMinterSources() {
     let jettonMinter = (await readFile("./src/jetton/jetton-minter.fc")).toString("utf-8");
     let utils = (await readFile("./src/jetton/jetton-utils.fc")).toString("utf-8");
@@ -227,13 +257,6 @@ async function concatMinterSources() {
     let stdlib = (await readFile("./src/jetton/stdlib-tvm.fc")).toString("utf-8");
     return [stdlib, opcodes, params, utils, jettonMinter].join("\n");
 }
-
-//   ds~load_coins(), ;; total_supply
-//   ds~load_msg_addr(), ;; token_wallet_address
-//   ds~load_coins(), ;; ton_reserves
-//   ds~load_coins(), ;; token_reserves
-//   ds~load_ref(), ;; content
-//   ds~load_ref()  ;; jetton_wallet_code
 
 async function buildStateInit(
     totalSupply: BN,

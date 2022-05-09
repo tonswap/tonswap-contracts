@@ -235,6 +235,6 @@ slice get_wallet_address(slice owner_address) method_id {
     (_, int rewards_rate, _, int protocol_rate) = unpack_admin_data(admin_data);
     int token_rewards = calc_rewards_seconds(seconds_staked, rewards_rate, lp_amount, token_reserves, total_supply);
     int protocol_rewards = calc_rewards_seconds(seconds_staked, protocol_rate, lp_amount, token_reserves, total_supply);
-    
+
     return (token_rewards, protocol_rewards);
 }

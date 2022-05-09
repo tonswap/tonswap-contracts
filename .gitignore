@@ -12,3 +12,5 @@ conifg
 .idea
 deployed-html
 build
+
+deployed.conifg.json

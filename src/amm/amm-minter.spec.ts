@@ -4,7 +4,7 @@ import { JettonMinter } from "../jetton/jetton-minter";
 import { AmmMinter } from "./amm-minter";
 import { parseJettonTransfer, SendMsgOutAction, sliceToAddress267, toUnixTime } from "../utils";
 import { JettonWallet } from "../jetton/jetton-wallet";
-import { LpWallet } from "./amm-wallet";
+import { AmmLpWallet } from "./amm-wallet";
 import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "./amm-utils";
 import { ERROR_CODES, OPS } from "./ops";
 
@@ -21,6 +21,29 @@ const aliceSubWallet = Address.parseFriendly(
 ).address;
 
 describe("Jetton Minter ", () => {
+    it("mint USDC", async () => {
+        const { masterUSDC, aliceUSDC } = await createBaseContracts();
+
+        const jettonWalletResponse = await aliceUSDC.getData();
+        console.log(
+            `jettonWalletResponse  (after send) balance:${jettonWalletResponse.balance.toString()}`
+        );
+
+        ///////// mint again
+        const mintResponse2 = await masterUSDC.mint(alice, alice, new BN(2505));
+        console.log(mintResponse2);
+
+        const data = await masterUSDC.getData();
+
+        // const mintMessageRAW = actionToMessage(amm, contractAddress, mintResponse2.actions[0]);
+
+        // const mintMessageResponse2 = await aliceUSDC.sendInternalMessage(mintMessageRAW);
+        // expect(mintMessageResponse2.exit_code).toBe(0);
+
+        // const data2 = await aliceUSDC.getData();
+        // console.log(`jettonWalletResponse2  (after send #2) balance:${data2.balance.toString()}`);
+    });
+
     it("mint USDC", async () => {
         const { masterUSDC, aliceUSDC } = await createBaseContracts();
 
@@ -387,7 +410,7 @@ async function createAmm(
     tokenRewardsRate = new BN(500),
     protocolRewardsRate = new BN(0)
 ) {
-    return await AmmMinter.create(
+    return await AmmMinter.create2(
         usdcWallet,
         "https://ipfs.io/ipfs/dasadas",
         rewardsWallet,
@@ -462,7 +485,7 @@ async function initAMM(tokenRewardsRate = new BN(500), protocolRewardsRate = new
         contractAddress,
         mintLpMessage.message?.body
     );
-    const lpWallet = await LpWallet.createFromMessage(
+    const lpWallet = await AmmLpWallet.createFromMessage(
         mintLpMessage.message?.init?.code as Cell,
         mintLpMessage.message?.init?.data as Cell,
         lpMsg
@@ -483,7 +506,7 @@ async function addLiquidity(
     aliceUSDC: JettonWallet,
     ammUsdcWallet: JettonWallet,
     masterAMM: AmmMinter,
-    lpWallet: LpWallet,
+    lpWallet: AmmLpWallet,
     expectedLP: string
 ) {
     const transferResponse = await aliceUSDC.transferOverloaded(

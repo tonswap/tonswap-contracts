@@ -43,7 +43,7 @@ slice my_static_address() {
     .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
     .store_ref(state_init)
     .store_ref(master_msg);
-  send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+  send_raw_message(msg.end_cell(), 64); ;; pay transfer fees separately, revert on errors
 }
 
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -100,9 +100,10 @@ slice my_static_address() {
     throw(0xffff);
 }
 
-(int, int, slice, cell, cell) get_jetton_data() method_id {
+(int, int, slice, cell, cell, int) get_jetton_data() method_id {
+    var [balance, _] = get_balance();
     (int total_supply, slice admin_address, cell content, cell jetton_wallet_code) = load_data();
-    return (total_supply, -1, admin_address, content, jetton_wallet_code);
+    return (total_supply, -1, admin_address, content, jetton_wallet_code, balance);
 }
 
 slice get_wallet_address(slice owner_address) method_id {

@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 //@ts-ignore
 import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 import { parseInternalMessageResponse } from "../utils";
-import LpWallet from "./amm-wallet";
+import { AmmLpWallet } from "./amm-wallet";
 
 import {
     Address,
@@ -11,40 +11,18 @@ import {
     InternalMessage,
     Slice,
     CommonMessageInfo,
-    ExternalMessage,
-    serializeDict,
+    TonClient,
 } from "ton";
 import BN from "bn.js";
-import {
-    parseActionsList,
-    sliceToAddress267,
-    toUnixTime,
-    sliceToString,
-    addressToSlice264,
-    sliceToAddress,
-} from "../utils";
+import { parseActionsList, sliceToAddress267, toUnixTime } from "../utils";
 import { OPS } from "./ops";
+import { compileFuncToB64 } from "../funcToB64";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
-const addressA = Address.parseFriendly("kQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nk1x").address;
-const addressB = Address.parseFriendly("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe").address;
-
-const TRC20_TRANSFER = 0xf8a7ea5;
-const SWAP_OUT_SUB_OP = 8;
-
-const OP_MINT = 21;
-const BURN_NOTIFICATION = 0x7bdd97de;
-const INTERNAL_TRANSFER = 0x178d4519;
 
 export class AmmMinter {
     private constructor(public readonly contract: SmartContract) {}
 
-    //   ds~load_coins(), ;; total_supply
-    //   ds~load_msg_addr(), ;; token_wallet_address
-    //   ds~load_coins(), ;; ton_reserves
-    //   ds~load_coins(), ;; token_reserves
-    //   ds~load_ref(), ;; content
-    //   ds~load_ref()  ;; jetton_wallet_code
     async getData() {
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
 
@@ -156,26 +134,84 @@ export class AmmMinter {
             logs: data.logs,
         };
     }
+    static async GetJettonData(client: TonClient, minterAddress: Address) {
+        let res = await client.callGetMethod(minterAddress, "get_jetton_data", []);
 
-    async getJettonData() {
-        let data = await this.contract.invokeGetMethod("get_jetton_data", []);
-        const rawAddress = data.result[2] as Slice;
-
-        // const admin = new Address(0, new BN(rawAddress).toBuffer() );
+        const totalSupply = res.stack[0][1] as BN;
+        const mintable = res.stack[1][1] as BN;
+        const tonReserves = res.stack[3][1] as BN;
+        const tokenReserves = res.stack[4][1] as BN;
         return {
-            totalSupply: data.result[0] as BN,
-            mintable: data.result[1] as BN,
-            adminAddress: sliceToAddress(rawAddress, true),
-            content: data.result[3],
-            jettonWalletCode: data.result[4],
+            totalSupply,
+            mintable,
+            tonReserves,
+            tokenReserves,
         };
     }
+
+    // async getJettonData() {
+    //     let data = await this.contract.invokeGetMethod("get_jetton_data", []);
+    //     const rawAddress = data.result[2] as Slice;
+
+    //     // const admin = new Address(0, new BN(rawAddress).toBuffer() );
+    //     return {
+    //         totalSupply: data.result[0] as BN,
+    //         mintable: data.result[1] as BN,
+    //         adminAddress: sliceToAddress(rawAddress, true),
+    //         content: data.result[3],
+    //         jettonWalletCode: data.result[4],
+    //     };
+    // }
 
     setUnixTime(time: number) {
         this.contract.setUnixTime(time);
     }
 
-    static async create(
+    static async CompileCodeToCell() {
+        const ammMinterCodeB64: string = compileFuncToB64([
+            "src/amm/stdlib.fc", // this is the full stdlib (fromFuncCode injects stdlib automatically)
+            "src/amm/op-codes.func",
+            "src/amm/params.func",
+            "src/amm/amm-utils.func",
+            "src/amm/amm-minter-utils.func",
+            "src/amm/amm-minter.func",
+        ]);
+        return Cell.fromBoc(ammMinterCodeB64);
+    }
+
+    static async buildDataCell(
+        token_wallet_address: Address,
+        content: string,
+        rewardsWallet: Address,
+        rewardsRate: BN,
+        protocolRewardsWallet: Address,
+        protocolRewardsRate: BN
+    ) {
+        const contentCell = new Cell();
+        contentCell.bits.writeString(content);
+
+        const adminData = new Cell();
+        adminData.bits.writeAddress(rewardsWallet);
+        adminData.bits.writeUint(rewardsRate, 64);
+        adminData.bits.writeAddress(protocolRewardsWallet);
+        adminData.bits.writeUint(protocolRewardsRate, 64);
+
+        const dataCell = new Cell();
+        dataCell.bits.writeCoins(0); // total-supply
+        dataCell.bits.writeAddress(token_wallet_address);
+        dataCell.bits.writeCoins(0); // ton-reserves
+        dataCell.bits.writeCoins(0); // token-reserves
+        dataCell.refs.push(contentCell);
+        dataCell.refs.push((await AmmLpWallet.compileWallet())[0]);
+        dataCell.refs.push(adminData);
+        return {
+            initDataCell: dataCell,
+            codeCell: await AmmMinter.CompileCodeToCell(),
+        };
+    }
+
+    // this method is using codeCell instead of .fromFuncSource
+    static async create2(
         tokenAdmin: Address,
         content: string,
         rewardsWallet: Address,
@@ -183,41 +219,18 @@ export class AmmMinter {
         protocolRewardsWallet: Address,
         protocolRewardsRate: BN = new BN(0)
     ) {
-        let msgHexComment = (await readFile("./src/amm/msg_hex_comment.func")).toString("utf-8");
-        let jettonAMM = (await readFile("./src/amm/amm-minter-utils.func")).toString("utf-8");
-        let jettonMinter = (await readFile("./src/amm/amm-minter.func")).toString("utf-8");
-        let utils = (await readFile("./src/amm/amm-utils.func")).toString("utf-8");
-        let opcodes = (await readFile("./src/amm/op-codes.func")).toString("utf-8");
-        let params = (await readFile("./src/amm/params.func")).toString("utf-8");
-        let stdlib = (await readFile("./src/amm/stdlib.func")).toString("utf-8");
-
-        //based on tonweb example
-        //const code = Cell.fromBoc("B5EE9C7241021101000319000114FF00F4A413F4BCF2C80B0102016202030202CC0405001BA0F605DA89A1F401F481F481A8610201D40607020148080900BB0831C02497C138007434C0C05C6C2544D7C0FC02F83E903E900C7E800C5C75C87E800C7E800C00B4C7E08403E29FA954882EA54C4D167C0238208405E3514654882EA58C4CD00CFC02780D60841657C1EF2EA4D67C02B817C12103FCBC2000113E910C1C2EBCB853600201200A0B0201200F1001F500F4CFFE803E90087C007B51343E803E903E90350C144DA8548AB1C17CB8B04A30BFFCB8B0950D109C150804D50500F214013E809633C58073C5B33248B232C044BD003D0032C032483E401C1D3232C0B281F2FFF274013E903D010C7E801DE0063232C1540233C59C3E8085F2DAC4F3208405E351467232C7C6600C02F13B51343E803E903E90350C01F4CFFE80145468017E903E9014D6B1C1551CDB1C150804D50500F214013E809633C58073C5B33248B232C044BD003D0032C0327E401C1D3232C0B281F2FFF274140331C146EC7CB8B0C27E8020822625A020822625A02806A8486544124E17C138C34975C2C070C00930802C200D0E008ECB3F5007FA0222CF165006CF1625FA025003CF16C95005CC07AA0013A08208989680AA008208989680A0A014BCF2E2C504C98040FB001023C85004FA0258CF1601CF16CCC9ED54006C5219A018A182107362D09CC8CB1F5240CB3F5003FA0201CF165007CF16C9718018C8CB0525CF165007FA0216CB6A15CCC971FB00103400828E2A820898968072FB028210D53276DB708010C8CB055008CF165005FA0216CB6A13CB1F13CB3FC972FB0058926C33E25502C85004FA0258CF1601CF16CCC9ED5400DB3B51343E803E903E90350C01F4CFFE803E900C145468549271C17CB8B049F0BFFCB8B0A0822625A02A8005A805AF3CB8B0E0841EF765F7B232C7C572CFD400FE8088B3C58073C5B25C60043232C14933C59C3E80B2DAB33260103EC01004F214013E809633C58073C5B3327B55200083200835C87B51343E803E903E90350C0134C7E08405E3514654882EA0841EF765F784EE84AC7CB8B174CFCC7E800C04E81408F214013E809633C58073C5B3327B55204F664B79");
-
-        // custom solution, using func to compile, and fift to serialize the code into a string
-
-        const walletCodeCell = await LpWallet.compileWallet();
-
-        const data = await buildCell(
+        const data = await AmmMinter.buildDataCell(
             tokenAdmin,
             content,
-            walletCodeCell[0],
             rewardsWallet,
             rewardsRate,
             protocolRewardsWallet,
             protocolRewardsRate
         );
 
-        const combinedCode = [
-            stdlib,
-            opcodes,
-            params,
-            utils,
-            jettonAMM,
-            jettonMinter,
-            msgHexComment,
-        ].join("\n");
-        let contract = await SmartContract.fromFuncSource(combinedCode, data, {
+        const code = await AmmMinter.CompileCodeToCell();
+
+        let contract = await SmartContract.fromCell(code[0], data.initDataCell, {
             getMethodsMutate: true,
         });
         const instance = new AmmMinter(contract);
@@ -225,40 +238,4 @@ export class AmmMinter {
         instance.setUnixTime(toUnixTime(Date.now()));
         return instance;
     }
-}
-
-async function buildCell(
-    token_wallet_address: Address,
-    content: string,
-    tokenCode: Cell,
-    rewardsWallet: Address,
-    rewardsRate: BN,
-    protocolRewardsWallet: Address,
-    protocolRewardsRate: BN
-) {
-    //   ds~load_coins(), ;; total_supply
-    //   ds~load_msg_addr(), ;; token_wallet_address
-    //   ds~load_coins(), ;; ton_reserves
-    //   ds~load_coins(), ;; token_reserves
-    //   ds~load_ref(), ;; content
-    //   ds~load_ref()  ;; jetton_wallet_code
-
-    const contentCell = new Cell();
-    contentCell.bits.writeString(content);
-
-    const adminData = new Cell();
-    adminData.bits.writeAddress(rewardsWallet);
-    adminData.bits.writeUint(rewardsRate, 64);
-    adminData.bits.writeAddress(protocolRewardsWallet);
-    adminData.bits.writeUint(protocolRewardsRate, 64);
-
-    const dataCell = new Cell();
-    dataCell.bits.writeCoins(0);
-    dataCell.bits.writeAddress(token_wallet_address);
-    dataCell.bits.writeCoins(0);
-    dataCell.bits.writeCoins(0);
-    dataCell.refs.push(contentCell);
-    dataCell.refs.push(tokenCode);
-    dataCell.refs.push(adminData);
-    return dataCell;
 }
