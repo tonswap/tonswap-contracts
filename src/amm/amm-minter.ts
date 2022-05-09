@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 //@ts-ignore
 import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { parseInternalMessageResponse } from "../utils";
+import { parseInternalMessageResponse, sliceToAddress } from "../utils";
 import { AmmLpWallet } from "./amm-wallet";
 
 import {
@@ -29,7 +29,7 @@ export class AmmMinter {
         const totalSupply = res.result[0] as BN;
         const mintable = res.result[1] as BN;
         //@ts-ignore
-        const tokenAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
+        const tokenWalletAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         const content = res.result[2] as Cell;
@@ -38,7 +38,7 @@ export class AmmMinter {
         return {
             totalSupply,
             mintable,
-            tokenAddress,
+            tokenWalletAddress,
             tonReserves,
             tokenReserves,
             content,
@@ -69,7 +69,6 @@ export class AmmMinter {
             })
         );
 
-        console.log(res);
         let successResult = res as SuccessfulExecutionResult;
         return {
             exit_code: res.exit_code,
@@ -107,7 +106,6 @@ export class AmmMinter {
         );
 
         let successResult = res as SuccessfulExecutionResult;
-        //console.log(res);
         return {
             exit_code: res.exit_code,
             returnValue: res.result[1] as BN,
@@ -117,8 +115,6 @@ export class AmmMinter {
     }
 
     async rewardsOf(lpAmount: BN, secondsStaked: BN) {
-        console.log(lpAmount.toString(), secondsStaked.toString());
-
         let data = await this.contract.invokeGetMethod("get_rewards_by", [
             { type: "int", value: lpAmount.toString() },
             { type: "int", value: secondsStaked.toString() },
@@ -180,7 +176,6 @@ export class AmmMinter {
     }
 
     static async buildDataCell(
-        token_wallet_address: Address,
         content: string,
         rewardsWallet: Address,
         rewardsRate: BN,
@@ -198,7 +193,7 @@ export class AmmMinter {
 
         const dataCell = new Cell();
         dataCell.bits.writeCoins(0); // total-supply
-        dataCell.bits.writeAddress(token_wallet_address);
+        dataCell.bits.writeAddress(zeroAddress()); // token_wallet_address starts as null
         dataCell.bits.writeCoins(0); // ton-reserves
         dataCell.bits.writeCoins(0); // token-reserves
         dataCell.refs.push(contentCell);
@@ -212,7 +207,6 @@ export class AmmMinter {
 
     // this method is using codeCell instead of .fromFuncSource
     static async create2(
-        tokenAdmin: Address,
         content: string,
         rewardsWallet: Address,
         rewardsRate: BN,
@@ -220,7 +214,6 @@ export class AmmMinter {
         protocolRewardsRate: BN = new BN(0)
     ) {
         const data = await AmmMinter.buildDataCell(
-            tokenAdmin,
             content,
             rewardsWallet,
             rewardsRate,
@@ -238,4 +231,15 @@ export class AmmMinter {
         instance.setUnixTime(toUnixTime(Date.now()));
         return instance;
     }
+}
+
+// Null Address EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c
+function zeroAddress() {
+    let cell = new Cell();
+    cell.bits.writeUint(2, 2);
+    cell.bits.writeUint(0, 1);
+    cell.bits.writeUint(0, 8);
+    cell.bits.writeUint(0x0000000000000000, 256);
+
+    return cell.beginParse().readAddress();
 }

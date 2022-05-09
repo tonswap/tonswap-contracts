@@ -1,4 +1,3 @@
-;; Jettons minter smart contract
 
 ;; this code will is used only for testing, removeing this code and replace my_static_address() to my_address()
 slice my_static_address() {
@@ -9,7 +8,6 @@ slice my_static_address() {
         .store_uint(0x4565484654654654, 256) 
     ).end_cell().begin_parse();
 }
-
 
 ;; storage scheme
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
@@ -41,6 +39,14 @@ slice my_static_address() {
           );
 }
 
+slice zeroAddress() inline {
+   return (begin_cell()
+        .store_uint(2, 2) 
+        .store_uint(0, 1)  
+        .store_uint(0, 8)  
+        .store_uint(0x0000000000000000, 256)   
+    ).end_cell().begin_parse();
+}
 
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
@@ -124,13 +130,12 @@ slice my_static_address() {
       int jetton_amount = in_msg_body~load_coins();
       slice jetton_sender = in_msg_body~load_msg_addr();
       int noPayload = in_msg_body~load_uint(1); 
-      
-      ;; accept add-liquidity and swap actions only from token_wallet_address
-      throw_unless(74, equal_slices(token_wallet_address, sender_address));
-
       if (noPayload == -1 ) {
         return ();
       }
+
+      ;; accept add-liquidity and swap actions only from token_wallet_address
+      
       int sub_op = in_msg_body~load_uint(32);
 
       if( sub_op == op::add_liquidity() ) {
@@ -162,6 +167,11 @@ slice my_static_address() {
             .store_uint(0, 1)
             .end_cell();
 
+          ;; token_wallet_address  Starts as zeroAddress, and the first add-liuditiy sets the Amm's jetton wallet address (token_wallet_address)
+          if equal_slices(token_wallet_address, zeroAddress()) {
+            token_wallet_address = sender_address;
+          }
+
           mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
           return ();
@@ -170,6 +180,7 @@ slice my_static_address() {
 
       if (sub_op == op::swap_token() ) {  ;; swap TRC20 -> TON
           ;; <b 10TON , min_amount_out=99 b>
+          throw_if(75, equal_slices(token_wallet_address, zeroAddress()));
           int min_amount_out = in_msg_body~load_grams();
           (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
