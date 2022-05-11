@@ -55,7 +55,7 @@ slice zeroAddress() inline {
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
   
 
-  cell state_init = calculate_jetton_wallet_state_init(to_address, my_static_address(), jetton_wallet_code);
+  cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
   var msg = begin_cell()
     .store_uint(0x18, 6)
@@ -110,10 +110,10 @@ slice zeroAddress() inline {
         int share_in_token_reserves = (jetton_amount * token_reserves) / total_supply;
 
         throw_unless(74,
-            equal_slices(calculate_user_jetton_wallet_address(from_address, my_static_address(), jetton_wallet_code), sender_address)
+            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         
-        send_tokens(0, token_wallet_address, from_address, share_in_token_reserves);        
+        send_tokens2(0, token_wallet_address, from_address, share_in_token_reserves);        
         send_grams(from_address ,share_in_ton_reserves);
         save_data(total_supply - jetton_amount, token_wallet_address, ton_reserves - share_in_ton_reserves, token_reserves - share_in_token_reserves, content, jetton_wallet_code, admin_data);
         
@@ -145,7 +145,6 @@ slice zeroAddress() inline {
 
       ;; accept add-liquidity and swap actions only from token_wallet_address
       ;;  if token_wallet_address != null && token_wallet_address != sender_address -> throw
-      int x = 111;
       if (equal_slices(token_wallet_address, zeroAddress()) == false) & (equal_slices(token_wallet_address, sender_address) == false) {
         throw_if(76, true);
       }
@@ -159,7 +158,7 @@ slice zeroAddress() inline {
           throw_if(99, 0 >= msg_value);
           throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
           
-          ;; deduct future fees from ton msg_value
+          ;; deduct future fees from msg_value
           int ton_liquidity = msg_value - (fwd_fee + jetton_storage());
           throw_unless(101, ton_liquidity > add_liquidity_dust() );
 
@@ -237,29 +236,6 @@ slice zeroAddress() inline {
 }
 
 
-() send_transfer_token_message(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) {
-
-     var msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(jetton_wallet_address)
-    .store_coins(0)
-    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
-    .store_ref(null());
-     
-    var msg_body = begin_cell()
-    .store_uint(op::transfer(), 32)
-    .store_uint(query_id, 64)
-    .store_coins(jetton_amount)
-    .store_slice(to)
-    .store_slice(to)
-    .store_coins(0)
-    .store_slice(null())
-    .end_cell();
-
-    msg = msg.store_ref(msg_body);
-
-    send_raw_message(msg.end_cell(), 64); ;; revert on errors
-}
 
 
 (int, int, slice, int, int, cell, cell, cell) get_jetton_data() method_id {
@@ -269,7 +245,7 @@ slice zeroAddress() inline {
 
 slice get_wallet_address(slice owner_address) method_id {
     (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code, _) = load_data();
-    return calculate_user_jetton_wallet_address(owner_address, my_static_address(), jetton_wallet_code);
+    return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code);
 }
 
 (int, int) get_rewards_by(int lp_amount, int seconds_staked) method_id {

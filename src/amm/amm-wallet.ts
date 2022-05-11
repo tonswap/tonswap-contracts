@@ -1,19 +1,13 @@
 // @ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 
-import {
-    Address,
-    Cell,
-    CellMessage,
-    InternalMessage,
-    Slice,
-    CommonMessageInfo,
-    ExternalMessage,
-} from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, TonClient } from "ton";
 import BN from "bn.js";
 import { toUnixTime, toDecimals, parseInternalMessageResponse } from "../utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../funcToB64";
+import { bytesToAddress } from "../deploy/deploy-utils";
+import { bytesToBase64 } from "../jetton/jetton-minter";
 
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
@@ -58,14 +52,8 @@ export class AmmLpWallet {
         return res;
     }
 
-    async removeLiquidity(
-        amount: BN,
-        responseAddress: Address,
-        from: Address,
-        to: Address,
-        value = new BN(100000000)
-    ) {
-        let messageBody = this.removeLiquidityMessage(amount, responseAddress);
+    async removeLiquidity(amount: BN, responseAddress: Address, from: Address, to: Address, value = new BN(100000000)) {
+        let messageBody = AmmLpWallet.RemoveLiquidityMessage(amount, responseAddress);
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: from,
@@ -78,8 +66,44 @@ export class AmmLpWallet {
 
         return parseInternalMessageResponse(res);
     }
+    static async GetWalletAddress(client: TonClient, minterAddress: Address, walletAddress: Address) {
+        try {
+            let cell = new Cell();
+            cell.bits.writeAddress(walletAddress);
 
-    removeLiquidityMessage(amount: BN, responseAddress: Address) {
+            // tonweb style
+            const b64data = bytesToBase64(await cell.toBoc({ idx: false }));
+            // nodejs buffer
+            let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
+
+            console.log("bytesToBase64", b64data);
+
+            console.log("b64dataBuffer", b64dataBuffer);
+
+            let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
+
+            console.log(res);
+
+            return bytesToAddress(res.stack[0][1].bytes);
+        } catch (e) {
+            console.log("exception", e);
+        }
+    }
+    static async GetWalletData(client: TonClient, jettonWallet: Address) {
+        let res = await client.callGetMethod(jettonWallet, "get_wallet_data", []);
+
+        const balance = BigInt(res.stack[0][1]);
+        const owner = bytesToAddress(res.stack[1][1].bytes);
+        const jettonMaster = bytesToAddress(res.stack[2][1].bytes);
+
+        return {
+            balance,
+            owner,
+            jettonMaster,
+        };
+    }
+
+    static RemoveLiquidityMessage(amount: BN, responseAddress: Address) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Burn, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
@@ -131,13 +155,7 @@ export class AmmLpWallet {
         return parseInternalMessageResponse(res);
     }
 
-    async transfer(
-        from: Address,
-        to: Address,
-        amount: BN,
-        responseDestination: Address,
-        forwardTonAmount: BN = new BN(0)
-    ) {
+    async transfer(from: Address, to: Address, amount: BN, responseDestination: Address, forwardTonAmount: BN = new BN(0)) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Transfer, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id

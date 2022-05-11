@@ -9,6 +9,8 @@ import BN from "bn.js";
 import { parseActionsList, sliceToAddress267, toUnixTime } from "../utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../funcToB64";
+import { bytesToAddress } from "../deploy/deploy-utils";
+import { bytesToBase64 } from "../jetton/jetton-minter";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
@@ -67,6 +69,7 @@ export class AmmMinter {
     }
 
     static SwapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+        console.log(`SwapTon tonToSwap:${tonToSwap.toString()} minAmountOut:${minAmountOut}`);
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -140,6 +143,29 @@ export class AmmMinter {
             minAmountOut,
         };
     }
+    static async GetWalletAddress(client: TonClient, minterAddress: Address, walletAddress: Address) {
+        try {
+            let cell = new Cell();
+            cell.bits.writeAddress(walletAddress);
+
+            // tonweb style
+            const b64data = bytesToBase64(await cell.toBoc({ idx: false }));
+            // nodejs buffer
+            let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
+
+            console.log("bytesToBase64", b64data);
+
+            console.log("b64dataBuffer", b64dataBuffer);
+
+            let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
+
+            console.log(res);
+
+            return bytesToAddress(res.stack[0][1].bytes);
+        } catch (e) {
+            console.log("exception", e);
+        }
+    }
 
     static async GetAmountOut(client: TonClient, minterAddress: Address, amountIn: BN, reserveIn: BN, reserveOut: BN) {
         let res = await client.callGetMethod(minterAddress, "get_amount_out", [
@@ -152,14 +178,17 @@ export class AmmMinter {
         };
     }
     static async GetJettonData(client: TonClient, minterAddress: Address) {
+        console.log(`GetJettonData ${minterAddress.toFriendly()}`);
         let res = await client.callGetMethod(minterAddress, "get_jetton_data", []);
 
         const totalSupply = res.stack[0][1] as string;
         const mintable = res.stack[1][1] as string;
+        const jettonWalletAddressBytes = res.stack[2][1].bytes as string;
         const tonReserves = res.stack[3][1] as string;
         const tokenReserves = res.stack[4][1] as string;
         return {
             totalSupply,
+            jettonWalletAddress: bytesToAddress(jettonWalletAddressBytes),
             mintable,
             tonReserves,
             tokenReserves,

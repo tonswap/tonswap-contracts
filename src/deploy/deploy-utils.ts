@@ -10,9 +10,7 @@ export async function initDeployKey() {
     const deployerWalletType = "org.ton.wallets.v3.r2";
     let deployerMnemonic;
     if (!fs.existsSync(deployConfigJson)) {
-        console.log(
-            `\n* Config file '${deployConfigJson}' not found, creating a new wallet for deploy..`
-        );
+        console.log(`\n* Config file '${deployConfigJson}' not found, creating a new wallet for deploy..`);
         deployerMnemonic = (await mnemonicNew(24)).join(" ");
         const deployWalletJsonContent = {
             created: new Date().toISOString(),
@@ -61,6 +59,7 @@ export async function printAmmData(client: TonClient, ammMinterAddress: Address)
     💰 totalSupply: ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
     💰 tonReserves: ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
     💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
+       JettonWallet : ${data.jettonWalletAddress.toFriendly()}
     `);
 }
 
@@ -73,10 +72,9 @@ export function bnFmt(num: BN | BigInt) {
     if (str.length < 10) {
         let iNum = parseInt(num.toString());
         let float = iNum * 0.000000001;
-        return float.toFixed(10 - str.length);
+        return float.toFixed(6);
     }
-    let formatNum =
-        str.substring(0, str.length - 9) + "." + str.substring(str.length - 9, str.length - 1);
+    let formatNum = str.substring(0, str.length - 9) + "." + str.substring(str.length - 9, str.length - 1);
     return formatNum;
 }
 
@@ -94,14 +92,9 @@ export function printAddresses(addressBook: { [key: string]: string }) {
 }
 
 export async function initWallet(client: TonClient, publicKey: Buffer, workchain = 0) {
-    const wallet = await WalletContract.create(
-        client,
-        WalletV3R2Source.create({ publicKey: publicKey, workchain })
-    );
+    const wallet = await WalletContract.create(client, WalletV3R2Source.create({ publicKey: publicKey, workchain }));
     console.log(
-        `Init wallet ${wallet.address.toFriendly()} | balance: ${fromNano(
-            await client.getBalance(wallet.address)
-        )} 
+        `Init wallet ${wallet.address.toFriendly()} | balance: ${fromNano(await client.getBalance(wallet.address))} 
 | seqno: ${await wallet.getSeqNo()}`
     );
 

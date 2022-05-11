@@ -34,7 +34,7 @@ int squareRoot(int number)  {
 
       
 
-() send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
+() send_tokens2(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
 
 
      var msg = begin_cell()
@@ -54,11 +54,62 @@ int squareRoot(int number)  {
     .store_coins(0) ;; 0 forward_ton_amount
     .store_uint(0, 1) ;; bit is on - empty forward payload 
     .end_cell();
+    
 
     msg = msg.store_ref(msg_body); ;; 3bits on 107 length  
 
     send_raw_message(msg.end_cell(), 64); ;; revert on errors
 }
+
+() send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
+
+     var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(jetton_wallet_address)
+    .store_coins(0)
+    .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1) ;; 3 bits on 107 length message_body is a ref (message body is in a seperate cell)
+    .store_uint(op::transfer(), 32)
+    .store_uint(query_id, 64)
+    .store_coins(jetton_amount)
+    .store_slice(to)
+    .store_slice(to)
+    .store_uint(0, 1) ;; null custom_payload
+    .store_coins(0) ;; 0 forward_ton_amount
+    .store_uint(0, 1) ;; bit is on - empty forward payload 
+    .end_cell();
+    
+    send_raw_message(msg, 64); ;; revert on errors
+}
+
+
+     
+
+
+() send_transfer_token_message(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
+
+     var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(jetton_wallet_address)
+    .store_coins(0)
+    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+    .store_ref(null());
+     
+    var msg_body = begin_cell()
+    .store_uint(op::transfer(), 32)
+    .store_uint(query_id, 64)
+    .store_coins(jetton_amount)
+    .store_slice(to)
+    .store_slice(to)
+    .store_coins(0)
+    .store_slice(null())
+    .end_cell();
+
+    msg = msg.store_ref(msg_body);
+
+    send_raw_message(msg.end_cell(), 64); ;; revert on errors
+}
+
+
 
 int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   int amountInWithFee = amountIn * 997; ;; lp fees 0.3% 
@@ -73,12 +124,13 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
 
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
-    if( amount_out < min_amount_out ) {
+    ;; siplage is to low or insfuiccent amount 
+    if( (amount_out < min_amount_out) | (amount_out > trgt_resvers) ) {
         if is_ton_src == true {
             send_grams(swap_sender, transferd_amount);
         } else {
             ;; TODO pass query Id
-            send_tokens(0, token_wallet_address, swap_sender, transferd_amount);
+            send_tokens2(0, token_wallet_address, swap_sender, transferd_amount);
         }
         return (ton_reserves, token_reserves);
         ;; throw_if(601, true);
@@ -90,7 +142,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
         ;;TODO add queryId
-      send_tokens(0, token_wallet_address, swap_sender, amount_out);
+     ;; send_tokens2(0, token_wallet_address, swap_sender, amount_out);
     } else {
       
       ton_reserves = trgt_resvers - amount_out;
@@ -147,10 +199,10 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     int token_rewards = calc_rewards_seconds(seconds_staked, rewards_rate, lp_amount, token_reserves, total_supply);
     int protocol_rewards = calc_rewards_seconds(seconds_staked, protocol_rate, lp_amount, token_reserves, total_supply);
     if token_rewards > 0 {
-        send_tokens(query_id, rewards_wallet_address, rewards_owner, token_rewards);
+        send_tokens2(query_id, rewards_wallet_address, rewards_owner, token_rewards);
     }
     if protocol_rewards > 0 {
-        send_tokens(query_id, protocol_rewards_wallet_address, rewards_owner, token_rewards);
+        send_tokens2(query_id, protocol_rewards_wallet_address, rewards_owner, token_rewards);
     }
 }
 
