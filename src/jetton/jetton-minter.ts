@@ -101,14 +101,25 @@ export class JettonMinter {
         try {
             let cell = new Cell();
             cell.bits.writeAddress(walletAddress);
-            let b64data = (await cell.toBoc({ idx: false })).toString("base64");
+
+            // tonweb style
+            const b64data = bytesToBase64(await cell.toBoc({ idx: false }));
+            // nodejs buffer
+            let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
+
+            console.log("bytesToBase64", b64data);
+
+            console.log("b64dataBuffer", b64dataBuffer);
 
             let res = await client.callGetMethod(minterAddress, "get_wallet_address", [
-                ["tvm.Slice", b64data],
+                ["tvm.Slice", b64dataBuffer],
             ]);
+
+            console.log(res);
+
             return bytesToAddress(res.stack[0][1].bytes);
         } catch (e) {
-            console.log("excption", e);
+            console.log("exception", e);
         }
     }
 
@@ -275,4 +286,53 @@ async function buildStateInit(
     dataCell.refs.push(contentCell);
     dataCell.refs.push(tokenCode);
     return dataCell;
+}
+
+const base64abc = (() => {
+    const abc = [];
+    const A = "A".charCodeAt(0);
+    const a = "a".charCodeAt(0);
+    const n = "0".charCodeAt(0);
+    for (let i = 0; i < 26; ++i) {
+        abc.push(String.fromCharCode(A + i));
+    }
+    for (let i = 0; i < 26; ++i) {
+        abc.push(String.fromCharCode(a + i));
+    }
+    for (let i = 0; i < 10; ++i) {
+        abc.push(String.fromCharCode(n + i));
+    }
+    abc.push("+");
+    abc.push("/");
+    return abc;
+})();
+
+/**
+ * @param bytes {Uint8Array}
+ * @return {string}
+ */
+export function bytesToBase64(bytes: any) {
+    let result = "";
+    let i;
+    const l = bytes.length;
+    for (i = 2; i < l; i += 3) {
+        result += base64abc[bytes[i - 2] >> 2];
+        result += base64abc[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)];
+        result += base64abc[((bytes[i - 1] & 0x0f) << 2) | (bytes[i] >> 6)];
+        result += base64abc[bytes[i] & 0x3f];
+    }
+    if (i === l + 1) {
+        // 1 octet missing
+        result += base64abc[bytes[i - 2] >> 2];
+        result += base64abc[(bytes[i - 2] & 0x03) << 4];
+        result += "==";
+    }
+    if (i === l) {
+        // 2 octets missing
+        result += base64abc[bytes[i - 2] >> 2];
+        result += base64abc[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)];
+        result += base64abc[(bytes[i - 1] & 0x0f) << 2];
+        result += "=";
+    }
+    return result;
 }

@@ -1,5 +1,5 @@
 
-;; this code will is used only for testing, removeing this code and replace my_static_address() to my_address()
+;; this code will is used only for testing, removeing this code and replace my_static_address() to my_static_address()
 slice my_static_address() {
      return (begin_cell()
         .store_uint(2, 2) 
@@ -8,6 +8,9 @@ slice my_static_address() {
         .store_uint(0x4565484654654654, 256) 
     ).end_cell().begin_parse();
 }
+
+int jetton_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
+int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
 
 ;; storage scheme
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
@@ -57,7 +60,7 @@ slice zeroAddress() inline {
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(to_wallet_address)
-    .store_coins(amount)
+    .store_coins(jetton_storage())
     .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
     .store_ref(state_init)
     .store_ref(master_msg);
@@ -75,7 +78,12 @@ slice zeroAddress() inline {
         return ();
     }
     slice sender_address = cs~load_msg_addr();
-  
+    cs~load_msg_addr(); ;; skip dst
+    cs~load_coins(); ;; skip value
+    cs~skip_bits(1); ;; skip extracurrency collection
+    cs~load_coins(); ;; skip ihr_fee
+    int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs
+
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
@@ -101,11 +109,12 @@ slice zeroAddress() inline {
         int share_in_ton_reserves = (jetton_amount * ton_reserves) / total_supply;
         int share_in_token_reserves = (jetton_amount * token_reserves) / total_supply;
 
+        throw_unless(74,
+            equal_slices(calculate_user_jetton_wallet_address(from_address, my_static_address(), jetton_wallet_code), sender_address)
+        );
+        
         send_tokens(0, token_wallet_address, from_address, share_in_token_reserves);        
         send_grams(from_address ,share_in_ton_reserves);
-       throw_unless(74,
-           equal_slices(calculate_user_jetton_wallet_address(from_address, my_static_address(), jetton_wallet_code), sender_address)
-       );
         save_data(total_supply - jetton_amount, token_wallet_address, ton_reserves - share_in_ton_reserves, token_reserves - share_in_token_reserves, content, jetton_wallet_code, admin_data);
         
         return ();
@@ -143,15 +152,30 @@ slice zeroAddress() inline {
           int slipage = in_msg_body~load_uint(32);
           throw_if(98, 0 >= jetton_amount);
           throw_if(99, 0 >= msg_value);
-          ;; TODO 
-          int msg_price = msg_value / jetton_amount;
-          int ton_price = 0;
-          int price_delta = 0;
+          throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
           
-          if ( token_reserves > 0 ) {
-            ton_price = ton_reserves / token_reserves;
-            price_delta =  ( ( msg_price / ton_price ) - 1 ) * 100;
-            throw_if(103,  price_delta > slipage );
+          ;; new soli
+          if ton_reserves > 0 {
+            int ton_liquidity = msg_value - (fwd_fee + jetton_storage());
+            int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
+            int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
+
+            int ton_liquidity_min = ton_liquidity * ( 100 - slipage ) / 100;
+            int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
+
+            throw_unless(103, optimal_ton >= ton_liquidity_min);
+            throw_unless(103, optimal_jetton >= jeton_liquidity_min);
+            
+            int extra_ton = ton_liquidity - optimal_ton;
+            int extra_jeton = jetton_amount - optimal_jetton;
+
+            ;; return extra's
+            if extra_jeton > add_liquidity_dust() {
+              send_tokens(query_id, token_wallet_address, jetton_sender, extra_jeton);        
+            }
+            if extra_ton > add_liquidity_dust() {
+              send_grams(jetton_sender ,extra_jeton);
+            }
           }
 
           (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(msg_value ,jetton_amount ,ton_reserves, token_reserves, total_supply);

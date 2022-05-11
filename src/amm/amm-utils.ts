@@ -3,13 +3,7 @@ import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "
 import { OutAction } from "../utils";
 import { OPS } from "./ops";
 
-export function actionToInternalMessage(
-    to: Address,
-    from: Address,
-    messageBody: Cell,
-    messageValue = new BN(1000000000),
-    bounce = false
-) {
+export function actionToInternalMessage(to: Address, from: Address, messageBody: Cell, messageValue = new BN(1000000000), bounce = false) {
     let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
     return new InternalMessage({
         to,
@@ -39,12 +33,7 @@ export function actionToMessage(
     });
 }
 
-export function actionToMessage2(
-    from: Address,
-    action: OutAction | undefined,
-    messageValue = new BN(1000000000),
-    bounce = false
-) {
+export function actionToMessage2(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = false) {
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
 

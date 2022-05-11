@@ -2,15 +2,7 @@
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 import { parseInternalMessageResponse } from "../utils";
 
-import {
-    Address,
-    Cell,
-    CellMessage,
-    InternalMessage,
-    Slice,
-    CommonMessageInfo,
-    TonClient,
-} from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
 import BN from "bn.js";
 import { parseActionsList, toUnixTime, toDecimals, OutAction } from "../utils";
 import { OPS } from "../amm/ops";
@@ -68,7 +60,7 @@ export class JettonWallet {
         messageBody.bits.writeBit(false); // forward_payload in this slice, not separate messageBody
         messageBody.bits.writeUint(new BN(overloadOp), 32);
         if (overloadOp == OPS.ADD_LIQUIDITY) {
-            messageBody.bits.writeUint(overloadOp, 32); // slippage
+            messageBody.bits.writeUint(overloadValue, 32); // slippage
         } else if (overloadOp == OPS.SWAP_TOKEN) {
             messageBody.bits.writeCoins(overloadValue); // min amount out
         }
@@ -85,19 +77,13 @@ export class JettonWallet {
         overloadOp: UsdcTransferNextOp,
         overloadValue: BN
     ) {
-        const messageBody = JettonWallet.TransferOverloaded(
-            to,
-            amount,
-            responseDestination,
-            forwardTonAmount,
-            overloadOp,
-            overloadValue
-        );
+        const messageBody = JettonWallet.TransferOverloaded(to, amount, responseDestination, forwardTonAmount, overloadOp, overloadValue);
+        const addLiquidityGas = "0.15";
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: from,
                 to: to,
-                value: toDecimals(1),
+                value: forwardTonAmount.add(toNano(addLiquidityGas)),
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })

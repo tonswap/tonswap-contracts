@@ -4,15 +4,7 @@ import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contrac
 import { parseInternalMessageResponse, sliceToAddress } from "../utils";
 import { AmmLpWallet } from "./amm-wallet";
 
-import {
-    Address,
-    Cell,
-    CellMessage,
-    InternalMessage,
-    Slice,
-    CommonMessageInfo,
-    TonClient,
-} from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient } from "ton";
 import BN from "bn.js";
 import { parseActionsList, sliceToAddress267, toUnixTime } from "../utils";
 import { OPS } from "./ops";
@@ -53,11 +45,7 @@ export class AmmMinter {
     async swapTon(from: Address, tonToSwap: BN, minAmountOut: BN) {
         const fee = new BN(100000000);
 
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(OPS.SWAP_TON, 32); // action
-        messageBody.bits.writeUint(1, 64); // query-id
-        messageBody.bits.writeCoins(tonToSwap); // swapping amount of tons
-        messageBody.bits.writeCoins(minAmountOut); // minimum received
+        let messageBody = AmmMinter.SwapTon(tonToSwap, minAmountOut);
 
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
@@ -76,6 +64,15 @@ export class AmmMinter {
             logs: res.logs,
             actions: parseActionsList(successResult.action_list_cell),
         };
+    }
+
+    static SwapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+        let cell = new Cell();
+        cell.bits.writeUint(OPS.SWAP_TON, 32); // action
+        cell.bits.writeUint(1, 64); // query-id
+        cell.bits.writeCoins(tonToSwap); // swapping amount of tons
+        cell.bits.writeCoins(minAmountOut); // minimum received
+        return cell;
     }
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
@@ -130,13 +127,37 @@ export class AmmMinter {
             logs: data.logs,
         };
     }
+
+    async getAmountOut(amountIn: BN, reserveIn: BN, reserveOut: BN) {
+        let res = await this.contract.invokeGetMethod("get_amount_out", [
+            { type: "int", value: amountIn.toString() },
+            { type: "int", value: reserveIn.toString() },
+            { type: "int", value: reserveOut.toString() },
+        ]);
+
+        const minAmountOut = res.result[0] as BN;
+        return {
+            minAmountOut,
+        };
+    }
+
+    static async GetAmountOut(client: TonClient, minterAddress: Address, amountIn: BN, reserveIn: BN, reserveOut: BN) {
+        let res = await client.callGetMethod(minterAddress, "get_amount_out", [
+            ["num", amountIn.toString()],
+            ["num", reserveIn.toString()],
+            ["num", reserveOut.toString()],
+        ]);
+        return {
+            minAmountOut: BigInt(res.stack[0][1]),
+        };
+    }
     static async GetJettonData(client: TonClient, minterAddress: Address) {
         let res = await client.callGetMethod(minterAddress, "get_jetton_data", []);
 
-        const totalSupply = res.stack[0][1] as BN;
-        const mintable = res.stack[1][1] as BN;
-        const tonReserves = res.stack[3][1] as BN;
-        const tokenReserves = res.stack[4][1] as BN;
+        const totalSupply = res.stack[0][1] as string;
+        const mintable = res.stack[1][1] as string;
+        const tonReserves = res.stack[3][1] as string;
+        const tokenReserves = res.stack[4][1] as string;
         return {
             totalSupply,
             mintable,
@@ -144,20 +165,6 @@ export class AmmMinter {
             tokenReserves,
         };
     }
-
-    // async getJettonData() {
-    //     let data = await this.contract.invokeGetMethod("get_jetton_data", []);
-    //     const rawAddress = data.result[2] as Slice;
-
-    //     // const admin = new Address(0, new BN(rawAddress).toBuffer() );
-    //     return {
-    //         totalSupply: data.result[0] as BN,
-    //         mintable: data.result[1] as BN,
-    //         adminAddress: sliceToAddress(rawAddress, true),
-    //         content: data.result[3],
-    //         jettonWalletCode: data.result[4],
-    //     };
-    // }
 
     setUnixTime(time: number) {
         this.contract.setUnixTime(time);
@@ -213,13 +220,7 @@ export class AmmMinter {
         protocolRewardsWallet: Address,
         protocolRewardsRate: BN = new BN(0)
     ) {
-        const data = await AmmMinter.buildDataCell(
-            content,
-            rewardsWallet,
-            rewardsRate,
-            protocolRewardsWallet,
-            protocolRewardsRate
-        );
+        const data = await AmmMinter.buildDataCell(content, rewardsWallet, rewardsRate, protocolRewardsWallet, protocolRewardsRate);
 
         const code = await AmmMinter.CompileCodeToCell();
 

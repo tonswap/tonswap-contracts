@@ -35,6 +35,8 @@ int squareRoot(int number)  {
       
 
 () send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
+
+
      var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
@@ -152,3 +154,9 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     }
 }
 
+;; based on uniswap v2
+(int) quote(int amount_a, int reserve_a, int reserve_b) impure {
+    throw_unless(420, amount_a > 0);
+    throw_unless(421, (reserve_a > 0) & (reserve_b > 0) );
+    return muldiv(amount_a, reserve_b, reserve_a);
+}
