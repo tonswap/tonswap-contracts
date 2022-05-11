@@ -190,7 +190,6 @@ describe("Jetton Minter ", () => {
 
         const { tonReserves, tokenReserves } = await masterAMM.getData();
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
-        const price = tonReserves.div(tokenReserves);
 
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut);
 
@@ -557,9 +556,6 @@ async function addLiquidity(
     let mintLpMessage = transferNotificationRes.actions[0] as SendMsgOutAction;
     const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
     const lpWalletResponse = await lpWallet.sendInternalMessage(lpMsg);
-    let lpData = await lpWallet.getData();
-
-    // expect(lpData.balance.toString()).toBe(expectedLP); // lp amount
 
     return {
         lpWalletResponse,
