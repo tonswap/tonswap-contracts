@@ -144,6 +144,11 @@ slice zeroAddress() inline {
       }
 
       ;; accept add-liquidity and swap actions only from token_wallet_address
+      ;;  if token_wallet_address != null && token_wallet_address != sender_address -> throw
+      int x = 111;
+      if (equal_slices(token_wallet_address, zeroAddress()) == false) & (equal_slices(token_wallet_address, sender_address) == false) {
+        throw_if(76, true);
+      }
       
       int sub_op = in_msg_body~load_uint(32);
 
@@ -154,9 +159,11 @@ slice zeroAddress() inline {
           throw_if(99, 0 >= msg_value);
           throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
           
-          ;; new soli
+          ;; deduct future fees from ton msg_value
+          int ton_liquidity = msg_value - (fwd_fee + jetton_storage());
+          throw_unless(101, ton_liquidity > add_liquidity_dust() );
+
           if ton_reserves > 0 {
-            int ton_liquidity = msg_value - (fwd_fee + jetton_storage());
             int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
             int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
 
@@ -178,7 +185,7 @@ slice zeroAddress() inline {
             }
           }
 
-          (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(msg_value ,jetton_amount ,ton_reserves, token_reserves, total_supply);
+          (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(ton_liquidity ,jetton_amount ,ton_reserves, token_reserves, total_supply);
                                                                        ;;TODO should put null instead of payload
           ;; end wallet is expecting the amount and owner,
           cell mint_msg = begin_cell()

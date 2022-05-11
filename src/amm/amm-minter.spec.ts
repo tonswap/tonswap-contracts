@@ -11,13 +11,14 @@ import { ERROR_CODES, OPS } from "./ops";
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const rewardsWallet = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const protocolWallet = Address.parse("EQDjhy1Ig-S0vKCWwd3XZRKODGx0RJyhqW37ZDMl-pgv8iBr");
-const alice = Address.parseFriendly("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7").address;
-const amm = Address.parseFriendly("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe").address;
+const alice = Address.parse("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7");
+const liyi = Address.parse("EQDrjaLahLkMB-hMCmkzOyBuHJ139ZUYmPHu6RRBKnbdLIYI");
+const amm = Address.parse("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe");
 
 const ALICE_INITIAL_BALANCE = toNano(3500);
 const JETTON_LIQUIDITY = toNano(1000);
 const TON_LIQUIDITY = toNano(500);
-const LP_DEFAULT_AMOUNT = 707106781186;
+const LP_DEFAULT_AMOUNT = 707071424963;
 const EXPECTED_REWARDS = "499999999996800";
 const aliceSubWallet = Address.parseFriendly("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7").address;
 
@@ -151,7 +152,7 @@ describe("Jetton Minter ", () => {
         expect(sendTonAfterSwapMessage.message.info?.value.coins.toString()).toBe(minAmountOut.toString());
     });
 
-    it("swaps usdc to TON and revert", async () => {
+    it("swap usdc to TON and revert", async () => {
         const expectedOutPut = "3266599999999";
         const minAmountOut = new BN(expectedOutPut);
         const { aliceUSDC, masterAMM, ammUsdcWallet } = await initAMM({}); //create
@@ -208,7 +209,7 @@ describe("Jetton Minter ", () => {
         expect(aliceUsdcData2.balance.toString()).toBe(aliceUsdcData1.balance.add(minAmountOut).toString());
     });
 
-    it("swaps TON to USDC min amount out should fail, expecting the funds to be sent back", async () => {
+    it("swap TON to USDC min amount out should fail, expecting the funds to be sent back", async () => {
         const { masterAMM } = await initAMM({}); //create
         let tonSide = toNano(1);
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, toNano(3));
@@ -340,6 +341,33 @@ describe("Jetton Minter ", () => {
 
         const lpWalletData = await lpWallet.getData();
         expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
+    });
+
+    it("add liquidity from a bad source wallet", async () => {
+        const lpSize = LP_DEFAULT_AMOUNT;
+        const jettonLiquidity = JETTON_LIQUIDITY;
+        const tonLiquidity = TON_LIQUIDITY;
+
+        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({
+            jettonLiquidity: jettonLiquidity,
+            tonLiquidity: tonLiquidity,
+        }); //create
+
+        let amm0 = await masterAMM.getData();
+        printAmmData(amm0);
+
+        await addLiquidity(
+            aliceUSDC,
+            ammUsdcWallet,
+            masterAMM,
+            lpWallet,
+            `${lpSize * 2}`,
+            JETTON_LIQUIDITY,
+            TON_LIQUIDITY,
+            new BN(5),
+            ERROR_CODES.ADD_LIQUIDITY_WRONG_JETTON_SENDER,
+            liyi
+        );
     });
 
     it("auto claim rewards on lp balance change - rewards should be sent upon balance change", async () => {
@@ -488,7 +516,8 @@ async function addLiquidity(
     jettonLiquidity = JETTON_LIQUIDITY,
     tonLiquidity = TON_LIQUIDITY,
     slippage = new BN(5),
-    addLiquidityExitCode = 0
+    addLiquidityExitCode = 0,
+    jettonSenderOverride?: Address
 ) {
     tonLiquidity = tonLiquidity.add(toNano(0.1));
 
@@ -508,16 +537,15 @@ async function addLiquidity(
     const internalTransferMessage = actionToMessage2(amm, transferResponse.actions[0], tonLiquidity);
     const ammUsdcWalletResponse = await ammUsdcWallet.sendInternalMessage(internalTransferMessage);
     // @ts-ignore
-
     const usdcToAmmTransferNotification = actionToMessage2(
-        ammUsdcWallet.address as Address,
+        jettonSenderOverride || (ammUsdcWallet.address as Address),
         //@ts-ignore
         ammUsdcWalletResponse.actions[0],
         tonLiquidity
     );
     let transferNotificationRes = await masterAMM.sendInternalMessage(usdcToAmmTransferNotification);
 
-    //    console.log(transferNotificationRes);
+    console.log(transferNotificationRes);
 
     expect(transferNotificationRes.exit_code).toBe(addLiquidityExitCode);
     if (addLiquidityExitCode > 0) {

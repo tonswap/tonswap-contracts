@@ -16,4 +16,5 @@ export enum OPS {
 export enum ERROR_CODES {
     MinAmountOutIsInsufficient = 601,
     ADD_LIQUIDITY_INSUFFICIENT_BALANCE = 103,
+    ADD_LIQUIDITY_WRONG_JETTON_SENDER = 76,
 }
