@@ -35,8 +35,8 @@ import { AmmLpWallet } from "../amm/amm-wallet";
 
 axiosThrottle.use(axios, { requestsPerSecond: 0.5 }); // required since toncenter jsonRPC limits to 1 req/sec without API key
 const client = new TonClient({
-    //endpoint: "https://testnet.tonhubapi.com/jsonRPC",
-    endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
+    endpoint: "https://testnet.tonhubapi.com/jsonRPC",
+    //   endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
     // endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
 });
 
@@ -44,7 +44,7 @@ enum GAS_FEES {
     ADD_LIQUIDITY = 0.15,
     REMOVE_LIQUIDITY = 0.15,
     SWAP_FEE = 0.1,
-    SWAP_FORWARD_TON = 0.01,
+    SWAP_FORWARD_TON = 0.1,
 }
 
 const zeroAddress = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
@@ -261,7 +261,7 @@ async function swapUsdcToTon(
     );
     const swapTokenMessage = JettonWallet.TransferOverloaded(
         ammMinter,
-        new BN(601393811), // remove
+        tokenSwapAmount,
         ammMinter,
         toNano(GAS_FEES.SWAP_FORWARD_TON),
         OPS.SWAP_TOKEN,
@@ -275,7 +275,6 @@ async function swapUsdcToTon(
         privateKey,
         swapTokenMessage
     );
-    await sleep(BLOCK_TIME);
     await sleep(BLOCK_TIME);
     await printAmmData(client, ammMinter);
     await printDeployerBalances(client, deployerUSDCAddress);
@@ -344,10 +343,11 @@ async function main() {
     saveAddress("AMM-Minter", ammMinter.address);
 
     // ======== add-liquidity 2 ton + 100 tokens
-    // await addLiquidity(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
+    //await addLiquidity(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
 
+    sleep(BLOCK_TIME * 2);
     // ======== Swap Usdc -> TON
-    await swapUsdcToTon(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(1));
+    await swapUsdcToTon(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
 
     // ======== Swap Ton -> USDC
     //await swapTonToUsdc(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
@@ -360,7 +360,7 @@ async function main() {
 
 (async () => {
     await main();
-    // await printAmmData(client, Address.parse("EQD6lt5WfTwWsQRT_AT1nUVrfRv5JlbMivX0nOXAuhF6KOvU"));
+    // await printAmmData(client, Address.parse("EQDOdeLGx2BxcFATwRVyBwqyATz8awoRgoYT1G2NHPUXUw2S"));
     //await testJettonAddressCalc();
 })();
 
