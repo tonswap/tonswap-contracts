@@ -7,6 +7,7 @@ import { JettonWallet } from "../jetton/jetton-wallet";
 import { AmmLpWallet } from "./amm-wallet";
 import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "./amm-utils";
 import { ERROR_CODES, OPS } from "./ops";
+import { bnFmt } from "../deploy/deploy-utils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const rewardsWallet = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
@@ -18,7 +19,7 @@ const amm = Address.parse("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe");
 const ALICE_INITIAL_BALANCE = toNano(3500);
 const JETTON_LIQUIDITY = toNano(1000);
 const TON_LIQUIDITY = toNano(500);
-const LP_DEFAULT_AMOUNT = 707071424963;
+const LP_DEFAULT_AMOUNT = 38265488262;
 const EXPECTED_REWARDS = "499999999996800";
 const aliceSubWallet = Address.parseFriendly("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7").address;
 
@@ -214,11 +215,18 @@ describe("Jetton Minter ", () => {
 
     it("swap TON to USDC min amount out should fail, expecting the funds to be sent back", async () => {
         const { masterAMM } = await initAMM({}); //create
+
         let tonSide = toNano(1);
-        const swapTonResp = await masterAMM.swapTon(alice, tonSide, toNano(3));
-        const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
-        // @ts-ignore
+        const ammData = await masterAMM.getData();
+        const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
+        // exceeded the minamount out by one
+        const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut.add(new BN(1)));
+        console.log(swapTonResp);
+
+        //@ts-ignore
         console.log(swapTonResp.actions[0].message.info);
+
+        const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
         // @ts-ignore
         // expecting funds to be sent back
         expect(sendTonBackMessage.message.info?.value.coins.toString()).toBe(tonSide.toString());
@@ -271,9 +279,8 @@ describe("Jetton Minter ", () => {
 
         let msg = actionToMessage(alice, amm, walletClaimRewardsResponse.actions[0]);
         let ammResponse = await masterAMM.sendInternalMessage(msg);
-        //@ts-ignore
-        console.log(ammResponse.actions);
 
+        //@ts-ignore
         let action = ammResponse.actions[0] as SuccessfulExecutionResult;
         const transferData = parseJettonTransfer(action.message.body);
         expect(transferData.amount.toString()).toBe(EXPECTED_REWARDS);
@@ -455,7 +462,8 @@ async function initAMM({
         undefined,
         tonLiquidity,
         OPS.ADD_LIQUIDITY,
-        addLiquiditySlippage // slippage
+        addLiquiditySlippage, // slippage
+        tonLiquidity
     );
 
     const jettonTransferToAmmWallet = transferWithAddLiquidityResponse.actions[0] as SendMsgOutAction;
@@ -537,7 +545,8 @@ async function addLiquidity(
         undefined,
         tonLiquidity,
         OPS.ADD_LIQUIDITY,
-        slippage
+        slippage,
+        tonLiquidity
     );
 
     expect(transferResponse.exit_code).toBe(0);

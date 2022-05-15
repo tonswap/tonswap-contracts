@@ -48,7 +48,8 @@ export class JettonWallet {
         responseDestination: Address,
         forwardTonAmount: BN = new BN(0),
         overloadOp: UsdcTransferNextOp,
-        overloadValue: BN
+        overloadValue: BN,
+        tonLiquidity?: BN
     ) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Transfer, 32); // action
@@ -60,8 +61,9 @@ export class JettonWallet {
         messageBody.bits.writeCoins(forwardTonAmount);
         messageBody.bits.writeBit(false); // forward_payload in this slice, not separate messageBody
         messageBody.bits.writeUint(new BN(overloadOp), 32);
-        if (overloadOp == OPS.ADD_LIQUIDITY) {
+        if (overloadOp == OPS.ADD_LIQUIDITY && tonLiquidity) {
             messageBody.bits.writeUint(overloadValue, 32); // slippage
+            messageBody.bits.writeCoins(tonLiquidity);
         } else if (overloadOp == OPS.SWAP_TOKEN) {
             messageBody.bits.writeCoins(overloadValue); // min amount out
         }
@@ -76,9 +78,18 @@ export class JettonWallet {
         customPayload: Cell | undefined,
         forwardTonAmount: BN = new BN(0),
         overloadOp: UsdcTransferNextOp,
-        overloadValue: BN
+        overloadValue: BN,
+        tonLiquidity?: BN
     ) {
-        const messageBody = JettonWallet.TransferOverloaded(to, amount, responseDestination, forwardTonAmount, overloadOp, overloadValue);
+        const messageBody = JettonWallet.TransferOverloaded(
+            to,
+            amount,
+            responseDestination,
+            forwardTonAmount,
+            overloadOp,
+            overloadValue,
+            tonLiquidity
+        );
         const addLiquidityGas = "0.15";
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
@@ -121,6 +132,7 @@ export class JettonWallet {
     //     instance.setUnixTime(toUnixTime(Date.now()));
     //     return instance;
     // }
+
     static async GetData(client: TonClient, jettonWallet: Address) {
         let res = await client.callGetMethod(jettonWallet, "get_wallet_data", []);
 

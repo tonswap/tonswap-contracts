@@ -114,14 +114,14 @@ slice zeroAddress() inline {
         
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
-        throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
         
 
+        throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
+        
         (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address);
         save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
         return ();
     }
-
 
     ;; transfer_notification#7362d09c query_id:uint64 amount:(VarUInteger 16) 
     ;;                          sender:MsgAddress forward_payload:(Either Cell ^Cell)
@@ -142,17 +142,18 @@ slice zeroAddress() inline {
       }
       
       int sub_op = in_msg_body~load_uint(32);
-
-      ~dump sub_op;
       if( sub_op == op::add_liquidity() ) {
 
           int slipage = in_msg_body~load_uint(32);
+          int ton_liquidity = in_msg_body~load_uint(32);
           throw_if(98, 0 >= jetton_amount);
           throw_if(99, 0 >= msg_value);
           throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
           
-          ;; deduct future fees from msg_value
-          int ton_liquidity = msg_value - (fwd_fee + jetton_storage());
+          
+          ;; make sure there is enough ton for liquidity + future fees 
+          throw_unless(102, ton_liquidity <= msg_value - (fwd_fee + jetton_storage()));
+          ;; ton-liquidity should be bigger than dust
           throw_unless(101, ton_liquidity > add_liquidity_dust() );
 
           if ton_reserves > 0 {
@@ -173,7 +174,7 @@ slice zeroAddress() inline {
               send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton);        
             }
             if extra_ton > add_liquidity_dust() {
-              send_grams(jetton_sender ,extra_jeton);
+              send_grams(jetton_sender ,extra_ton);
             }
           }
 

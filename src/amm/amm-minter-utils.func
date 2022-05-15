@@ -75,8 +75,6 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 (int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address) impure {
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
-
-    
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     
     ;; siplage is to low or insfuiccent amount 
@@ -93,11 +91,11 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     
 
     if(is_ton_src == true) {
-      
+
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
       ;;TODO add queryId
-      
+
       send_transfer_token_message(0, token_wallet_address, swap_sender, amount_out);
     } else {
       

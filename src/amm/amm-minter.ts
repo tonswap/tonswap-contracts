@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 //@ts-ignore
 import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { parseInternalMessageResponse, sliceToAddress } from "../utils";
+import { filterLogs, parseInternalMessageResponse, sliceToAddress } from "../utils";
 import { AmmLpWallet } from "./amm-wallet";
 
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient } from "ton";
@@ -64,7 +64,7 @@ export class AmmMinter {
         return {
             exit_code: res.exit_code,
             returnValue: res.result[1] as BN,
-            logs: res.logs,
+            logs: filterLogs(res.logs),
             actions: parseActionsList(successResult.action_list_cell),
         };
     }
@@ -255,6 +255,7 @@ export class AmmMinter {
 
         let contract = await SmartContract.fromCell(code[0], data.initDataCell, {
             getMethodsMutate: true,
+            debug: true,
         });
         const instance = new AmmMinter(contract);
 
