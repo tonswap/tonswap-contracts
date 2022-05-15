@@ -25,7 +25,7 @@ const aliceSubWallet = Address.parseFriendly("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqb
 
 const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 
-describe("Jetton Minter ", () => {
+describe("AMM Minter ", () => {
     it("mint USDC", async () => {
         const { masterUSDC, aliceUSDC } = await createBaseContracts();
 
@@ -201,14 +201,12 @@ describe("Jetton Minter ", () => {
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
 
         const aliceUsdcData1 = await aliceUSDC.getData();
-
         const aliceUsdcTransferResponse = await aliceUSDC.sendInternalMessage(
             actionToMessage(alice, amm, ammUsdcResponseAfterSwap.actions[0])
         );
         expect(aliceUsdcTransferResponse.exit_code).toBe(0);
 
         const aliceUsdcData2 = await aliceUSDC.getData();
-        console.log(aliceUsdcData2.balance.toString());
 
         expect(aliceUsdcData2.balance.toString()).toBe(aliceUsdcData1.balance.add(minAmountOut).toString());
     });
@@ -221,7 +219,6 @@ describe("Jetton Minter ", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
         // exceeded the minamount out by one
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut.add(new BN(1)));
-        console.log(swapTonResp);
 
         const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
         // @ts-ignore
@@ -314,7 +311,7 @@ describe("Jetton Minter ", () => {
         expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
     });
 
-    it.only("add liquidity twice and fail the second time, send back funds to sender", async () => {
+    it("add liquidity twice and fail the second time, send back funds to sender", async () => {
         const lpSize = LP_DEFAULT_AMOUNT;
         const jettonLiquidity = JETTON_LIQUIDITY;
         const tonLiquidity = TON_LIQUIDITY;
@@ -527,7 +524,6 @@ async function initAMM({
     );
 
     let ammRes = await masterAMM.sendInternalMessage(usdcToAmmTransferNotification);
-    console.log(ammRes);
     expect(ammRes.exit_code).toBe(0);
 
     //const ammData = await masterAMM.getData();
