@@ -58,6 +58,75 @@ slice zeroAddress() inline {
   send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
 }
 
+
+() add_liquidity(slice in_msg_body, int jetton_amount, slice jetton_sender, int msg_value, slice sender_address, int fwd_fee, int query_id) impure {
+
+    (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code, cell admin_data) = load_data();
+
+    int slipage = in_msg_body~load_uint(32);
+    int ton_liquidity = in_msg_body~load_grams();
+    throw_if(98, 0 >= jetton_amount);
+    throw_if(99, 0 >= msg_value);
+    throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
+
+    if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+        return ();
+    }
+
+    if (ton_liquidity <= msg_value - (fwd_fee + jetton_storage())) | ton_liquidity < add_liquidity_dust() {
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+        return ();
+    }
+
+
+    if ton_reserves > 0 {
+        int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
+        int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
+
+        int ton_liquidity_min = ton_liquidity * ( 100 - slipage ) / 100;
+        int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
+
+        if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
+            revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+        } else {
+            int extra_ton = ton_liquidity - optimal_ton;
+            int extra_jeton = jetton_amount - optimal_jetton;
+
+            ;; return extra's
+            if extra_jeton > add_liquidity_dust() {
+                send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton);        
+            }
+            if extra_ton > add_liquidity_dust() {
+                send_grams(jetton_sender ,extra_ton);
+            }
+        }
+    }
+
+    (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(ton_liquidity ,jetton_amount ,ton_reserves, token_reserves, total_supply);
+                                                                ;;TODO should put null instead of payload
+    ;; end wallet is expecting the amount and owner,
+    cell mint_msg = begin_cell()
+    .store_uint(op::internal_transfer(), 32)
+    .store_uint(query_id, 64)
+    .store_coins(new_liquidity)
+    .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
+    .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
+    .store_coins(0)
+    .store_uint(0, 1)
+    .end_cell();
+
+    ;; token_wallet_address  Starts as zeroAddress, and the first add-liuditiy sets the Amm's jetton wallet address (token_wallet_address)
+    if equal_slices(token_wallet_address, zeroAddress()) {
+        token_wallet_address = sender_address;
+    }
+
+    mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
+    save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
+    return ();
+}
+
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore empty messages
       return ();
@@ -115,7 +184,6 @@ slice zeroAddress() inline {
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
         
-
         throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
         
         (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address);
@@ -142,68 +210,17 @@ slice zeroAddress() inline {
       }
       
       int sub_op = in_msg_body~load_uint(32);
+      
       if( sub_op == op::add_liquidity() ) {
-
-          int slipage = in_msg_body~load_uint(32);
-          int ton_liquidity = in_msg_body~load_uint(32);
-          throw_if(98, 0 >= jetton_amount);
-          throw_if(99, 0 >= msg_value);
-          throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
-          
-          
-          ;; make sure there is enough ton for liquidity + future fees 
-          throw_unless(102, ton_liquidity <= msg_value - (fwd_fee + jetton_storage()));
-          ;; ton-liquidity should be bigger than dust
-          throw_unless(101, ton_liquidity > add_liquidity_dust() );
-
-          if ton_reserves > 0 {
-            int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
-            int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
-
-            int ton_liquidity_min = ton_liquidity * ( 100 - slipage ) / 100;
-            int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
-
-            throw_unless(103, optimal_ton >= ton_liquidity_min);
-            throw_unless(103, optimal_jetton >= jeton_liquidity_min);
-            
-            int extra_ton = ton_liquidity - optimal_ton;
-            int extra_jeton = jetton_amount - optimal_jetton;
-
-            ;; return extra's
-            if extra_jeton > add_liquidity_dust() {
-              send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton);        
-            }
-            if extra_ton > add_liquidity_dust() {
-              send_grams(jetton_sender ,extra_ton);
-            }
-          }
-
-          (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(ton_liquidity ,jetton_amount ,ton_reserves, token_reserves, total_supply);
-                                                                       ;;TODO should put null instead of payload
-          ;; end wallet is expecting the amount and owner,
-          cell mint_msg = begin_cell()
-            .store_uint(op::internal_transfer(), 32)
-            .store_uint(query_id, 64)
-            .store_coins(new_liquidity)
-            .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
-            .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
-            .store_coins(0)
-            .store_uint(0, 1)
-            .end_cell();
-
-          ;; token_wallet_address  Starts as zeroAddress, and the first add-liuditiy sets the Amm's jetton wallet address (token_wallet_address)
-          if equal_slices(token_wallet_address, zeroAddress()) {
-            token_wallet_address = sender_address;
-          }
-
-          mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
-          save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
-          return ();
-
+        ~dump sub_op;
+      
+        add_liquidity(in_msg_body ,jetton_amount, jetton_sender ,msg_value, sender_address ,fwd_fee, query_id);
+      
+        return ();
       }
 
       if (sub_op == op::swap_token() ) {  ;; swap TRC20 -> TON
-          ;; <b 10TON , min_amount_out=99 b>
+          ;; bonuce message will be handled properly by the jetton sender
           throw_if(75, equal_slices(token_wallet_address, zeroAddress()));
           int min_amount_out = in_msg_body~load_grams();
           (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address);

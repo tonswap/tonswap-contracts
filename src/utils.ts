@@ -206,7 +206,7 @@ export function parseInternalMessageResponse(result: ExecutionResult) {
     return {
         exit_code: res.exit_code,
         returnValue: res.result[1] as BN,
-        logs: res.logs,
+        logs: filterLogs(res.logs),
         actions: parseActionsList(res.action_list_cell),
     };
 }

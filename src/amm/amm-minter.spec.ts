@@ -19,7 +19,7 @@ const amm = Address.parse("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe");
 const ALICE_INITIAL_BALANCE = toNano(3500);
 const JETTON_LIQUIDITY = toNano(1000);
 const TON_LIQUIDITY = toNano(500);
-const LP_DEFAULT_AMOUNT = 38265488262;
+const LP_DEFAULT_AMOUNT = 707106781186;
 const EXPECTED_REWARDS = "499999999996800";
 const aliceSubWallet = Address.parseFriendly("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7").address;
 
@@ -223,9 +223,6 @@ describe("Jetton Minter ", () => {
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut.add(new BN(1)));
         console.log(swapTonResp);
 
-        //@ts-ignore
-        console.log(swapTonResp.actions[0].message.info);
-
         const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
         // @ts-ignore
         // expecting funds to be sent back
@@ -317,7 +314,7 @@ describe("Jetton Minter ", () => {
         expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
     });
 
-    it("add liquidity twice and fail", async () => {
+    it.only("add liquidity twice and fail the second time, send back funds to sender", async () => {
         const lpSize = LP_DEFAULT_AMOUNT;
         const jettonLiquidity = JETTON_LIQUIDITY;
         const tonLiquidity = TON_LIQUIDITY;
@@ -336,26 +333,58 @@ describe("Jetton Minter ", () => {
         printAmmData(amm1);
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
-        await addLiquidity(
+        const jettonLiquidity2 = JETTON_LIQUIDITY.sub(toNano(100));
+
+        const { addLiquidityMessage } = await addLiquidity(
             aliceUSDC,
             ammUsdcWallet,
             masterAMM,
             lpWallet,
             `${lpSize * 3}`,
-            JETTON_LIQUIDITY.sub(toNano(100)),
+            jettonLiquidity2,
             tonLiquidity,
-            new BN(6),
-            ERROR_CODES.ADD_LIQUIDITY_INSUFFICIENT_BALANCE
+            new BN(6)
         );
 
-        let ammData2 = await masterAMM.getData();
-        printAmmData(ammData2);
+        // Make sure funds are sent back to sender TON and jetton funds
 
-        const lpWalletData = await lpWallet.getData();
-        expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
+        // @ts-ignore
+        expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
+
+        //@ts-ignore
+        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2].message.body);
+
+        expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });
 
     it("add liquidity from a bad source wallet", async () => {
+        const lpSize = LP_DEFAULT_AMOUNT;
+        const jettonLiquidity = JETTON_LIQUIDITY;
+        const tonLiquidity = TON_LIQUIDITY;
+
+        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({
+            jettonLiquidity: jettonLiquidity,
+            tonLiquidity: tonLiquidity,
+        }); //create
+
+        let amm0 = await masterAMM.getData();
+        printAmmData(amm0);
+
+        await addLiquidity(
+            aliceUSDC,
+            ammUsdcWallet,
+            masterAMM,
+            lpWallet,
+            `${lpSize * 2}`,
+            JETTON_LIQUIDITY,
+            TON_LIQUIDITY,
+            new BN(5),
+            ERROR_CODES.ADD_LIQUIDITY_WRONG_JETTON_SENDER,
+            liyi
+        );
+    });
+
+    it("add liquidity in sufficient gas money", async () => {
         const lpSize = LP_DEFAULT_AMOUNT;
         const jettonLiquidity = JETTON_LIQUIDITY;
         const tonLiquidity = TON_LIQUIDITY;
@@ -498,10 +527,11 @@ async function initAMM({
     );
 
     let ammRes = await masterAMM.sendInternalMessage(usdcToAmmTransferNotification);
+    console.log(ammRes);
     expect(ammRes.exit_code).toBe(0);
 
-    const ammData = await masterAMM.getData();
-    printAmmData(ammData);
+    //const ammData = await masterAMM.getData();
+    //printAmmData(ammData);
 
     let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
 
