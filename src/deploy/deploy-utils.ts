@@ -69,13 +69,7 @@ export function hexToBn(num: string) {
 
 export function bnFmt(num: BN | BigInt) {
     let str = num.toString();
-    if (str.length < 10) {
-        let iNum = parseInt(num.toString());
-        let float = iNum * 0.000000001;
-        return float.toFixed(6);
-    }
-    let formatNum = str.substring(0, str.length - 9) + "." + str.substring(str.length - 9, str.length - 1);
-    return formatNum;
+    return `${BigInt(str) / BigInt(1e9)}.${BigInt(str) % BigInt(1e9)} `;
 }
 
 export function hexFromNano(num: string) {
@@ -120,5 +114,5 @@ export async function waitForSeqno(walletContract: WalletContract, seqno: number
         const seqnoAfter = await walletContract.getSeqNo();
         if (seqnoAfter > seqno) break;
     }
-    console.log(`seqno update after ${(attempt * seqnoStepInterval) / 1000}s`);
+    console.log(`seqno update after ${((attempt + 1) * seqnoStepInterval) / 1000}s`);
 }

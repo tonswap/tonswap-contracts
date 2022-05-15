@@ -88,7 +88,7 @@ async function deployUSDCMinter(client: TonClient, walletContract: WalletContrac
     await client.sendExternalMessage(walletContract, transfer);
     waitForSeqno(walletContract, seqno);
     console.log(`- Deploy transaction sent successfully to -> ${newContractAddress.toFriendly()} [seqno:${seqno}]`);
-
+    await sleep(BLOCK_TIME);
     return {
         address: newContractAddress,
     };
@@ -337,9 +337,9 @@ async function main() {
 
     const usdcMinter = await deployMinter(client, deployWallet, walletKey.secretKey);
 
-    // await sleep(BLOCK_TIME);
+    await sleep(BLOCK_TIME);
 
-    // await mintUSDC(usdcMinter.address, deployWallet, walletKey.secretKey);
+    await mintUSDC(usdcMinter.address, deployWallet, walletKey.secretKey);
 
     const deployerUSDCAddress = (await JettonMinter.GetWalletAddress(client, usdcMinter.address, deployWallet.address)) as Address;
 
