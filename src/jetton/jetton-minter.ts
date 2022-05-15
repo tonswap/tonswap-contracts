@@ -2,17 +2,7 @@ import { readFile } from "fs/promises";
 //@ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 
-import {
-    Address,
-    Cell,
-    CellMessage,
-    InternalMessage,
-    Slice,
-    CommonMessageInfo,
-    ExternalMessage,
-    toNano,
-    TonClient,
-} from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, toNano, TonClient } from "ton";
 import BN from "bn.js";
 import { parseActionsList, toUnixTime, sliceToAddress } from "../utils";
 import { compileFuncToB64 } from "../funcToB64";
@@ -93,11 +83,7 @@ export class JettonMinter {
         return messageBody;
     }
 
-    static async GetWalletAddress(
-        client: TonClient,
-        minterAddress: Address,
-        walletAddress: Address
-    ) {
+    static async GetWalletAddress(client: TonClient, minterAddress: Address, walletAddress: Address) {
         try {
             let cell = new Cell();
             cell.bits.writeAddress(walletAddress);
@@ -107,13 +93,10 @@ export class JettonMinter {
             // nodejs buffer
             let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
 
-            console.log("bytesToBase64", b64data);
+            // console.log("bytesToBase64", b64data);
+            // console.log("b64dataBuffer", b64dataBuffer);
 
-            console.log("b64dataBuffer", b64dataBuffer);
-
-            let res = await client.callGetMethod(minterAddress, "get_wallet_address", [
-                ["tvm.Slice", b64dataBuffer],
-            ]);
+            let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
 
             console.log(res);
 
@@ -203,12 +186,7 @@ export class JettonMinter {
 
     static async createDeployData(totalSupply: BN, tokenAdmin: Address, content: string) {
         const jettonWalletCode = await serializeWalletCodeToCell();
-        const initDataCell = await buildStateInit(
-            totalSupply,
-            tokenAdmin,
-            content,
-            jettonWalletCode[0]
-        );
+        const initDataCell = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
         const minterSources = await serializeMinterCodeToCell();
         return {
             codeCell: minterSources,
@@ -218,12 +196,7 @@ export class JettonMinter {
 
     static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
         const jettonWalletCode = await serializeWalletCodeToCell();
-        const stateInit = await buildStateInit(
-            totalSupply,
-            tokenAdmin,
-            content,
-            jettonWalletCode[0]
-        );
+        const stateInit = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
         const minterSources = await concatMinterSources();
         let contract = await SmartContract.fromFuncSource(minterSources, stateInit, {
             getMethodsMutate: true,
@@ -269,12 +242,7 @@ async function concatMinterSources() {
     return [stdlib, opcodes, params, utils, jettonMinter].join("\n");
 }
 
-async function buildStateInit(
-    totalSupply: BN,
-    token_wallet_address: Address,
-    content: string,
-    tokenCode: Cell
-) {
+async function buildStateInit(totalSupply: BN, token_wallet_address: Address, content: string, tokenCode: Cell) {
     const contentCell = new Cell();
     contentCell.bits.writeString(content);
 

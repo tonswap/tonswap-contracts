@@ -1,4 +1,6 @@
-const { Contract, Cell, parseAddress, createOffchainUriCell } = require("tonweb");
+const TonWeb = require('tonweb');
+const Cell = TonWeb.boc.Cell;
+
 
 function buildAddLiquidityCell(to,amount,responseDestination,forwardTonAmount,slippage) {
         let messageBody = new Cell();
@@ -14,7 +16,7 @@ function buildAddLiquidityCell(to,amount,responseDestination,forwardTonAmount,sl
         messageBody.bits.writeUint(slippage, 32); // slippage
 }
 
-function buildSwapJettonCell(to, amount, responseDestination, forwardTonAmount, minAmountOut) {
+ function buildSwapJettonCell(to, amount, responseDestination, forwardTonAmount, minAmountOut) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(0xf8a7ea5, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
@@ -39,3 +41,8 @@ function buildSwapJettonCell(to, amount, responseDestination, forwardTonAmount, 
 //         if (params.forwardPayload) {
 //             cell.bits.writeBytes(params.forwardPayload);
 //         }
+
+module.exports = {
+    buildAddLiquidityCell,
+    buildSwapJettonCell
+}

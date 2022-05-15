@@ -153,9 +153,8 @@ export class AmmMinter {
             // nodejs buffer
             let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
 
-            console.log("bytesToBase64", b64data);
-
-            console.log("b64dataBuffer", b64dataBuffer);
+            // console.log("bytesToBase64", b64data);
+            // console.log("b64dataBuffer", b64dataBuffer);
 
             let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
 
@@ -178,7 +177,7 @@ export class AmmMinter {
         };
     }
     static async GetJettonData(client: TonClient, minterAddress: Address) {
-        console.log(`GetJettonData ${minterAddress.toFriendly()}`);
+        // console.log(`GetJettonData ${minterAddress.toFriendly()}`);
         let res = await client.callGetMethod(minterAddress, "get_jetton_data", []);
 
         const totalSupply = res.stack[0][1] as string;

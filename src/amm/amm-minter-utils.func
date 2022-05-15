@@ -40,18 +40,18 @@ int squareRoot(int number)  {
      var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
-    .store_coins(0)
+    .store_grams(0)
     .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1); ;; 3 bits on 107 length message_body is a ref (message body is in a seperate cell)
      
 
     var msg_body = begin_cell()
     .store_uint(op::transfer(), 32)
     .store_uint(query_id, 64)
-    .store_coins(jetton_amount)
+    .store_grams(jetton_amount)
     .store_slice(to)
     .store_slice(to)
     .store_uint(0, 1) ;; null custom_payload
-    .store_coins(0) ;; 0 forward_ton_amount
+    .store_grams(0) ;; 0 forward_ton_amount
     .store_uint(0, 1) ;; bit is on - empty forward payload 
     .end_cell();
     
@@ -61,20 +61,52 @@ int squareRoot(int number)  {
     send_raw_message(msg.end_cell(), 64); ;; revert on errors
 }
 
+;; impl. taken from jetton wallet
+;; () send_tokens3(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
+
+
+;;      var msg = begin_cell()
+;;     .store_uint(0x18, 6)
+;;     .store_slice(jetton_wallet_address)
+;;     .store_grams(0)
+;;     .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+;;     .store_ref(null); ;;state-init null
+     
+
+;;     var msg_body = begin_cell()
+;;     .store_uint(op::transfer(), 32)
+;;     .store_uint(query_id, 64)
+;;     .store_grams(jetton_amount)
+;;     .store_slice(to)
+;;     .store_slice(to)
+;;     .store_uint(0, 1) ;; null custom_payload
+;;     .store_grams(0) ;; 0 forward_ton_amount
+;;     .store_uint(0, 1) ;; bit is on - empty forward payload 
+;;     .end_cell();
+    
+
+;;     msg = msg.store_ref(msg_body); ;; 3bits on 107 length  
+
+;;     send_raw_message(msg.end_cell(), 64); ;; revert on errors
+;; }
+
+
+
+;; cell underflow
 () send_tokens(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
 
      var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
-    .store_coins(0)
-    .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1) ;; 3 bits on 107 length message_body is a ref (message body is in a seperate cell)
+    .store_grams(0)
+    .store_uint(3 , 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1) ;;   107 bits  3 bits on 107 length message_body is a ref (message body is in a seperate cell)
     .store_uint(op::transfer(), 32)
     .store_uint(query_id, 64)
-    .store_coins(jetton_amount)
+    .store_grams(jetton_amount)
     .store_slice(to)
     .store_slice(to)
     .store_uint(0, 1) ;; null custom_payload
-    .store_coins(0) ;; 0 forward_ton_amount
+    .store_grams(0) ;; 0 forward_ton_amount
     .store_uint(0, 1) ;; bit is on - empty forward payload 
     .end_cell();
     
@@ -82,31 +114,42 @@ int squareRoot(int number)  {
 }
 
 
-     
+  ;; cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
+  ;; slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+  ;; var msg = begin_cell()
+  ;;   .store_uint(0x18, 6)
+  ;;   .store_slice(to_wallet_address)
+  ;;   .store_coins(jetton_storage())
+  ;;   .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+  ;;   .store_ref(state_init)
+  ;;   .store_ref(master_msg);    
 
 
 () send_transfer_token_message(int query_id, slice jetton_wallet_address, slice to, int jetton_amount) impure {
 
-     var msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(jetton_wallet_address)
-    .store_coins(0)
-    .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
-    .store_ref(null());
-     
     var msg_body = begin_cell()
     .store_uint(op::transfer(), 32)
     .store_uint(query_id, 64)
-    .store_coins(jetton_amount)
+    .store_grams(jetton_amount)
     .store_slice(to)
     .store_slice(to)
-    .store_coins(0)
-    .store_slice(null())
+    .store_grams(0)
+    .store_uint(0, 1)
     .end_cell();
+    
 
+    var msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(jetton_wallet_address)
+    .store_grams(0)
+    .store_uint(4 + 2, 1 + 4 + 4 + 64 + 32 + 1)
+    .store_uint(0, 1) ;; state-init null
+    .store_uint(1, 1); ;; message body
+    
+    
     msg = msg.store_ref(msg_body);
-
-    send_raw_message(msg.end_cell(), 64); ;; revert on errors
+     
+    send_raw_message(msg.end_cell(), 3); ;; revert on errors
 }
 
 
@@ -119,18 +162,19 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 }
 
 (int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address) impure {
-
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
 
+    
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
-    ;; siplage is to low or insfuiccent amount 
+    
+    siplage is to low or insfuiccent amount 
     if( (amount_out < min_amount_out) | (amount_out > trgt_resvers) ) {
         if is_ton_src == true {
             send_grams(swap_sender, transferd_amount);
         } else {
             ;; TODO pass query Id
-            send_tokens2(0, token_wallet_address, swap_sender, transferd_amount);
+            send_transfer_token_message(0, token_wallet_address, swap_sender, transferd_amount);
         }
         return (ton_reserves, token_reserves);
         ;; throw_if(601, true);
@@ -141,8 +185,9 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
       
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
-        ;;TODO add queryId
-     ;; send_tokens2(0, token_wallet_address, swap_sender, amount_out);
+      ;;TODO add queryId
+      
+      send_transfer_token_message(0, token_wallet_address, swap_sender, amount_out);
     } else {
       
       ton_reserves = trgt_resvers - amount_out;

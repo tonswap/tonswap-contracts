@@ -67,15 +67,15 @@ slice zeroAddress() inline {
   send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
 }
 
-() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore empty messages
-        return ();
+      return ();
     }
+
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
-
-    if (flags & 1) { ;; ignore all bounced messages
-        return ();
+    if (flags & 1) {
+      return ();
     }
     slice sender_address = cs~load_msg_addr();
     cs~load_msg_addr(); ;; skip dst
@@ -113,7 +113,7 @@ slice zeroAddress() inline {
             equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         
-        send_tokens2(0, token_wallet_address, from_address, share_in_token_reserves);        
+        send_transfer_token_message(0, token_wallet_address, from_address, share_in_token_reserves);        
         send_grams(from_address ,share_in_ton_reserves);
         save_data(total_supply - jetton_amount, token_wallet_address, ton_reserves - share_in_ton_reserves, token_reserves - share_in_token_reserves, content, jetton_wallet_code, admin_data);
         
@@ -121,9 +121,11 @@ slice zeroAddress() inline {
     }
 
     if (op == op::swap_ton() ) {
+        
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
         throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
+        
 
         (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address);
         save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
@@ -227,10 +229,6 @@ slice zeroAddress() inline {
         
         return ();
     }
-
-
-    
-    ;; TODO remove liquidity 
 
     throw(0xffff);
 }

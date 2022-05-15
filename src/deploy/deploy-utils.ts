@@ -40,9 +40,7 @@ export function bytesToAddress(bufferB64: string) {
 
 export function sleep(time: number) {
     return new Promise((resolve) => {
-        console.log(`
-        💤 ${time / 1000}s ...
-        `);
+        console.log(`💤 ${time / 1000}s ...`);
 
         setTimeout(resolve, time);
     });
@@ -50,16 +48,18 @@ export function sleep(time: number) {
 export async function printDeployerBalances(client: TonClient, deployerUSDCAddress: Address) {
     const usdcData = await JettonWallet.GetData(client, deployerUSDCAddress);
     console.log(``);
-    console.log(`⛏ Deployer has ${bnFmt(usdcData.balance)}$ USDC `);
+    console.log(`⛏  Deployer Balance: ${bnFmt(usdcData.balance)}$ USDC `);
 }
 
 export async function printAmmData(client: TonClient, ammMinterAddress: Address) {
     const data = await AmmMinter.GetJettonData(client, ammMinterAddress);
-    console.log(`-----==== AmmMinter ====-----
-    💰 totalSupply: ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
-    💰 tonReserves: ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
-    💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
-       JettonWallet : ${data.jettonWalletAddress.toFriendly()}
+    console.log(`-----==== AmmMinter ====-----  `);
+    console.log(`[${ammMinterAddress.toFriendly()}]
+💰 totalSupply: ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
+💰 tonReserves: ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
+💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
+📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
+-----==== ***** ====-----  
     `);
 }
 
@@ -85,18 +85,37 @@ export function hexFromNano(num: string) {
 
 export function printAddresses(addressBook: { [key: string]: string }) {
     console.log(``); //br
+    let lsSnippet = ``;
     for (var key in addressBook) {
         console.log(`${addressBook[key]} : https://test.tonwhales.com/explorer/address/${key}`);
+        lsSnippet += `localStorage["${key}"]="${addressBook[key]}";`;
     }
+    console.log(``);
+    console.log(lsSnippet);
     console.log(``);
 }
 
 export async function initWallet(client: TonClient, publicKey: Buffer, workchain = 0) {
     const wallet = await WalletContract.create(client, WalletV3R2Source.create({ publicKey: publicKey, workchain }));
+    const walletBalance = await client.getBalance(wallet.address);
+    if (parseFloat(fromNano(walletBalance)) < 1) {
+        throw "Insufficient Deployer funds";
+    }
     console.log(
         `Init wallet ${wallet.address.toFriendly()} | balance: ${fromNano(await client.getBalance(wallet.address))} 
 | seqno: ${await wallet.getSeqNo()}`
     );
 
     return wallet;
+}
+
+export async function waitForSeqno(walletContract: WalletContract, seqno: number) {
+    const seqnoStepInterval = 3000;
+    console.log(`waiting for seqno to update (${seqno})`);
+    for (var attempt = 0; attempt < 10; attempt++) {
+        await sleep(seqnoStepInterval);
+        const seqnoAfter = await walletContract.getSeqNo();
+        if (seqnoAfter > seqno) break;
+    }
+    console.log(`seqno update after ${(attempt * seqnoStepInterval) / 1000}s`);
 }
