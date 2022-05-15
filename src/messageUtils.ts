@@ -1,4 +1,4 @@
-import { RawCommonMessageInfo, RawCurrencyCollection, RawMessage, RawStateInit, Slice } from "ton";
+import { Cell, RawCommonMessageInfo, RawCurrencyCollection, RawMessage, RawStateInit, Slice } from "ton";
 
 export function readCurrencyCollection(slice: Slice): RawCurrencyCollection {
     const coins = slice.readCoins();
@@ -76,7 +76,8 @@ function readStateInit(slice: Slice) {
         throw Error("Unsupported");
     }
 
-    return { data, code };
+    //TODO support ticktock later on
+    return { data, code, special: null };
 }
 
 export function readMessage(slice: Slice): RawMessage {
@@ -97,4 +98,10 @@ export function readMessage(slice: Slice): RawMessage {
         init,
         body,
     };
+}
+
+export function writeString(cell: Cell, str: string) {
+    for (let i = 0; i < str.length; i++) {
+        cell.bits.writeUint8(str.charCodeAt(i));
+    }
 }

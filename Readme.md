@@ -35,11 +35,12 @@ Use `npm run test` to execute the test suite.
 -   [x] Masterchef Rewards with Tests
 -   [x] Add Masterchef functionality with auto stake and auto withdraw inside the contract
 -   [ ] Gas Optimizations
--   [x] Move to distributed architecture [distributed-token.fc](https://github.com/cod1ng-studio/TRC20/blob/master/distributed-token.fc)
+-   [x] Move to Jetton architecture
 
 -   [x] migrate add liquidity to uniswap
+-   [x] declare the exact ton amount to swap on ton-token swap , ensure gas is sufficient
 -   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
--   [ ] Write end to end script that deploys on test/main-net
+-   [x] Write end to end script that deploys on test/main-net
 -   [x] enforce overflows in price calculation
 -   [ ] upgrade to latest npm ton
 -   [ ] Connect Bot to mainnet

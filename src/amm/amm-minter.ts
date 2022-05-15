@@ -11,6 +11,7 @@ import { OPS } from "./ops";
 import { compileFuncToB64 } from "../funcToB64";
 import { bytesToAddress } from "../deploy/deploy-utils";
 import { bytesToBase64 } from "../jetton/jetton-minter";
+import { writeString } from "../messageUtils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
@@ -218,7 +219,7 @@ export class AmmMinter {
         protocolRewardsRate: BN
     ) {
         const contentCell = new Cell();
-        contentCell.bits.writeString(content);
+        writeString(contentCell, content);
 
         const adminData = new Cell();
         adminData.bits.writeAddress(rewardsWallet);

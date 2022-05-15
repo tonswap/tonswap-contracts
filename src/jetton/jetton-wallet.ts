@@ -7,6 +7,7 @@ import BN from "bn.js";
 import { parseActionsList, toUnixTime, toDecimals, OutAction } from "../utils";
 import { OPS } from "../amm/ops";
 import { bytesToAddress } from "../deploy/deploy-utils";
+import { writeString } from "../messageUtils";
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
@@ -157,7 +158,7 @@ export class JettonWallet {
 //   ds~load_ref()  ;; jetton_wallet_code
 async function createStateInit(totalSupply: BN, admin: Address, content: string, tokenCode: Cell) {
     const contentCell = new Cell();
-    contentCell.bits.writeString(content);
+    writeString(contentCell, content);
 
     let dataCell = new Cell();
     dataCell.bits.writeCoins(totalSupply);

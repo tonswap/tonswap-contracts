@@ -113,9 +113,10 @@ describe("Jetton Minter ", () => {
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgOutAction;
         //@ts-ignore
         expect(sendTonAfterRemoveLiquidity.message.info.value.coins.toString());
+        const transferTokenMessage = actionToMessage(alice, amm, ammResponse.actions[1], toNano(0.1), true, true);
+        const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
 
-        const usdcResponseAfterAddLiquidity = await ammUsdcWallet.sendInternalMessage(actionToMessage(alice, amm, ammResponse.actions[1]));
-        await aliceUSDC.sendInternalMessage(actionToMessage(alice, amm, usdcResponseAfterAddLiquidity.actions[0]));
+        await aliceUSDC.sendInternalMessage(actionToMessage(alice, amm, usdcResponseAfterRemoveLiquidity.actions[0]));
         const aliceUsdcData2 = await aliceUSDC.getData();
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
     });
@@ -177,6 +178,8 @@ describe("Jetton Minter ", () => {
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
         const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
+        console.log(ammSwapTokenResponse);
+
         const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
 
         //@ts-ignore
@@ -193,7 +196,8 @@ describe("Jetton Minter ", () => {
 
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut);
 
-        const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(actionToMessage(alice, amm, swapTonResp.actions[0]));
+        const transferTokenMessage = actionToMessage(alice, amm, swapTonResp.actions[0], toNano("0.1"), true, true);
+        const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
 
         const aliceUsdcData1 = await aliceUSDC.getData();
 
@@ -268,6 +272,8 @@ describe("Jetton Minter ", () => {
         let msg = actionToMessage(alice, amm, walletClaimRewardsResponse.actions[0]);
         let ammResponse = await masterAMM.sendInternalMessage(msg);
         //@ts-ignore
+        console.log(ammResponse.actions);
+
         let action = ammResponse.actions[0] as SuccessfulExecutionResult;
         const transferData = parseJettonTransfer(action.message.body);
         expect(transferData.amount.toString()).toBe(EXPECTED_REWARDS);
@@ -381,7 +387,10 @@ describe("Jetton Minter ", () => {
         const { stakeStart } = lpData;
 
         const { lpWalletResponse } = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${LP_DEFAULT_AMOUNT * 2}`);
-
+        if (!lpWalletResponse) {
+            expect("").toBe("lpWalletResponse should not be null");
+        }
+        // @ts-ignore
         const claimRewardsNotificationAction = lpWalletResponse.actions[2] as SendMsgOutAction;
         const msgSlice = claimRewardsNotificationAction.message.body.beginParse();
         expect(msgSlice.readUint(32).toNumber()).toBe(OPS.ClaimRewardsNotification);

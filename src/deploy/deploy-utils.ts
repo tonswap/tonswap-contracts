@@ -87,8 +87,11 @@ export function printAddresses(addressBook: { [key: string]: string }) {
     console.log(``); //br
     let lsSnippet = ``;
     for (var key in addressBook) {
+        const address = key;
         console.log(`${addressBook[key]} : https://test.tonwhales.com/explorer/address/${key}`);
+        const ellipsisAddress = `${address.substring(0, 6)}...${address.substring(address.length - 7, address.length - 1)}`;
         lsSnippet += `localStorage["${key}"]="${addressBook[key]}";`;
+        lsSnippet += `localStorage["${ellipsisAddress}"]="${addressBook[key]}";`;
     }
     console.log(``);
     console.log(lsSnippet);

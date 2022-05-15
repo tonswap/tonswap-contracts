@@ -112,11 +112,11 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
 
 export function parseJettonTransfer(msg: Cell) {
     // refs[0] is stateInit
-    // console.log(msgBody.refs);
 
-    // let msg = msgBody.refs[1];
+    let slice = msg.refs[0].beginParse();
 
-    let slice = msg.beginParse();
+    //let slice = msg.beginParse();
+
     var op = slice.readUint(32);
     var query = slice.readUint(64);
     var amount = slice.readCoins();
@@ -182,8 +182,7 @@ export function toDecimals(num: number | string) {
 export function fromDecimals(num: BN) {
     const numStr = num.toString();
     const dotIndex = numStr.length - 9;
-    const formmatedStr =
-        numStr.substring(0, dotIndex) + "." + numStr.substring(dotIndex, numStr.length);
+    const formmatedStr = numStr.substring(0, dotIndex) + "." + numStr.substring(dotIndex, numStr.length);
     return formmatedStr;
 }
 

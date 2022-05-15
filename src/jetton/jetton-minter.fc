@@ -1,14 +1,5 @@
 ;; Jettons minter smart contract
 
-slice my_static_address() {
-     return (begin_cell()
-        .store_uint(2, 2) 
-        .store_uint(0, 1)  
-        .store_uint(0, 8)  
-        .store_uint(0xa865484654654654, 256) 
-    ).end_cell().begin_parse();
-}
-
 ;; storage scheme
 ;; storage#_ total_supply:Coins admin_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
 

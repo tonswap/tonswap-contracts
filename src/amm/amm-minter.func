@@ -1,13 +1,4 @@
 
-;; this code will is used only for testing, removeing this code and replace my_static_address() to my_static_address()
-slice my_static_address() {
-     return (begin_cell()
-        .store_uint(2, 2) 
-        .store_uint(0, 1)  
-        .store_uint(0, 8)  
-        .store_uint(0x4565484654654654, 256) 
-    ).end_cell().begin_parse();
-}
 
 int jetton_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
@@ -71,7 +62,6 @@ slice zeroAddress() inline {
     if (in_msg_body.slice_empty?()) { ;; ignore empty messages
       return ();
     }
-
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
     if (flags & 1) {
@@ -82,7 +72,7 @@ slice zeroAddress() inline {
     cs~load_coins(); ;; skip value
     cs~skip_bits(1); ;; skip extracurrency collection
     cs~load_coins(); ;; skip ihr_fee
-    int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs
+    int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs    
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
@@ -153,6 +143,7 @@ slice zeroAddress() inline {
       
       int sub_op = in_msg_body~load_uint(32);
 
+      ~dump sub_op;
       if( sub_op == op::add_liquidity() ) {
 
           int slipage = in_msg_body~load_uint(32);
@@ -179,7 +170,7 @@ slice zeroAddress() inline {
 
             ;; return extra's
             if extra_jeton > add_liquidity_dust() {
-              send_tokens(query_id, token_wallet_address, jetton_sender, extra_jeton);        
+              send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton);        
             }
             if extra_ton > add_liquidity_dust() {
               send_grams(jetton_sender ,extra_jeton);

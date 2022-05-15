@@ -7,6 +7,7 @@ import BN from "bn.js";
 import { parseActionsList, toUnixTime, sliceToAddress } from "../utils";
 import { compileFuncToB64 } from "../funcToB64";
 import { bytesToAddress } from "../deploy/deploy-utils";
+import { writeString } from "../messageUtils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
@@ -93,8 +94,9 @@ export class JettonMinter {
             // nodejs buffer
             let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
 
-            // console.log("bytesToBase64", b64data);
-            // console.log("b64dataBuffer", b64dataBuffer);
+            console.log("bytesToBase64", b64data);
+
+            console.log("b64dataBuffer", b64dataBuffer);
 
             let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
 
@@ -244,7 +246,7 @@ async function concatMinterSources() {
 
 async function buildStateInit(totalSupply: BN, token_wallet_address: Address, content: string, tokenCode: Cell) {
     const contentCell = new Cell();
-    contentCell.bits.writeString(content);
+    writeString(contentCell, content);
 
     let dataCell = new Cell();
     dataCell.bits.writeCoins(totalSupply);
