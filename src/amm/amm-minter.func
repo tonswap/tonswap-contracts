@@ -212,10 +212,7 @@ slice zeroAddress() inline {
       int sub_op = in_msg_body~load_uint(32);
       
       if( sub_op == op::add_liquidity() ) {
-        ~dump sub_op;
-      
         add_liquidity(in_msg_body ,jetton_amount, jetton_sender ,msg_value, sender_address ,fwd_fee, query_id);
-      
         return ();
       }
 

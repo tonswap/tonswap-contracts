@@ -23,7 +23,7 @@ int squareRoot(int number)  {
         .store_grams(amount)
         .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
         .end_cell(); 
-    send_raw_message(msg, 3); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
+    send_raw_message(msg, 64); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
 }
 
 ;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
