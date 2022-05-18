@@ -4,7 +4,7 @@ import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contrac
 import { filterLogs, parseInternalMessageResponse, sliceToAddress } from "../utils";
 import { AmmLpWallet } from "./amm-wallet";
 
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient } from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, fromNano } from "ton";
 import BN from "bn.js";
 import { parseActionsList, sliceToAddress267, toUnixTime } from "../utils";
 import { OPS } from "./ops";
@@ -70,7 +70,7 @@ export class AmmMinter {
     }
 
     static SwapTon(tonToSwap: BN, minAmountOut: BN): Cell {
-        console.log(`SwapTon tonToSwap:${tonToSwap.toString()} minAmountOut:${minAmountOut}`);
+        console.log(`SwapTon tonToSwap:${fromNano(tonToSwap).toString()} minAmountOut:${fromNano(minAmountOut).toString()}`);
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
