@@ -49,11 +49,12 @@ int squareRoot(int number)  {
     .end_cell();
     
 
+    
     var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
-    .store_grams(0)
-    .store_uint(4 + 2, 1 + 4 + 4 + 64 + 32 + 1)
+    .store_grams(100000001)
+    .store_uint(4 , 1 + 4 + 4 + 64 + 32 )
     .store_uint(0, 1) ;; state-init null
     .store_uint(1, 1); ;; message body
     
