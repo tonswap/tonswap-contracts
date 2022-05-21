@@ -33,14 +33,8 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
           );
 }
 
-slice zeroAddress() inline {
-   return (begin_cell()
-        .store_uint(2, 2) 
-        .store_uint(0, 1)  
-        .store_uint(0, 8)  
-        .store_uint(0x0000000000000000, 256)   
-    ).end_cell().begin_parse();
-}
+
+const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
@@ -117,7 +111,7 @@ slice zeroAddress() inline {
     .end_cell();
 
     ;; token_wallet_address  Starts as zeroAddress, and the first add-liuditiy sets the Amm's jetton wallet address (token_wallet_address)
-    if equal_slices(token_wallet_address, zeroAddress()) {
+    if equal_slices(token_wallet_address, zerro_address) {
         token_wallet_address = sender_address;
     }
 
@@ -205,7 +199,7 @@ slice zeroAddress() inline {
 
       ;; accept add-liquidity and swap actions only from token_wallet_address
       ;;  if token_wallet_address != null && token_wallet_address != sender_address -> throw
-      if (equal_slices(token_wallet_address, zeroAddress()) == false) & (equal_slices(token_wallet_address, sender_address) == false) {
+      if (equal_slices(token_wallet_address, zerro_address) == false) & (equal_slices(token_wallet_address, sender_address) == false) {
         throw_if(76, true);
       }
       
@@ -218,7 +212,7 @@ slice zeroAddress() inline {
 
       if (sub_op == op::swap_token() ) {  ;; swap TRC20 -> TON
           ;; bonuce message will be handled properly by the jetton sender
-          throw_if(75, equal_slices(token_wallet_address, zeroAddress()));
+          throw_if(75, equal_slices(token_wallet_address, zerro_address));
           int min_amount_out = in_msg_body~load_grams();
           (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);

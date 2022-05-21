@@ -114,7 +114,7 @@ describe("AMM Minter ", () => {
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgOutAction;
         //@ts-ignore
         expect(sendTonAfterRemoveLiquidity.message.info.value.coins.toString());
-        const transferTokenMessage = actionToMessage(alice, amm, ammResponse.actions[1], toNano(0.1), true, true);
+        const transferTokenMessage = actionToMessage(alice, amm, ammResponse.actions[1], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
 
         await aliceUSDC.sendInternalMessage(actionToMessage(alice, amm, usdcResponseAfterRemoveLiquidity.actions[0]));
@@ -196,16 +196,14 @@ describe("AMM Minter ", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
 
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut);
+        const transferTokenMessage = actionToMessage(alice, amm, swapTonResp.actions[0], toNano("0.1"), true);
 
-        const transferTokenMessage = actionToMessage(alice, amm, swapTonResp.actions[0], toNano("0.1"), true, true);
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
-
         const aliceUsdcData1 = await aliceUSDC.getData();
         const aliceUsdcTransferResponse = await aliceUSDC.sendInternalMessage(
             actionToMessage(alice, amm, ammUsdcResponseAfterSwap.actions[0])
         );
         expect(aliceUsdcTransferResponse.exit_code).toBe(0);
-
         const aliceUsdcData2 = await aliceUSDC.getData();
 
         expect(aliceUsdcData2.balance.toString()).toBe(aliceUsdcData1.balance.add(minAmountOut).toString());
@@ -217,7 +215,7 @@ describe("AMM Minter ", () => {
         let tonSide = toNano(1);
         const ammData = await masterAMM.getData();
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
-        // exceeded the minamount out by one
+        // exceeded the minAmount out by one
         const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut.add(new BN(1)));
 
         const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
@@ -349,7 +347,9 @@ describe("AMM Minter ", () => {
         expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
 
         //@ts-ignore
-        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2].message.body);
+        console.log(addLiquidityMessage.actions[2]);
+
+        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2]?.message.body);
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });

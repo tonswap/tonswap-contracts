@@ -70,7 +70,6 @@ export class AmmMinter {
     }
 
     static SwapTon(tonToSwap: BN, minAmountOut: BN): Cell {
-        console.log(`SwapTon tonToSwap:${fromNano(tonToSwap).toString()} minAmountOut:${fromNano(minAmountOut).toString()}`);
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -148,19 +147,9 @@ export class AmmMinter {
         try {
             let cell = new Cell();
             cell.bits.writeAddress(walletAddress);
-
-            // tonweb style
-            const b64data = bytesToBase64(await cell.toBoc({ idx: false }));
             // nodejs buffer
             let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
-
-            // console.log("bytesToBase64", b64data);
-            // console.log("b64dataBuffer", b64dataBuffer);
-
             let res = await client.callGetMethod(minterAddress, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
-
-            console.log(res);
-
             return bytesToAddress(res.stack[0][1].bytes);
         } catch (e) {
             console.log("exception", e);

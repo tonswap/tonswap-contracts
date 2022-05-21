@@ -19,13 +19,11 @@ export function actionToMessage(
     from: Address,
     action: OutAction | undefined,
     messageValue = new BN(1000000000),
-    bounce = false,
-    messageIsRef = false
+    bounce = false
 ) {
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
-
-    const messageBody = messageIsRef ? sendMessageAction.message?.body.refs[0] : sendMessageAction.message?.body;
+    const messageBody = sendMessageAction.message?.body;
 
     let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
     return new InternalMessage({

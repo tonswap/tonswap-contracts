@@ -40,7 +40,7 @@ export function bytesToAddress(bufferB64: string) {
 
 export function sleep(time: number) {
     return new Promise((resolve) => {
-        //console.log(`💤 ${time / 1000}s ...`);
+        console.log(`💤 ${time / 1000}s ...`);
 
         setTimeout(resolve, time);
     });
@@ -49,10 +49,10 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
     const usdcData = await JettonWallet.GetData(client, deployerUSDCAddress);
     const ton = await client.getBalance(deployer);
     console.log(``);
-    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${bnFmt(usdcData.balance)}$ USDC `);
+    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${fromNano(usdcData.balance.toString())}$ USDC `);
 }
 
-export async function printAmmData(client: TonClient, ammMinterAddress: Address) {
+export async function printBalances(client: TonClient, ammMinterAddress: Address, deployer: Address, deployerUSDCAddress: Address) {
     const data = await AmmMinter.GetJettonData(client, ammMinterAddress);
     const balance = await client.getBalance(ammMinterAddress);
     console.log(`-----==== AmmMinter ====-----  `);
@@ -62,8 +62,10 @@ export async function printAmmData(client: TonClient, ammMinterAddress: Address)
 💰 tonReserves: ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
 💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
 📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
------==== ***** ====-----  
-    `);
+`);
+    await printDeployerBalances(client, deployer, deployerUSDCAddress);
+    console.log(`-----==== ***** ====-----
+`);
 }
 
 export function hexToBn(num: string) {
@@ -111,11 +113,11 @@ export async function initWallet(client: TonClient, publicKey: Buffer, workchain
 
 export async function waitForSeqno(walletContract: WalletContract, seqno: number) {
     const seqnoStepInterval = 3000;
-    console.log(`waiting for seqno to update (${seqno})`);
+    console.log(`⏳ waiting for seqno to update (${seqno})`);
     for (var attempt = 0; attempt < 10; attempt++) {
         await sleep(seqnoStepInterval);
         const seqnoAfter = await walletContract.getSeqNo();
         if (seqnoAfter > seqno) break;
     }
-    console.log(`seqno update after ${((attempt + 1) * seqnoStepInterval) / 1000}s`);
+    console.log(`⌛️ seqno update after ${((attempt + 1) * seqnoStepInterval) / 1000}s`);
 }

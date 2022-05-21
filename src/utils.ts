@@ -111,12 +111,7 @@ export function parseTrc20TransferRecipt(msgBody: Cell) {
 }
 
 export function parseJettonTransfer(msg: Cell) {
-    // refs[0] is stateInit
-
-    let slice = msg.refs[0].beginParse();
-
-    //let slice = msg.beginParse();
-
+    let slice = msg.beginParse();
     var op = slice.readUint(32);
     var query = slice.readUint(64);
     var amount = slice.readCoins();
