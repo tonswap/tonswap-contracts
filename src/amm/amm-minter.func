@@ -64,12 +64,12 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
 
     if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
-        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
         return ();
     }
 
     if (ton_liquidity <= msg_value - (fwd_fee + jetton_storage())) | ton_liquidity < add_liquidity_dust() {
-        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
         return ();
     }
 
@@ -82,7 +82,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
 
         if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
-            revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, sender_address, query_id);
+            revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
         } else {
             int extra_ton = ton_liquidity - optimal_ton;
             int extra_jeton = jetton_amount - optimal_jetton;

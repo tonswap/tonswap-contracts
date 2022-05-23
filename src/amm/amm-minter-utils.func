@@ -109,9 +109,9 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 }
 
 
-() revert_add_liquidity(int ton_liquidity, int token_liquidity, slice token_wallet_address, slice jetton_sender, slice sender, int query_id) impure {
+() revert_add_liquidity(int ton_liquidity, int token_liquidity, slice token_wallet_address, slice jetton_sender, int query_id) impure {
     send_transfer_token_message(query_id, token_wallet_address, jetton_sender, token_liquidity);
-    send_grams(sender, ton_liquidity);
+    send_grams(jetton_sender, ton_liquidity);
 }
 
 (int, int, int, int) mint_lp(int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
