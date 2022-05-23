@@ -42,6 +42,6 @@ Use `npm run test` to execute the test suite.
 -   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
 -   [x] Write end to end script that deploys on test/main-net
 -   [x] enforce overflows in price calculation
--   [ ] upgrade to latest npm ton
+-   [x] upgrade to latest npm ton
 -   [ ] Connect Bot to mainnet
 -   [ ] Connect Web app

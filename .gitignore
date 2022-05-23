@@ -3,7 +3,6 @@ package-lock.json
 *.boc
 *.pk
 *.addr
-utils
 func
 fift
 lite-client
