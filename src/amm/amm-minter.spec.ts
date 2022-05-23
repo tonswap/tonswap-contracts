@@ -179,8 +179,6 @@ describe("AMM Minter ", () => {
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
         const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
-        console.log(ammSwapTokenResponse);
-
         const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
 
         //@ts-ignore

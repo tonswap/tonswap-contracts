@@ -49,7 +49,8 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
     const usdcData = await JettonWallet.GetData(client, deployerUSDCAddress);
     const ton = await client.getBalance(deployer);
     console.log(``);
-    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${fromNano(usdcData.balance.toString())}$ USDC `);
+    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${usdcData.balance.toString()}$ USDC `);
+    console.log(``);
 }
 
 export async function printBalances(client: TonClient, ammMinterAddress: Address, deployer: Address, deployerUSDCAddress: Address) {
@@ -57,9 +58,9 @@ export async function printBalances(client: TonClient, ammMinterAddress: Address
     const balance = await client.getBalance(ammMinterAddress);
     console.log(`-----==== AmmMinter ====-----  `);
     console.log(`[${ammMinterAddress.toFriendly()}]
-💎 balance : ${fromNano(balance)}
-💰 totalSupply: ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
-💰 tonReserves: ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
+💎 balance      : ${fromNano(balance)}
+💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
+💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
 💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
 📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
 `);
@@ -104,8 +105,9 @@ export async function initWallet(client: TonClient, publicKey: Buffer, workchain
         throw `Insufficient Deployer [${wallet.address.toFriendly()}] funds ${fromNano(walletBalance)}`;
     }
     console.log(
-        `Init wallet ${wallet.address.toFriendly()} | balance: ${fromNano(await client.getBalance(wallet.address))} 
-| seqno: ${await wallet.getSeqNo()}`
+        `Init wallet ${wallet.address.toFriendly()} | 
+balance: ${fromNano(await client.getBalance(wallet.address))} | seqno: ${await wallet.getSeqNo()}
+`
     );
 
     return { wallet, walletBalance };

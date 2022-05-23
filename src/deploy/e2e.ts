@@ -18,7 +18,17 @@ import BN from "bn.js";
 import axios from "axios";
 import axiosThrottle from "axios-request-throttle";
 
-import { bytesToAddress, hexToBn, initDeployKey, initWallet, printAddresses, printBalances, sleep, waitForSeqno } from "./deploy-utils";
+import {
+    bytesToAddress,
+    hexToBn,
+    initDeployKey,
+    initWallet,
+    printAddresses,
+    printBalances,
+    printDeployerBalances,
+    sleep,
+    waitForSeqno,
+} from "./deploy-utils";
 import { JettonWallet } from "../jetton/jetton-wallet";
 import { AmmMinter } from "../amm/amm-minter";
 import { OPS } from "../amm/ops";
@@ -26,17 +36,18 @@ import { AmmLpWallet } from "../amm/amm-wallet";
 
 axiosThrottle.use(axios, { requestsPerSecond: 0.5 }); // required since toncenter jsonRPC limits to 1 req/sec without API key
 const client = new TonClient({
-    endpoint: "https://sandbox.tonhubapi.com/jsonRPC",
+    //endpoint: "https://sandbox.tonhubapi.com/jsonRPC",
     //  endpoint: "https://testnet.tonhubapi.com/jsonRPC",
-    //endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
+    endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
     // endpoint: "https://test.toncenter.com/api/v2/jsonRPC",
 });
 
 enum GAS_FEES {
-    ADD_LIQUIDITY = 0.15,
-    REMOVE_LIQUIDITY = 0.15,
-    SWAP_FEE = 0.1,
-    SWAP_FORWARD_TON = 0.1,
+    ADD_LIQUIDITY = 0.2,
+    REMOVE_LIQUIDITY = 0.25,
+    SWAP_FEE = 0.2,
+    SWAP_FORWARD_TON = 0.2,
+    MINT = 0.2,
 }
 
 enum NETWORK {
@@ -45,7 +56,8 @@ enum NETWORK {
     MAINNET = "",
 }
 
-const TON_LIQUIDITY = 15;
+const TON_LIQUIDITY = 4;
+const TOKEN_TO_SWAP = 25;
 const TOKEN_LIQUIDITY = toNano(100);
 const TON_TO_SWAP = 2;
 
@@ -174,9 +186,9 @@ async function sendTransaction(
     sendMode = 3
 ) {
     const seqno = await walletContract.getSeqNo();
-    console.log(`🧱 send Transaction to ${receivingContract.toFriendly()} value:${fromNano(value)}💎 `);
     const bocStr = await messageBody.toString();
-    console.log(`boc:${bocStr.substring(0, bocStr.length < BOC_MAX_LENGTH ? bocStr.length : BOC_MAX_LENGTH).toString()}`);
+    const boc = bocStr.substring(0, bocStr.length < BOC_MAX_LENGTH ? bocStr.length : BOC_MAX_LENGTH).toString();
+    console.log(`🧱 send Transaction to ${receivingContract.toFriendly()} value:${fromNano(value)}💎 [boc:${boc}]`);
 
     const transfer = await walletContract.createTransfer({
         secretKey: privateKey,
@@ -206,20 +218,22 @@ function saveAddress(name: string, addr: Address) {
 
 async function mintUSDC(usdcMinter: Address, deployWallet: WalletContract, privateKey: Buffer) {
     console.log(`
-🎬 minting deployer some usdc's , 10,0007$`);
+🎬 minting deployer some usdc's , 100$
+`);
     await sendTransaction(
         client,
         deployWallet,
         usdcMinter,
-        toNano(0.025),
+        toNano(GAS_FEES.MINT),
         privateKey,
-        JettonMinter.Mint(deployWallet.address, toNano(100))
+        JettonMinter.Mint(deployWallet.address, toNano(TOKEN_LIQUIDITY).add(toNano(TOKEN_TO_SWAP)))
     );
 }
 
 async function addLiquidity(ammMinter: Address, deployWallet: WalletContract, deployerUSDCAddress: Address, privateKey: Buffer) {
     console.log(`
-🎬 sending Add Liquidity message | ${TON_LIQUIDITY} 💎 : ${fromNano(TOKEN_LIQUIDITY)}💲`);
+🎬 sending Add Liquidity message | ${TON_LIQUIDITY} 💎 : ${fromNano(TOKEN_LIQUIDITY)}💲
+`);
     const addLiquidityMessage = JettonWallet.TransferOverloaded(
         ammMinter,
         TOKEN_LIQUIDITY, // jetton-amount
@@ -263,7 +277,8 @@ async function swapUsdcToTon(
     );
 
     console.log(`
-🎬  Swap ${fromNano(tokenSwapAmount).toString()}$ USDC to 💎Ton (expecting for ${fromNano(amountOut.minAmountOut.toString())} 💎Ton)`);
+🎬  Swap ${fromNano(tokenSwapAmount).toString()}$ USDC to 💎Ton (expecting for ${fromNano(amountOut.minAmountOut.toString())} 💎Ton)
+`);
     const swapTokenMessage = JettonWallet.TransferOverloaded(
         ammMinter,
         tokenSwapAmount,
@@ -297,7 +312,8 @@ async function swapTonToUsdc(ammMinter: Address, deployWallet: WalletContract, d
     );
 
     console.log(`
-🎬  Swap ${fromNano(tonSwapAmount).toString()}💎Ton to  $ (expecting for ${fromNano(tonAmountOut.minAmountOut.toString())} $ )`);
+🎬  Swap ${fromNano(tonSwapAmount).toString()}💎Ton to  $ (expecting for ${fromNano(tonAmountOut.minAmountOut.toString())} $ )
+`);
     const swapTonMessage = AmmMinter.SwapTon(tonSwapAmount, new BN(tonAmountOut.minAmountOut.toString()));
     await sendTransaction(client, deployWallet, ammMinter, tonSwapAmount.add(toNano(GAS_FEES.SWAP_FEE)), privateKey, swapTonMessage);
 
@@ -318,7 +334,8 @@ async function removeLiquidity(
     saveAddress("LP-Wallet", lpAddress);
 
     console.log(`
-🎬  Remove Liquidity of ${fromNano(lpData.balance.toString())} LP's`);
+🎬  Remove Liquidity of ${fromNano(lpData.balance.toString())} LP's
+`);
 
     const removeLiqMessage = AmmLpWallet.RemoveLiquidityMessage(new BN(lpData.balance.toString()), deployWallet.address);
 
@@ -334,26 +351,27 @@ async function main() {
     let { wallet: deployWallet, walletBalance } = await initWallet(client, walletKey.publicKey);
     saveAddress("Deployer", deployWallet.address);
     const usdcMinter = await deployMinter(client, deployWallet, walletKey.secretKey);
+
     // await sleep(BLOCK_TIME);
 
-    // await mintUSDC(usdcMinter.address, deployWallet, walletKey.secretKey);
+    await mintUSDC(usdcMinter.address, deployWallet, walletKey.secretKey);
 
     const deployerUSDCAddress = (await JettonMinter.GetWalletAddress(client, usdcMinter.address, deployWallet.address)) as Address;
     saveAddress("DeployerUSDC", deployerUSDCAddress);
-    // printDeployer(client, deployWallet.address, deployerUSDCAddress);
+    printDeployerBalances(client, deployWallet.address, deployerUSDCAddress);
 
     const ammMinter = await deployAmmMinter(client, deployWallet, zeroAddress, new BN(0), zeroAddress, new BN(0), walletKey.secretKey);
 
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
 
-    // // ======== add-liquidity
+    // ======== add-liquidity
 
     await addLiquidity(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
     await sleep(BLOCK_TIME * 2);
 
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
-    // // ======== Swap Usdc -> TON
 
+    //  ======== Swap Usdc -> TON
     await swapUsdcToTon(ammMinter.address, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(4));
     await sleep(BLOCK_TIME);
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
