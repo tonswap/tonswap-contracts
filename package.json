@@ -5,8 +5,8 @@
   "repository": "git@github.com:tonswap/dex.git",
   "scripts": {
     "build": "./scripts/build.sh",
-    "test": "npx jest src/amm/amm-minter.spec.ts",
-    "e2e": "ts-node src/deploy/e2e.ts"
+    "test": "npx jest test/amm-minter.spec.ts",
+    "e2e": "ts-node deploy/e2e.ts"
   },
   "dependencies": {
     "@babel/preset-env": "^7.16.11",

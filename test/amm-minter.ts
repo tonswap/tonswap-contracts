@@ -1,17 +1,15 @@
-import { readFile } from "fs/promises";
 //@ts-ignore
-import { cellToBoc, SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { filterLogs, parseInternalMessageResponse, sliceToAddress } from "../utils";
+import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
+import BN from "bn.js";
+import { filterLogs, parseInternalMessageResponse } from "./utils";
 import { AmmLpWallet } from "./amm-wallet";
 
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, fromNano } from "ton";
-import BN from "bn.js";
-import { parseActionsList, sliceToAddress267, toUnixTime } from "../utils";
+import { parseActionsList, sliceToAddress267, toUnixTime } from "./utils";
 import { OPS } from "./ops";
-import { compileFuncToB64 } from "../funcToB64";
-import { bytesToAddress } from "../deploy/deploy-utils";
-import { bytesToBase64 } from "../jetton/jetton-minter";
-import { writeString } from "../messageUtils";
+import { compileFuncToB64 } from "../utils/funcToB64";
+import { bytesToAddress } from "../utils/deploy-utils";
+import { writeString } from "./messageUtils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
@@ -190,12 +188,12 @@ export class AmmMinter {
 
     static async CompileCodeToCell() {
         const ammMinterCodeB64: string = compileFuncToB64([
-            "src/amm/stdlib.fc", // this is the full stdlib (fromFuncCode injects stdlib automatically)
-            "src/amm/op-codes.func",
-            "src/amm/params.func",
-            "src/amm/amm-utils.func",
-            "src/amm/amm-minter-utils.func",
-            "src/amm/amm-minter.func",
+            "contracts/stdlib.fc", // this is the full stdlib (fromFuncCode injects stdlib automatically)
+            "contracts/op-codes.func",
+            "contracts/params.func",
+            "contracts/amm-utils.func",
+            "contracts/amm-minter-utils.func",
+            "contracts/amm-minter.func",
         ]);
         return Cell.fromBoc(ammMinterCodeB64);
     }

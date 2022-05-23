@@ -3,11 +3,10 @@ import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor"
 
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, TonClient } from "ton";
 import BN from "bn.js";
-import { toUnixTime, toDecimals, parseInternalMessageResponse } from "../utils";
+import { toUnixTime, toDecimals, parseInternalMessageResponse } from "./utils";
 import { OPS } from "./ops";
-import { compileFuncToB64 } from "../funcToB64";
-import { bytesToAddress } from "../deploy/deploy-utils";
-import { bytesToBase64 } from "../jetton/jetton-minter";
+import { compileFuncToB64 } from "../utils/funcToB64";
+import { bytesToAddress } from "../utils/deploy-utils";
 
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
@@ -198,12 +197,12 @@ export class AmmLpWallet {
 
     static async compileWallet() {
         const ammWalletCodeB64: string = compileFuncToB64([
-            "src/amm/stdlib-jetton-wallet.func",
-            "src/amm/op-codes.func",
-            "src/amm/params.func",
-            "src/amm/amm-utils.func",
-            "src/amm/amm-wallet.func",
-            "src/amm/msg_hex_comment.func",
+            "contracts/stdlib-jetton-wallet.func",
+            "contracts/op-codes.func",
+            "contracts/params.func",
+            "contracts/amm-utils.func",
+            "contracts/amm-wallet.func",
+            "contracts/msg_hex_comment.func",
         ]);
         return Cell.fromBoc(ammWalletCodeB64);
     }

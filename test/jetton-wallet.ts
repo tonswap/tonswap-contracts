@@ -1,13 +1,11 @@
 // @ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-import { parseInternalMessageResponse } from "../utils";
-
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, toDecimals, OutAction } from "../utils";
-import { OPS } from "../amm/ops";
-import { bytesToAddress } from "../deploy/deploy-utils";
-import { writeString } from "../messageUtils";
+import { parseActionsList, toUnixTime, OutAction, parseInternalMessageResponse } from "./utils";
+import { OPS } from "./ops";
+import { bytesToAddress } from "../utils/deploy-utils";
+import { writeString } from "./messageUtils";
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 

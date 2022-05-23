@@ -4,10 +4,10 @@ import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor"
 
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, toNano, TonClient } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, sliceToAddress } from "../utils";
-import { compileFuncToB64 } from "../funcToB64";
-import { bytesToAddress } from "../deploy/deploy-utils";
-import { writeString } from "../messageUtils";
+import { parseActionsList, toUnixTime, sliceToAddress, bytesToBase64 } from "./utils";
+import { compileFuncToB64 } from "../utils/funcToB64";
+import { bytesToAddress } from "../utils/deploy-utils";
+import { writeString } from "./messageUtils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
@@ -206,11 +206,11 @@ export class JettonMinter {
 // custom solution, using func to compile, and fift to serialize the code into a string
 async function serializeWalletCodeToCell() {
     const jettonWalletCodeB64: string = compileFuncToB64([
-        "src/jetton/stdlib.fc",
-        "src/jetton/params.fc",
-        "src/jetton/op-codes.fc",
-        "src/jetton/jetton-utils.fc",
-        "src/jetton/jetton-wallet.fc",
+        "contracts/stdlib.fc",
+        "contracts/params.fc",
+        "contracts/op-codes.fc",
+        "contracts/jetton-utils.fc",
+        "contracts/jetton-wallet.fc",
     ]);
     return Cell.fromBoc(jettonWalletCodeB64);
 }
@@ -219,21 +219,21 @@ async function serializeMinterCodeToCell(replaceMyAddress = true) {
     if (replaceMyAddress) {
     }
     const jettonMinterCodeB64: string = compileFuncToB64([
-        "./src/jetton/stdlib.fc",
-        "./src/jetton/params.fc",
-        "./src/jetton/op-codes.fc",
-        "./src/jetton/jetton-utils.fc",
-        "./src/jetton/jetton-minter.fc",
+        "./contracts/stdlib.fc",
+        "./contracts/params.fc",
+        "./contracts/op-codes.fc",
+        "./contracts/jetton-utils.fc",
+        "./contracts/jetton-minter.fc",
     ]);
     return Cell.fromBoc(jettonMinterCodeB64);
 }
 
 async function concatMinterSources() {
-    let jettonMinter = (await readFile("./src/jetton/jetton-minter.fc")).toString("utf-8");
-    let utils = (await readFile("./src/jetton/jetton-utils.fc")).toString("utf-8");
-    let opcodes = (await readFile("./src/jetton/op-codes.fc")).toString("utf-8");
-    let params = (await readFile("./src/jetton/params.fc")).toString("utf-8");
-    let stdlib = (await readFile("./src/jetton/stdlib-tvm.fc")).toString("utf-8");
+    let jettonMinter = (await readFile("./contracts/jetton-minter.fc")).toString("utf-8");
+    let utils = (await readFile("./contracts/jetton-utils.fc")).toString("utf-8");
+    let opcodes = (await readFile("./contracts/op-codes.fc")).toString("utf-8");
+    let params = (await readFile("./contracts/params.fc")).toString("utf-8");
+    let stdlib = (await readFile("./contracts/stdlib-tvm.fc")).toString("utf-8");
     return [stdlib, opcodes, params, utils, jettonMinter].join("\n");
 }
 
@@ -249,53 +249,4 @@ async function buildStateInit(totalSupply: BN, token_wallet_address: Address, co
     dataCell.refs.push(contentCell);
     dataCell.refs.push(tokenCode);
     return dataCell;
-}
-
-const base64abc = (() => {
-    const abc = [];
-    const A = "A".charCodeAt(0);
-    const a = "a".charCodeAt(0);
-    const n = "0".charCodeAt(0);
-    for (let i = 0; i < 26; ++i) {
-        abc.push(String.fromCharCode(A + i));
-    }
-    for (let i = 0; i < 26; ++i) {
-        abc.push(String.fromCharCode(a + i));
-    }
-    for (let i = 0; i < 10; ++i) {
-        abc.push(String.fromCharCode(n + i));
-    }
-    abc.push("+");
-    abc.push("/");
-    return abc;
-})();
-
-/**
- * @param bytes {Uint8Array}
- * @return {string}
- */
-export function bytesToBase64(bytes: any) {
-    let result = "";
-    let i;
-    const l = bytes.length;
-    for (i = 2; i < l; i += 3) {
-        result += base64abc[bytes[i - 2] >> 2];
-        result += base64abc[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)];
-        result += base64abc[((bytes[i - 1] & 0x0f) << 2) | (bytes[i] >> 6)];
-        result += base64abc[bytes[i] & 0x3f];
-    }
-    if (i === l + 1) {
-        // 1 octet missing
-        result += base64abc[bytes[i - 2] >> 2];
-        result += base64abc[(bytes[i - 2] & 0x03) << 4];
-        result += "==";
-    }
-    if (i === l) {
-        // 2 octets missing
-        result += base64abc[bytes[i - 2] >> 2];
-        result += base64abc[((bytes[i - 2] & 0x03) << 4) | (bytes[i - 1] >> 4)];
-        result += base64abc[(bytes[i - 1] & 0x0f) << 2];
-        result += "=";
-    }
-    return result;
 }

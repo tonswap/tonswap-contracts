@@ -1,13 +1,12 @@
 import { Address, Cell, fromNano, toNano } from "ton";
 import BN from "bn.js";
-import { JettonMinter } from "../jetton/jetton-minter";
+import { JettonMinter } from "./jetton-minter";
 import { AmmMinter } from "./amm-minter";
-import { parseJettonTransfer, SendMsgOutAction, sliceToAddress267, toUnixTime } from "../utils";
-import { JettonWallet } from "../jetton/jetton-wallet";
+import { parseJettonTransfer, SendMsgOutAction, sliceToAddress267, toUnixTime } from "./utils";
+import { JettonWallet } from "./jetton-wallet";
 import { AmmLpWallet } from "./amm-wallet";
 import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "./amm-utils";
 import { ERROR_CODES, OPS } from "./ops";
-import { bnFmt } from "../deploy/deploy-utils";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const rewardsWallet = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
@@ -346,7 +345,7 @@ describe("AMM Minter ", () => {
 
         //@ts-ignore
         console.log(addLiquidityMessage.actions[2]);
-
+        // @ts-ignore
         const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2]?.message.body);
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());

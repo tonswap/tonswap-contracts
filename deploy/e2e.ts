@@ -12,7 +12,7 @@ import {
     CellMessage,
     fromNano,
 } from "ton";
-import { JettonMinter } from "../jetton/jetton-minter";
+import { JettonMinter } from "../test/jetton-minter";
 import BN from "bn.js";
 
 import axios from "axios";
@@ -28,11 +28,11 @@ import {
     printDeployerBalances,
     sleep,
     waitForSeqno,
-} from "./deploy-utils";
-import { JettonWallet } from "../jetton/jetton-wallet";
-import { AmmMinter } from "../amm/amm-minter";
-import { OPS } from "../amm/ops";
-import { AmmLpWallet } from "../amm/amm-wallet";
+} from "../utils/deploy-utils";
+import { JettonWallet } from "../test/jetton-wallet";
+import { AmmMinter } from "../test/amm-minter";
+import { OPS } from "../test/ops";
+import { AmmLpWallet } from "../test/amm-wallet";
 
 axiosThrottle.use(axios, { requestsPerSecond: 0.5 }); // required since toncenter jsonRPC limits to 1 req/sec without API key
 const client = new TonClient({
@@ -389,12 +389,12 @@ async function main() {
     console.log(`Deployer spent about ${fromNano(currentBalance.sub(walletBalance))} 💎`);
 
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
-    printAddresses(addressToName, NETWORK.SANDBOX);
 }
 
 (async () => {
     await main();
-    // await printBalances(client, Address.parse("EQBVkqmt206sSMkCr5yUgIHUPjEKnvI4UpHh__QUIbeMRHuH"));
+    // await printBalances(client, Address.parse("EQCAbOdZOdk0C2GlwSwLLKmYe2NTXJCxcWndi1rYpMhs41rO"));
+
     // await printDeployer(
     //     client,
     //     Address.parse("EQBdPuDE6-9QE6c7dZZWbfhsE2jS--EfcwfEvGaWjKeW8vfO"),
