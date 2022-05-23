@@ -179,6 +179,8 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         int min_amount_out = in_msg_body~load_coins();
         
         throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
+        throw_if(601, 0 == token_reserves); ;; insufficent liquidity
+        throw_if(602, equal_slices(token_wallet_address, zerro_address) ); ;; pool is not intialized 
         
         (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address);
         save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code, admin_data);
