@@ -16,12 +16,16 @@ run `npm install`
 
 ### Compile contract and run Fift tests
 
-This project depends on the executables **fift**, **func** and **lite-client**. You can build them from [source](https://ton.org/docs/#/howto/getting-started), use [tncli](https://github.com/disintar/tncli) or run `pip install tncli`. After installing **fift** and **func**, copy or symlink the executables to the root folder `ln -s ~/src/func ./func` and `ln -s ~/src/fift ./fift`
+This project depends on the executables **fift**, **func** and **lite-client**. You can build them from [source](https://ton.org/docs/#/howto/getting-started), or you can download the [pre compiled binaries](https://github.com/ton-defi-org/ton-binaries/releases).
 
 ### Run tests
 
 the project uses [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor) package to run Jest based tests.
 Use `npm run test` to execute the test suite.
+
+### Run end to end test on Mainnet or Testnet
+
+`npm run e2e` (this process will generate a deploy wallet during uts execution)
 
 ## Roadmap
 
