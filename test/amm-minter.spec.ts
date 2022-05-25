@@ -591,8 +591,6 @@ async function addLiquidity(
     );
     let transferNotificationRes = await masterAMM.sendInternalMessage(usdcToAmmTransferNotification);
 
-    console.log(transferNotificationRes);
-
     expect(transferNotificationRes.exit_code).toBe(addLiquidityExitCode);
     if (addLiquidityExitCode > 0) {
         return {
