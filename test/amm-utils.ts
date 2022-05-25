@@ -35,7 +35,7 @@ export function actionToMessage(
     });
 }
 
-export function actionToMessage2(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = false) {
+export function actionToMessage2(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = true) {
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
 

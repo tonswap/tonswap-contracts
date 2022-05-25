@@ -2,20 +2,31 @@ import { readFile } from "fs/promises";
 //@ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, toNano, TonClient } from "ton";
+import {
+    Address,
+    Cell,
+    CellMessage,
+    InternalMessage,
+    Slice,
+    CommonMessageInfo,
+    ExternalMessage,
+    toNano,
+    TonClient,
+    contractAddress,
+} from "ton";
 import BN from "bn.js";
 import { parseActionsList, toUnixTime, sliceToAddress, bytesToBase64 } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./messageUtils";
 
-const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
-
 const OP_MINT = 21;
 const BURN_NOTIFICATION = 0x7bdd97de;
 
 export class JettonMinter {
     private constructor(public readonly contract: SmartContract) {}
+
+    public address: Address;
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
@@ -105,7 +116,7 @@ export class JettonMinter {
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: sender,
-                to: contractAddress,
+                to: this.address as Address,
                 value: new BN(10001),
                 bounce: false,
                 body: new CommonMessageInfo({
@@ -144,7 +155,7 @@ export class JettonMinter {
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: subWalletOwner,
-                to: contractAddress,
+                to: this.address as Address,
                 value: new BN(10000),
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
@@ -196,8 +207,17 @@ export class JettonMinter {
         let contract = await SmartContract.fromFuncSource(minterSources, stateInit, {
             getMethodsMutate: true,
         });
-        const instance = new JettonMinter(contract);
+        const myAddress = await contractAddress({
+            workchain: 0,
+            initialData: stateInit,
+            initialCode: jettonWalletCode[0],
+        });
 
+        const instance = new JettonMinter(contract);
+        instance.address = myAddress;
+        instance.contract.setC7Config({
+            myself: myAddress,
+        });
         instance.setUnixTime(toUnixTime(Date.now()));
         return instance;
     }

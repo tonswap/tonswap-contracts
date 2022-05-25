@@ -49,7 +49,7 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
     const usdcData = await JettonWallet.GetData(client, deployerUSDCAddress);
     const ton = await client.getBalance(deployer);
     console.log(``);
-    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${usdcData.balance.toString()}$ USDC `);
+    console.log(`⛏  Deployer Balance: ${fromNano(ton)}💎 | ${fromNano(usdcData.balance.toString())}$ USDC `);
     console.log(``);
 }
 

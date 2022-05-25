@@ -2,7 +2,7 @@
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, OutAction, parseInternalMessageResponse } from "./utils";
+import { parseActionsList, toUnixTime, OutAction, parseInternalMessageResponse, filterLogs, sliceToAddress } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./messageUtils";
@@ -25,7 +25,7 @@ export class JettonWallet {
         return {
             balance,
             owner,
-            jettonMaster,
+            jettonMaster: sliceToAddress(jettonMaster),
             code,
         };
     }
@@ -104,7 +104,7 @@ export class JettonWallet {
         return {
             exit_code: res.exit_code,
             returnValue: res.result[1] as BN,
-            logs: res.logs,
+            logs: filterLogs(res.logs),
             actions: parseActionsList(successResult.action_list_cell),
         };
     }
@@ -146,16 +146,18 @@ export class JettonWallet {
     }
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
-        const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true });
+        const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
+
         const contract = new JettonWallet(jettonWallet);
         contract.setUnixTime(toUnixTime(Date.now()));
 
         const initRes = await jettonWallet.sendInternalMessage(initMessage);
         let successResult = initRes as SuccessfulExecutionResult;
         const initMessageResponse = {
-            logs: successResult.logs,
+            logs: filterLogs(successResult.logs),
             actions: parseActionsList(successResult.action_list_cell),
         };
+        // @ts-ignore
         contract.initMessageResult = initMessageResponse;
         contract.address = initMessage.to;
         return contract;
