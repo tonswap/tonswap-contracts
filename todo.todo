@@ -1,7 +1,0 @@
-### TODO
-
--   [ ] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slipage check should include it.
--   [x] enforce overflows in price calculation
--   [x] upgrade to latest npm ton
--   [x] Fix Price Overflow in add liquidity
--   [ ] Remove Liquidity min gas validation ( copy jetton wallet transfer )
