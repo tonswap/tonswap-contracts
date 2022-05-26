@@ -36,10 +36,10 @@ import { AmmLpWallet } from "../test/amm-wallet";
 
 axiosThrottle.use(axios, { requestsPerSecond: 0.5 }); // required since toncenter jsonRPC limits to 1 req/sec without API key
 const client = new TonClient({
-    //endpoint: "https://sandbox.tonhubapi.com/jsonRPC",
-    //  endpoint: "https://testnet.tonhubapi.com/jsonRPC",
-    endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
-    // endpoint: "https://test.toncenter.com/api/v2/jsonRPC",
+    endpoint: "https://sandbox.tonhubapi.com/jsonRPC",
+    //endpoint: "https://testnet.tonhubapi.com/jsonRPC",
+    // endpoint: "https://scalable-api.tonwhales.com/jsonRPC",
+    // endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
 });
 
 enum GAS_FEES {
@@ -60,6 +60,7 @@ const TON_LIQUIDITY = 4;
 const TOKEN_TO_SWAP = 25;
 const TOKEN_LIQUIDITY = toNano(100);
 const TON_TO_SWAP = 2;
+const MINT_SIZE = 100;
 
 const zeroAddress = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 
@@ -124,7 +125,7 @@ async function deployAmmMinter(
     workchain = 0
 ) {
     const { codeCell, initDataCell } = await AmmMinter.buildDataCell(
-        "ipfs://tonswap.data/1",
+        "https://api.jsonbin.io/b/628f1df905f31f68b3a7c5d0",
         rewardsWallet,
         rewardsRate,
         protocolRewardsWallet,
@@ -226,7 +227,7 @@ async function mintUSDC(usdcMinter: Address, deployWallet: WalletContract, priva
         usdcMinter,
         toNano(GAS_FEES.MINT),
         privateKey,
-        JettonMinter.Mint(deployWallet.address, toNano(TOKEN_LIQUIDITY).add(toNano(TOKEN_TO_SWAP)))
+        JettonMinter.Mint(deployWallet.address, toNano(MINT_SIZE).add(toNano(TOKEN_TO_SWAP)))
     );
 }
 
@@ -421,3 +422,16 @@ async function main() {
 // console.log(`aliceJettonUSDCData`, aliceJettonUSDCData);
 
 // deploy Amm Minter
+
+// const transfer = await deployWallet.createTransfer({
+//     secretKey: walletKey.secretKey,
+//     seqno: await deployWallet.getSeqNo(),
+//     sendMode: 1 + 2,
+//     order: new InternalMessage({
+//         to: Address.parse("EQBod5J-GXAAgXI7OxoOtZRZhrYM9ll7MSpknZ1rPn-LosCz"),
+//         value: toNano(20),
+//         bounce: false,
+//         body: new CommonMessageInfo(),
+//     }),
+// });
+// await client.sendExternalMessage(deployWallet, transfer);

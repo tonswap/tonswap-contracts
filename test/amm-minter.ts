@@ -187,14 +187,7 @@ export class AmmMinter {
     }
 
     static async CompileCodeToCell() {
-        const ammMinterCodeB64: string = compileFuncToB64([
-            "contracts/stdlib.fc", // this is the full stdlib (fromFuncCode injects stdlib automatically)
-            "contracts/op-codes.func",
-            "contracts/params.func",
-            "contracts/amm-utils.func",
-            "contracts/amm-minter-utils.func",
-            "contracts/amm-minter.func",
-        ]);
+        const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter.func"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
 

@@ -196,14 +196,7 @@ export class AmmLpWallet {
     }
 
     static async compileWallet() {
-        const ammWalletCodeB64: string = compileFuncToB64([
-            "contracts/stdlib-jetton-wallet.func",
-            "contracts/op-codes.func",
-            "contracts/params.func",
-            "contracts/amm-utils.func",
-            "contracts/amm-wallet.func",
-            "contracts/msg_hex_comment.func",
-        ]);
+        const ammWalletCodeB64: string = compileFuncToB64(["contracts/amm-wallet.func"]);
         return Cell.fromBoc(ammWalletCodeB64);
     }
 

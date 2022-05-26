@@ -26,7 +26,7 @@ const BURN_NOTIFICATION = 0x7bdd97de;
 export class JettonMinter {
     private constructor(public readonly contract: SmartContract) {}
 
-    public address: Address;
+    public address?: Address;
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
@@ -203,8 +203,9 @@ export class JettonMinter {
     static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
         const jettonWalletCode = await serializeWalletCodeToCell();
         const stateInit = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
-        const minterSources = await concatMinterSources();
-        let contract = await SmartContract.fromFuncSource(minterSources, stateInit, {
+        const cellCode = await CompileCodeToCell();
+
+        let contract = await SmartContract.fromCell(cellCode[0], stateInit, {
             getMethodsMutate: true,
         });
         const myAddress = await contractAddress({
@@ -225,36 +226,20 @@ export class JettonMinter {
 
 // custom solution, using func to compile, and fift to serialize the code into a string
 async function serializeWalletCodeToCell() {
-    const jettonWalletCodeB64: string = compileFuncToB64([
-        "contracts/stdlib.fc",
-        "contracts/params.fc",
-        "contracts/op-codes.fc",
-        "contracts/jetton-utils.fc",
-        "contracts/jetton-wallet.fc",
-    ]);
+    const jettonWalletCodeB64: string = compileFuncToB64(["contracts/jetton-wallet.fc"]);
     return Cell.fromBoc(jettonWalletCodeB64);
 }
 
 async function serializeMinterCodeToCell(replaceMyAddress = true) {
     if (replaceMyAddress) {
     }
-    const jettonMinterCodeB64: string = compileFuncToB64([
-        "./contracts/stdlib.fc",
-        "./contracts/params.fc",
-        "./contracts/op-codes.fc",
-        "./contracts/jetton-utils.fc",
-        "./contracts/jetton-minter.fc",
-    ]);
+    const jettonMinterCodeB64: string = compileFuncToB64(["./contracts/jetton-minter.fc"]);
     return Cell.fromBoc(jettonMinterCodeB64);
 }
 
-async function concatMinterSources() {
-    let jettonMinter = (await readFile("./contracts/jetton-minter.fc")).toString("utf-8");
-    let utils = (await readFile("./contracts/jetton-utils.fc")).toString("utf-8");
-    let opcodes = (await readFile("./contracts/op-codes.fc")).toString("utf-8");
-    let params = (await readFile("./contracts/params.fc")).toString("utf-8");
-    let stdlib = (await readFile("./contracts/stdlib-tvm.fc")).toString("utf-8");
-    return [stdlib, opcodes, params, utils, jettonMinter].join("\n");
+async function CompileCodeToCell() {
+    const ammMinterCodeB64: string = compileFuncToB64(["contracts/jetton-minter.fc"]);
+    return Cell.fromBoc(ammMinterCodeB64);
 }
 
 async function buildStateInit(totalSupply: BN, token_wallet_address: Address, content: string, tokenCode: Cell) {

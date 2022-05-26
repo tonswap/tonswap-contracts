@@ -341,9 +341,6 @@ describe("AMM Minter ", () => {
 
         // @ts-ignore
         expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
-
-        //@ts-ignore
-        console.log(addLiquidityMessage.actions[2]);
         // @ts-ignore
         const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2]?.message.body);
 
