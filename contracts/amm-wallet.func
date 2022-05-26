@@ -178,32 +178,6 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, stake_start);
 }
 
-() claim_rewards(slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
-    (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code, int stake_start) = load_data();    
-    int seconds_staked =  (now() - stake_start);
-    int query_id = in_msg_body~load_uint(64);
-    
-    ;;throw_unless(707, msg_value > fwd_fee + 2 * gas_consumption());
-
-    var msg_body = begin_cell()
-      .store_uint(op::claim_rewards_notification(), 32)
-      .store_uint(query_id, 64)
-      .store_slice(owner_address) ;; rewards_receiver is always account owner
-      .store_coins(balance) ;; amount staked , its is always 100% of the balance
-      .store_uint(seconds_staked, 64) ;; time staked in seconds
-      .end_cell();
-
-    var msg = begin_cell()
-        .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
-        .store_slice(jetton_master_address)
-        .store_coins(0)
-        .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1) ;; 1-107 => in_msg_body is a ref
-        .store_ref(msg_body);
-
-    send_raw_message(msg.end_cell(), 64);
-
-    save_data(balance, owner_address, jetton_master_address, jetton_wallet_code, now());
-}
 
 () on_bounce (slice in_msg_body) impure {
   in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
@@ -237,18 +211,11 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
     int op = in_msg_body~load_uint(32);
 
     if (op == op::transfer()) { ;; outgoing transfer
-        ;; auto claim rewards on transfer
-        claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
-
         send_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
         return ();
     }
 
     if (op == op::internal_transfer()) { ;; incoming transfer
-        
-        ;; auto claim rewards on balance update
-        claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
-
         receive_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
         return ();
     }
@@ -258,12 +225,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
         return ();
     }
 
-    if (op == op::claim_rewards()) { 
-        claim_rewards(in_msg_body, sender_address, msg_value, fwd_fee);
-        return ();
-    }
-
-  throw(0xffff);
+    throw(0xffff);
 }
 
 (int, slice, slice, cell, int) get_wallet_data() method_id {

@@ -114,23 +114,8 @@ async function deployMinter(client: TonClient, deployWallet: WalletContract, pri
     return usdcMinter;
 }
 
-async function deployAmmMinter(
-    client: TonClient,
-    walletContract: WalletContract,
-    rewardsWallet: Address,
-    rewardsRate: BN,
-    protocolRewardsWallet: Address,
-    protocolRewardsRate: BN,
-    privateKey: Buffer,
-    workchain = 0
-) {
-    const { codeCell, initDataCell } = await AmmMinter.buildDataCell(
-        "https://api.jsonbin.io/b/628f1df905f31f68b3a7c5d0",
-        rewardsWallet,
-        rewardsRate,
-        protocolRewardsWallet,
-        protocolRewardsRate
-    );
+async function deployAmmMinter(client: TonClient, walletContract: WalletContract, privateKey: Buffer, workchain = 0) {
+    const { codeCell, initDataCell } = await AmmMinter.buildDataCell("https://api.jsonbin.io/b/628f1df905f31f68b3a7c5d0");
 
     const newContractAddress = await contractAddress({
         workchain,
@@ -361,7 +346,7 @@ async function main() {
     saveAddress("DeployerUSDC", deployerUSDCAddress);
     printDeployerBalances(client, deployWallet.address, deployerUSDCAddress);
 
-    const ammMinter = await deployAmmMinter(client, deployWallet, zeroAddress, new BN(0), zeroAddress, new BN(0), walletKey.secretKey);
+    const ammMinter = await deployAmmMinter(client, deployWallet, walletKey.secretKey);
 
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
 

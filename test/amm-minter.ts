@@ -3,7 +3,6 @@ import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor"
 import BN from "bn.js";
 import { filterLogs, parseInternalMessageResponse } from "./utils";
 import { AmmLpWallet } from "./amm-wallet";
-
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, fromNano } from "ton";
 import { parseActionsList, sliceToAddress267, toUnixTime } from "./utils";
 import { OPS } from "./ops";
@@ -26,7 +25,6 @@ export class AmmMinter {
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         const content = res.result[2] as Cell;
-        const code = res.result[3] as Cell;
 
         return {
             totalSupply,
@@ -79,7 +77,7 @@ export class AmmMinter {
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
     //           = InternalMsgBody;
-    async receiveBurn(subwalletOwner: Address, sourceWallet: Address, amount: BN) {
+    async receiveBurn(subWalletOwner: Address, sourceWallet: Address, amount: BN) {
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Burn_notification, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
@@ -95,7 +93,7 @@ export class AmmMinter {
 
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
-                from: subwalletOwner,
+                from: subWalletOwner,
                 to: contractAddress,
                 value: new BN(10000),
                 bounce: false,
@@ -109,23 +107,6 @@ export class AmmMinter {
             returnValue: res.result[1] as BN,
             logs: res.logs,
             actions: parseActionsList(successResult.action_list_cell),
-        };
-    }
-
-    async rewardsOf(lpAmount: BN, secondsStaked: BN) {
-        let data = await this.contract.invokeGetMethod("get_rewards_by", [
-            { type: "int", value: lpAmount.toString() },
-            { type: "int", value: secondsStaked.toString() },
-        ]);
-
-        const tokenRewards = data.result[0] as Slice;
-        const protocolRewards = data.result[1] as Slice;
-
-        // const admin = new Address(0, new BN(rawAddress).toBuffer() );
-        return {
-            tokenRewards,
-            protocolRewards,
-            logs: data.logs,
         };
     }
 
@@ -191,21 +172,9 @@ export class AmmMinter {
         return Cell.fromBoc(ammMinterCodeB64);
     }
 
-    static async buildDataCell(
-        content: string,
-        rewardsWallet: Address,
-        rewardsRate: BN,
-        protocolRewardsWallet: Address,
-        protocolRewardsRate: BN
-    ) {
+    static async buildDataCell(content: string) {
         const contentCell = new Cell();
         writeString(contentCell, content);
-
-        const adminData = new Cell();
-        adminData.bits.writeAddress(rewardsWallet);
-        adminData.bits.writeUint(rewardsRate, 64);
-        adminData.bits.writeAddress(protocolRewardsWallet);
-        adminData.bits.writeUint(protocolRewardsRate, 64);
 
         const dataCell = new Cell();
         dataCell.bits.writeCoins(0); // total-supply
@@ -214,7 +183,6 @@ export class AmmMinter {
         dataCell.bits.writeCoins(0); // token-reserves
         dataCell.refs.push(contentCell);
         dataCell.refs.push((await AmmLpWallet.compileWallet())[0]);
-        dataCell.refs.push(adminData);
         return {
             initDataCell: dataCell,
             codeCell: await AmmMinter.CompileCodeToCell(),
@@ -222,14 +190,8 @@ export class AmmMinter {
     }
 
     // this method is using codeCell instead of .fromFuncSource
-    static async create2(
-        content: string,
-        rewardsWallet: Address,
-        rewardsRate: BN,
-        protocolRewardsWallet: Address,
-        protocolRewardsRate: BN = new BN(0)
-    ) {
-        const data = await AmmMinter.buildDataCell(content, rewardsWallet, rewardsRate, protocolRewardsWallet, protocolRewardsRate);
+    static async create2(content: string) {
+        const data = await AmmMinter.buildDataCell(content);
 
         const code = await AmmMinter.CompileCodeToCell();
 

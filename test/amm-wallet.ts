@@ -166,24 +166,6 @@ export class AmmLpWallet {
         return parseInternalMessageResponse(res);
     }
 
-    async claimRewards(from: Address, to: Address) {
-        let messageBody = new Cell();
-        messageBody.bits.writeUint(OPS.ClaimRewards, 32); // action
-        messageBody.bits.writeUint(1, 64); // query-id
-
-        let res = await this.contract.sendInternalMessage(
-            new InternalMessage({
-                from: from,
-                to: to,
-                value: toDecimals(1),
-                bounce: false,
-                body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
-            })
-        );
-
-        return parseInternalMessageResponse(res);
-    }
-
     setUnixTime(time: number) {
         this.initTime = time;
         this.contract.setUnixTime(time);
