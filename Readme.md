@@ -8,7 +8,7 @@
 
 Tonswap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow traders to swap tokens and liquidity providers to supply liquidity and earn rewards.
 
-The project depends on an Jetton standart implementation for [Jetton](https://github.com/ton-blockchain/token-contract/tree/jettons/ft).
+The project depends on an Jetton standard implementation for [Jetton](https://github.com/ton-blockchain/token-contract/tree/jettons/ft).
 
 ## Develop
 
@@ -45,5 +45,5 @@ Use `npm run test` to execute the test suite.
 -   [x] Write end to end script that deploys on test/main-net
 -   [x] enforce overflows in price calculation
 -   [x] upgrade to latest npm ton
--   [ ] Connect Bot to mainnet
--   [ ] Connect Web app
+-   [x] Connect Bot to mainnet
+-   [x] Connect Web app
