@@ -35,8 +35,6 @@ Use `npm run test` to execute the test suite.
 -   [x] Remove Liquidity + Fift Tests
 -   [x] Swap TON -> Token and Token -> TON Tests (based on Uniswap)
 -   [x] Swap Tests in Fift
--   [x] Masterchef with rewards
--   [x] Masterchef Rewards with Tests
 -   [x] Add Masterchef functionality with auto stake and auto withdraw inside the contract
 -   [ ] Gas Optimizations
 -   [x] Move to Jetton architecture
