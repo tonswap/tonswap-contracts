@@ -178,7 +178,7 @@ export class AmmLpWallet {
     }
 
     static async compileWallet() {
-        const ammWalletCodeB64: string = compileFuncToB64(["contracts/amm-wallet.func"]);
+        const ammWalletCodeB64: string = compileFuncToB64(["contracts/amm-wallet.fc"]);
         return Cell.fromBoc(ammWalletCodeB64);
     }
 

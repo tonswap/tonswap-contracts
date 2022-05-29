@@ -168,7 +168,7 @@ export class AmmMinter {
     }
 
     static async CompileCodeToCell() {
-        const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter.func"]);
+        const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
 

@@ -1,9 +1,8 @@
 #include "stdlib.fc";
-#include "op-codes.func";
-#include "params.func";
-#include "amm-utils.func";
-#include "amm-minter-utils.func";
-#include "amm-minter.func";
+#include "op-codes-amm.fc";
+#include "params.fc";
+#include "amm-utils.fc";
+#include "amm-minter-utils.fc";
 
 int jetton_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
