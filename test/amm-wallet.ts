@@ -184,12 +184,16 @@ export class AmmLpWallet {
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
         const ammWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true });
-        const contract = new AmmLpWallet(ammWallet);
-        contract.setUnixTime(toUnixTime(Date.now()));
+        const instance = new AmmLpWallet(ammWallet);
+        instance.setUnixTime(toUnixTime(Date.now()));
         const initMessageResponse = await ammWallet.sendInternalMessage(initMessage);
         //console.log('amm-wallet -> initMessageResponse', initMessageResponse);
-        contract.address = initMessage.to;
-        return contract;
+        instance.address = initMessage.to;
+
+        instance.contract.setC7Config({
+            myself: initMessage.to,
+        });
+        return instance;
     }
 }
 

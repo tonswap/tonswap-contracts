@@ -43,8 +43,6 @@ int squareRoot(int number)  {
     .store_uint(0, 1)
     .end_cell();
     
-
-    
     var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(jetton_wallet_address)
@@ -67,12 +65,12 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   return numerator / denominator;
 }
 
-(int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address) impure {
+(int, int) swapTokens (int min_amount_out, int transferd_amount, int is_ton_src, slice swap_sender, int ton_reserves, int token_reserves, slice token_wallet_address, int query_id) impure {
     int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     
-    ;; siplage is to low or insfuiccent amount 
+    ;; siplage is to low or insfuiccent amount , sending back the funds to sender minus gas
     if( (amount_out < min_amount_out) | (amount_out > trgt_resvers) ) {
         if is_ton_src == true {
             send_grams(swap_sender, transferd_amount);
@@ -83,16 +81,11 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
         return (ton_reserves, token_reserves);
     }
 
-
     if(is_ton_src == true) {
-
       ton_reserves = src_resvers + transferd_amount;
       token_reserves = trgt_resvers - amount_out;
-      ;;TODO add queryId
-
-      send_transfer_token_message(0, token_wallet_address, swap_sender, amount_out);
+      send_transfer_token_message(query_id, token_wallet_address, swap_sender, amount_out);
     } else {
-      
       ton_reserves = trgt_resvers - amount_out;
       token_reserves = src_resvers + transferd_amount;
       send_grams(swap_sender, amount_out);
