@@ -375,6 +375,7 @@ async function main() {
     console.log(`Deployer spent about ${fromNano(currentBalance.sub(walletBalance))} 💎`);
 
     await printBalances(client, ammMinter.address, deployWallet.address, deployerUSDCAddress);
+    printAddresses(addressToName);
 }
 
 (async () => {
