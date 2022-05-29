@@ -18,7 +18,7 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
       ds~load_msg_addr(),   ;; token_wallet_address
       ds~load_coins(),      ;; ton_reserves
       ds~load_coins(),      ;; token_reserves
-      ds~load_ref(),        ;; content
+      ds~load_ref(),        ;; content (uri to json)
       ds~load_ref()       ;; jetton_wallet_code
   );
 }
@@ -42,7 +42,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
   
-
   cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
   var msg = begin_cell()
@@ -62,9 +61,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
     int slipage = in_msg_body~load_uint(32);
     int ton_liquidity = in_msg_body~load_grams();
-    throw_if(98, 0 >= jetton_amount);
-    throw_if(99, 0 >= msg_value);
-    throw_unless(100, 100 > slipage); ;; TODO MAX SLIPAGE SHOULD BE 10 ?
 
     if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
@@ -75,7 +71,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
         return ();
     }
-
 
     if ton_reserves > 0 {
         int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
@@ -107,8 +102,8 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     .store_uint(op::internal_transfer(), 32)
     .store_uint(query_id, 64)
     .store_coins(new_liquidity)
-    .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
-    .store_slice(jetton_sender) ;; TODO should put null here to statisfy address slot
+    .store_slice(jetton_sender) ;; 
+    .store_slice(jetton_sender) ;; response_destination -> the address should get the jetton leftovers
     .store_coins(0)
     .store_uint(0, 1)
     .end_cell();
@@ -144,19 +139,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     int query_id = in_msg_body~load_uint(64);
 
     (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code) = load_data();
-
-  ;;  if (op == op::mint()) {
-  ;;      throw_unless(73, equal_slices(sender_address, token_wallet_address));
-  ;;      slice to_address = in_msg_body~load_msg_addr();
-  ;;      int amount = in_msg_body~load_coins();
-  ;;      cell master_msg = in_msg_body~load_ref();
-  ;;      slice master_msg_cs = master_msg.begin_parse();
-  ;;      master_msg_cs~skip_bits(32 + 64); ;; op + query_id
-  ;;      int jetton_amount = master_msg_cs~load_coins();
-  ;;      mint_tokens(to_address, jetton_wallet_code, amount, master_msg, token_wallet_address);
-  ;;      save_data(total_supply + jetton_amount, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
-  ;;      return ();
-  ;;  }
 
     if (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();
