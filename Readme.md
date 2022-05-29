@@ -29,18 +29,13 @@ Use `npm run test` to execute the test suite.
 
 ## Roadmap
 
--   [x] Basic Bot with TRC20 interaction
 -   [x] AMM with 0.03% Fees
--   [x] Add Liquidity + Fift Tests
--   [x] Remove Liquidity + Fift Tests
--   [x] Swap TON -> Token and Token -> TON Tests (based on Uniswap)
--   [x] Swap Tests in Fift
--   [x] Add Masterchef functionality with auto stake and auto withdraw inside the contract
--   [ ] Gas Optimizations
+-   [x] Add Liquidity
+-   [x] Remove Liquidity
+-   [x]
+-   [x] End to end Jest test coverage using [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor)
+-   [ ] Gas Optimizations , sender should recvie the gas change in the end of the message flows
 -   [x] Move to Jetton architecture
-
--   [x] migrate add liquidity to uniswap
--   [x] declare the exact ton amount to swap on ton-token swap , ensure gas is sufficient
 -   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
 -   [x] Write end to end script that deploys on test/main-net
 -   [x] enforce overflows in price calculation
