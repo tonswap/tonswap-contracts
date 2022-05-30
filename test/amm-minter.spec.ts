@@ -1,8 +1,9 @@
 import { Address, Cell, fromNano, toNano } from "ton";
+import { SendMsgAction } from "ton-contract-executor";
 import BN from "bn.js";
 import { JettonMinter } from "../src/jetton-minter";
 import { AmmMinterTVM } from "../src/amm-minter";
-import { parseJettonTransfer, SendMsgOutAction } from "../src/utils";
+import { parseJettonTransfer } from "../src/utils";
 import { JettonWallet } from "../src/jetton-wallet";
 import { AmmLpWallet } from "../src/amm-wallet";
 import { actionToMessage } from "../src/amm-utils";
@@ -61,7 +62,7 @@ describe("Ton Swap Test Suite", () => {
             new BN(5)
         );
 
-        const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
+        const transferMessage = transferResponse.actions[0] as SendMsgAction;
 
         const msg = actionToMessage(aliceUSDC.address, transferResponse.actions[0]);
         const bobUSDC = await JettonWallet.createFromMessage(
@@ -91,7 +92,7 @@ describe("Ton Swap Test Suite", () => {
 
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
         expect(ammResponse.exit_code).toBe(0);
-        let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgOutAction;
+        let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgAction;
         //@ts-ignore
         expect(sendTonAfterRemoveLiquidity.message.info.value.coins.toString());
         const transferTokenMessage = actionToMessage(amm, ammResponse.actions[0], toNano(0.1), true);
@@ -129,7 +130,7 @@ describe("Ton Swap Test Suite", () => {
         let ammSwapTokenResponse = await masterAMM.sendInternalMessage(transferNotificationMessage);
 
         expect(ammSwapTokenResponse.exit_code).toBe(0);
-        let sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
+        let sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgAction;
 
         //@ts-ignore
         expect(sendTonAfterSwapMessage.message.info?.value.coins.toString()).toBe(minAmountOut.toString());
@@ -159,7 +160,7 @@ describe("Ton Swap Test Suite", () => {
 
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
-        const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgOutAction;
+        const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgAction;
         const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
 
         //@ts-ignore
@@ -198,7 +199,7 @@ describe("Ton Swap Test Suite", () => {
         // exceeded the minAmount out by one
         const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)));
 
-        const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
+        const sendTonBackMessage = swapTonResp.actions[0] as SendMsgAction;
         // @ts-ignore
         // expecting funds to be sent back
         expect(sendTonBackMessage.message.info?.value.coins.toString()).toBe(tonSide.toString());
@@ -249,10 +250,6 @@ describe("Ton Swap Test Suite", () => {
             tonLiquidity,
             new BN(6)
         );
-
-        // Make sure funds are sent back to sender TON and jetton funds
-
-        console.log(addLiquidityMessage.actions);
 
         // @ts-ignore
         expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
@@ -320,7 +317,7 @@ describe("Ton Swap Test Suite", () => {
 async function createBaseContracts() {
     const masterUSDC = await JettonMinter.create(new BN(0), alice, "https://ipfs.io/ipfs/dasadas");
     const mintResponse = await masterUSDC.mint(alice, alice, new BN(ALICE_INITIAL_BALANCE));
-    const mintMessage = mintResponse.actions[0] as SendMsgOutAction;
+    const mintMessage = mintResponse.actions[0] as SendMsgAction;
     //send the transfer message to the contract
     const mintTransferNotification = actionToMessage(masterUSDC.address, mintResponse.actions[0]);
 
@@ -355,7 +352,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
 
     expect(transferWithAddLiquidityResponse.exit_code).toBe(0);
 
-    const jettonTransferToAmmWallet = transferWithAddLiquidityResponse.actions[0] as SendMsgOutAction;
+    const jettonTransferToAmmWallet = transferWithAddLiquidityResponse.actions[0] as SendMsgAction;
     const jettonInternalTransferMessage = actionToMessage(aliceUSDC.address, transferWithAddLiquidityResponse.actions[0]);
 
     const ammUsdcWallet = await JettonWallet.createFromMessage(
@@ -382,7 +379,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
     //const ammData = await masterAMM.getData();
     //printAmmData(ammData);
 
-    let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
+    let mintLpMessage = ammRes.actions[0] as SendMsgAction;
 
     const lpMsg = actionToMessage(contractAddress, ammRes.actions[0]);
     const lpWallet = await AmmLpWallet.createFromMessage(
@@ -458,9 +455,9 @@ async function addLiquidity(
 }
 
 function printAmmData(data: { tonReserves: BN; tokenReserves: BN; totalSupply: BN }) {
-    console.log(`ammData 
-        tonReservers:${fromNano(data.tonReserves).toString()}
-        tokenReserves:${fromNano(data.tokenReserves).toString()}
-        totalSupply:${fromNano(data.totalSupply).toString()}
-    `);
+    // console.log(`ammData
+    //     tonReservers:${fromNano(data.tonReserves).toString()}
+    //     tokenReserves:${fromNano(data.tokenReserves).toString()}
+    //     totalSupply:${fromNano(data.totalSupply).toString()}
+    // `);
 }
