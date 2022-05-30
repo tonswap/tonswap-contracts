@@ -14,10 +14,9 @@ import {
     contractAddress,
 } from "ton";
 import BN from "bn.js";
-import { toUnixTime, sliceToAddress, bytesToBase64 } from "./utils";
+import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
-import { writeString } from "./messageUtils";
 import { OPS } from "./ops";
 
 export class JettonMinter {

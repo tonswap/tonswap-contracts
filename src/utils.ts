@@ -1,7 +1,5 @@
-//https://github.com/tonwhales/ton-nft/blob/main/packages/utils/parseActionsList.ts
 import BN from "bn.js";
-import { Address, Cell, RawCurrencyCollection, RawMessage, Slice } from "ton";
-import { readCurrencyCollection, readMessage } from "./messageUtils";
+import { Address, Cell, Slice } from "ton";
 // @ts-ignore
 import { ExecutionResult, parseActionsList } from "ton-contract-executor";
 
@@ -106,6 +104,12 @@ export function filterLogs(logs: string) {
     });
 
     return beautified;
+}
+
+export function writeString(cell: Cell, str: string) {
+    for (let i = 0; i < str.length; i++) {
+        cell.bits.writeUint8(str.charCodeAt(i));
+    }
 }
 
 /// Ton Web impl for bytes to base64

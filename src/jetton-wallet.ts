@@ -2,10 +2,9 @@
 import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
 import BN from "bn.js";
-import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress } from "./utils";
+import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress, writeString } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
-import { writeString } from "./messageUtils";
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 

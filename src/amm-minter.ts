@@ -8,7 +8,7 @@ import { sliceToAddress267, toUnixTime } from "./utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
-import { writeString } from "./messageUtils";
+import { writeString } from "./utils";
 
 const myContractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
