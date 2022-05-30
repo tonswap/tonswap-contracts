@@ -1,8 +1,8 @@
 // @ts-ignore
-import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, OutAction, parseInternalMessageResponse, filterLogs, sliceToAddress } from "./utils";
+import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./messageUtils";

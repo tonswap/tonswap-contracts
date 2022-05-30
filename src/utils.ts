@@ -5,21 +5,6 @@ import { readCurrencyCollection, readMessage } from "./messageUtils";
 // @ts-ignore
 import { ExecutionResult } from "ton-contract-executor";
 
-// out_list_empty$_ = OutList 0;
-// out_list$_ {n:#} prev:^(OutList n) action:OutAction
-//     = OutList (n + 1);
-// action_send_msg#0ec3c86d mode:(## 8)
-// out_msg:^(MessageRelaxed Any) = OutAction;
-// action_set_code#ad4de08e new_code:^Cell = OutAction;
-// action_reserve_currency#36e6b809 mode:(## 8)
-// currency:CurrencyCollection = OutAction;
-// libref_hash$0 lib_hash:bits256 = LibRef;
-// libref_ref$1 library:^Cell = LibRef;
-// action_change_library#26fa1dd4 mode:(## 7) { mode <= 2 }
-// libref:LibRef = OutAction;
-//
-// out_list_node$_ prev:^Cell action:OutAction = OutListNode;
-
 export type SendMsgOutAction = { type: "send_msg"; message: RawMessage; mode: number };
 export type ReserveCurrencyAction = {
     type: "reserve_currency";

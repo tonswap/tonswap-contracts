@@ -1,12 +1,12 @@
 import { Address, Cell, fromNano, toNano } from "ton";
 import BN from "bn.js";
-import { JettonMinter } from "./jetton-minter";
-import { AmmMinter } from "./amm-minter";
-import { parseJettonTransfer, SendMsgOutAction } from "./utils";
-import { JettonWallet } from "./jetton-wallet";
-import { AmmLpWallet } from "./amm-wallet";
-import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "./amm-utils";
-import { ERROR_CODES, OPS } from "./ops";
+import { JettonMinter } from "../src/jetton-minter";
+import { AmmMinterTVM } from "../src/amm-minter";
+import { parseJettonTransfer, SendMsgOutAction } from "../src/utils";
+import { JettonWallet } from "../src/jetton-wallet";
+import { AmmLpWallet } from "../src/amm-wallet";
+import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "../src/amm-utils";
+import { ERROR_CODES, OPS } from "../src/ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const alice = Address.parse("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7");
@@ -174,7 +174,7 @@ describe("Ton Swap Test Suite", () => {
         const { tonReserves, tokenReserves } = await masterAMM.getData();
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
 
-        const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut);
+        const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut);
         const transferTokenMessage = actionToMessage(alice, amm, swapTonResp.actions[0], toNano("0.1"), true);
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         expect(ammUsdcResponseAfterSwap.exit_code).toBe(0);
@@ -196,7 +196,7 @@ describe("Ton Swap Test Suite", () => {
         const ammData = await masterAMM.getData();
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
         // exceeded the minAmount out by one
-        const swapTonResp = await masterAMM.swapTon(alice, tonSide, minAmountOut.add(new BN(1)));
+        const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)));
 
         const sendTonBackMessage = swapTonResp.actions[0] as SendMsgOutAction;
         // @ts-ignore
@@ -363,7 +363,8 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
         jettonInternalTransferMessage
     );
 
-    const masterAMM = await AmmMinter.create2("https://ipfs.io/ipfs/dasadas");
+    const masterAMM = new AmmMinterTVM("https://ipfs.io/ipfs/dasadas");
+    await masterAMM.ready;
 
     const { tokenWalletAddress } = await masterAMM.getData();
     expect(tokenWalletAddress).toBe(ZERO_ADDRESS.toFriendly());
@@ -407,7 +408,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
 async function addLiquidity(
     aliceUSDC: JettonWallet,
     ammUsdcWallet: JettonWallet,
-    masterAMM: AmmMinter,
+    masterAMM: AmmMinterTVM,
     lpWallet: AmmLpWallet,
     expectedLP: string,
     jettonLiquidity = JETTON_LIQUIDITY,

@@ -1,8 +1,8 @@
 import { mnemonicNew, mnemonicToWalletKey } from "ton-crypto";
 import * as fs from "fs";
 import { Address, Cell, fromNano, TonClient, WalletContract, WalletV3R2Source } from "ton";
-import { AmmMinter } from "../test/amm-minter";
-import { JettonWallet } from "../test/jetton-wallet";
+import { AmmMinterRPC } from "../src/amm-minter";
+import { JettonWallet } from "../src/jetton-wallet";
 import BN from "bn.js";
 
 export async function initDeployKey() {
@@ -53,11 +53,11 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
     console.log(``);
 }
 
-export async function printBalances(client: TonClient, ammMinterAddress: Address, deployer: Address, deployerUSDCAddress: Address) {
-    const data = await AmmMinter.GetJettonData(client, ammMinterAddress);
-    const balance = await client.getBalance(ammMinterAddress);
+export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, deployer: Address, deployerUSDCAddress: Address) {
+    const data = await ammMinter.getJettonData();
+    const balance = await client.getBalance(ammMinter.address);
     console.log(`-----==== AmmMinter ====-----  `);
-    console.log(`[${ammMinterAddress.toFriendly()}]
+    console.log(`[${ammMinter.address.toFriendly()}]
 💎 balance      : ${fromNano(balance)}
 💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
 💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})

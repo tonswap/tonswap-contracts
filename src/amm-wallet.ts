@@ -1,7 +1,5 @@
-// @ts-ignore
-import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
-
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, TonClient } from "ton";
+import { SmartContract } from "ton-contract-executor";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, ExternalMessage, TonClient, toNano } from "ton";
 import BN from "bn.js";
 import { toUnixTime, toDecimals, parseInternalMessageResponse } from "./utils";
 import { OPS } from "./ops";
@@ -135,7 +133,7 @@ export class AmmLpWallet {
             new InternalMessage({
                 from: from,
                 to: to,
-                value: toDecimals(1),
+                value: toNano(1),
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })
@@ -158,7 +156,7 @@ export class AmmLpWallet {
             new InternalMessage({
                 from: from,
                 to: to,
-                value: toDecimals(1),
+                value: toNano(1),
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })
@@ -177,7 +175,7 @@ export class AmmLpWallet {
         return newTime;
     }
 
-    static async compileWallet() {
+    static compileWallet() {
         const ammWalletCodeB64: string = compileFuncToB64(["contracts/amm-wallet.fc"]);
         return Cell.fromBoc(ammWalletCodeB64);
     }

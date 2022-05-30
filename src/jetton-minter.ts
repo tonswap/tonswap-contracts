@@ -1,4 +1,3 @@
-import { readFile } from "fs/promises";
 //@ts-ignore
 import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 
