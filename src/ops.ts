@@ -9,6 +9,7 @@ export enum OPS {
     REMOVE_LIQUIDITY = 23,
     SWAP_TOKEN = 24,
     SWAP_TON = 25,
+    MINT = 21,
 }
 
 export enum ERROR_CODES {

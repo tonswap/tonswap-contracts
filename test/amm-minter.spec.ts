@@ -5,7 +5,7 @@ import { AmmMinterTVM } from "../src/amm-minter";
 import { parseJettonTransfer, SendMsgOutAction } from "../src/utils";
 import { JettonWallet } from "../src/jetton-wallet";
 import { AmmLpWallet } from "../src/amm-wallet";
-import { actionToInternalMessage, actionToMessage, actionToMessage2 } from "../src/amm-utils";
+import { actionToMessage } from "../src/amm-utils";
 import { ERROR_CODES, OPS } from "../src/ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
@@ -37,7 +37,7 @@ describe("Ton Swap Test Suite", () => {
         const jettonAmount = new BN(2505);
 
         const mintResponse = await masterUSDC.mint(alice, alice, jettonAmount);
-        const mintTransferNotification = actionToMessage2(masterUSDC.address, mintResponse.actions[0]);
+        const mintTransferNotification = actionToMessage(masterUSDC.address, mintResponse.actions[0]);
 
         const mintMessageResponse2 = await aliceUSDC.sendInternalMessage(mintTransferNotification);
         expect(mintMessageResponse2.exit_code).toBe(0);
@@ -63,7 +63,7 @@ describe("Ton Swap Test Suite", () => {
 
         const transferMessage = transferResponse.actions[0] as SendMsgOutAction;
 
-        const msg = actionToMessage2(aliceUSDC.address, transferResponse.actions[0]);
+        const msg = actionToMessage(aliceUSDC.address, transferResponse.actions[0]);
         const bobUSDC = await JettonWallet.createFromMessage(
             transferMessage.message?.init?.code as Cell,
             transferMessage.message?.init?.data as Cell,
@@ -87,17 +87,17 @@ describe("Ton Swap Test Suite", () => {
         expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
         const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm);
 
-        const removeLiquidityNotification = actionToMessage(amm, lpWallet.address as Address, removeLiquidityResponse.actions[0]);
+        const removeLiquidityNotification = actionToMessage(lpWallet.address as Address, removeLiquidityResponse.actions[0]);
 
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
         expect(ammResponse.exit_code).toBe(0);
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgOutAction;
         //@ts-ignore
         expect(sendTonAfterRemoveLiquidity.message.info.value.coins.toString());
-        const transferTokenMessage = actionToMessage(alice, amm, ammResponse.actions[1], toNano(0.1), true);
+        const transferTokenMessage = actionToMessage(amm, ammResponse.actions[0], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
 
-        await aliceUSDC.sendInternalMessage(actionToMessage2(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actions[0]));
+        await aliceUSDC.sendInternalMessage(actionToMessage(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actions[0]));
 
         const aliceUsdcData2 = await aliceUSDC.getData();
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
@@ -120,11 +120,11 @@ describe("Ton Swap Test Suite", () => {
             minAmountOut
         );
 
-        const internalTransferMessage = actionToMessage2(aliceUSDC.address, transferResponse.actions[0]);
+        const internalTransferMessage = actionToMessage(aliceUSDC.address, transferResponse.actions[0]);
 
         const transferUsdcResult = await ammUsdcWallet.sendInternalMessage(internalTransferMessage);
 
-        const transferNotificationMessage = actionToMessage2(ammUsdcWallet.address as Address, transferUsdcResult.actions[2]);
+        const transferNotificationMessage = actionToMessage(ammUsdcWallet.address as Address, transferUsdcResult.actions[0]);
 
         let ammSwapTokenResponse = await masterAMM.sendInternalMessage(transferNotificationMessage);
 
@@ -152,10 +152,10 @@ describe("Ton Swap Test Suite", () => {
             minAmountOut
         );
 
-        const jettonMsg = actionToMessage2(aliceUSDC.address as Address, transferResponse.actions[0]);
+        const jettonMsg = actionToMessage(aliceUSDC.address as Address, transferResponse.actions[0]);
         const transferUsdcResult = await ammUsdcWallet.sendInternalMessage(jettonMsg);
 
-        const msgTransferUsdcToAmm = actionToMessage2(ammUsdcWallet.address as Address, transferUsdcResult.actions[2]);
+        const msgTransferUsdcToAmm = actionToMessage(ammUsdcWallet.address as Address, transferUsdcResult.actions[0]);
 
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
@@ -175,13 +175,13 @@ describe("Ton Swap Test Suite", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
 
         const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut);
-        const transferTokenMessage = actionToMessage(alice, amm, swapTonResp.actions[0], toNano("0.1"), true);
+        const transferTokenMessage = actionToMessage(amm, swapTonResp.actions[0], toNano("0.1"), true);
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         expect(ammUsdcResponseAfterSwap.exit_code).toBe(0);
 
         const aliceUsdcData1 = await aliceUSDC.getData();
         const aliceUsdcTransferResponse = await aliceUSDC.sendInternalMessage(
-            actionToMessage2(ammUsdcWallet.address, ammUsdcResponseAfterSwap.actions[0])
+            actionToMessage(ammUsdcWallet.address, ammUsdcResponseAfterSwap.actions[0])
         );
         expect(aliceUsdcTransferResponse.exit_code).toBe(0);
         const aliceUsdcData2 = await aliceUSDC.getData();
@@ -252,10 +252,12 @@ describe("Ton Swap Test Suite", () => {
 
         // Make sure funds are sent back to sender TON and jetton funds
 
+        console.log(addLiquidityMessage.actions);
+
         // @ts-ignore
         expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
         // @ts-ignore
-        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[2]?.message.body);
+        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[0]?.message.body);
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });
@@ -320,7 +322,7 @@ async function createBaseContracts() {
     const mintResponse = await masterUSDC.mint(alice, alice, new BN(ALICE_INITIAL_BALANCE));
     const mintMessage = mintResponse.actions[0] as SendMsgOutAction;
     //send the transfer message to the contract
-    const mintTransferNotification = actionToMessage2(masterUSDC.address, mintResponse.actions[0]);
+    const mintTransferNotification = actionToMessage(masterUSDC.address, mintResponse.actions[0]);
 
     // Deploy USDC Sub wallet based on the output action from the mint result,
     // so we take the output message and initiate a contract based on the code data and init state and save reference to it
@@ -354,8 +356,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
     expect(transferWithAddLiquidityResponse.exit_code).toBe(0);
 
     const jettonTransferToAmmWallet = transferWithAddLiquidityResponse.actions[0] as SendMsgOutAction;
-
-    const jettonInternalTransferMessage = actionToMessage2(aliceUSDC.address, transferWithAddLiquidityResponse.actions[0]);
+    const jettonInternalTransferMessage = actionToMessage(aliceUSDC.address, transferWithAddLiquidityResponse.actions[0]);
 
     const ammUsdcWallet = await JettonWallet.createFromMessage(
         jettonTransferToAmmWallet.message?.init?.code as Cell,
@@ -369,13 +370,9 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
     const { tokenWalletAddress } = await masterAMM.getData();
     expect(tokenWalletAddress).toBe(ZERO_ADDRESS.toFriendly());
 
-    //@ts-ignore
-    const transferNotificationAction = ammUsdcWallet.initMessageResult.actions[0] as SendMsgOutAction;
-
-    const usdcToAmmTransferNotification = actionToInternalMessage(
-        amm,
+    const usdcToAmmTransferNotification = actionToMessage(
         ammUsdcWallet.address as Address,
-        transferNotificationAction.message?.body,
+        ammUsdcWallet.initMessageResult.actions[0],
         tonLiquidity
     );
 
@@ -387,7 +384,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
 
     let mintLpMessage = ammRes.actions[0] as SendMsgOutAction;
 
-    const lpMsg = actionToInternalMessage(mintLpMessage.message?.info.dest as Address, contractAddress, mintLpMessage.message?.body);
+    const lpMsg = actionToMessage(contractAddress, ammRes.actions[0]);
     const lpWallet = await AmmLpWallet.createFromMessage(
         mintLpMessage.message?.init?.code as Cell,
         mintLpMessage.message?.init?.data as Cell,
@@ -433,11 +430,11 @@ async function addLiquidity(
 
     expect(transferResponse.exit_code).toBe(0);
 
-    const internalTransferMessage = actionToMessage2(aliceUSDC.address, transferResponse.actions[0], tonLiquidity);
+    const internalTransferMessage = actionToMessage(aliceUSDC.address, transferResponse.actions[0], tonLiquidity);
     const ammUsdcWalletResponse = await ammUsdcWallet.sendInternalMessage(internalTransferMessage);
 
     expect(ammUsdcWalletResponse.exit_code).toBe(0);
-    const usdcToAmmTransferNotification = actionToMessage2(
+    const usdcToAmmTransferNotification = actionToMessage(
         jettonSenderOverride || (ammUsdcWallet.address as Address),
         ammUsdcWalletResponse.actions[0],
         tonLiquidity
@@ -451,8 +448,7 @@ async function addLiquidity(
         };
     }
 
-    let mintLpMessage = transferNotificationRes.actions[0] as SendMsgOutAction;
-    const lpMsg = actionToInternalMessage(amm, contractAddress, mintLpMessage.message?.body);
+    const lpMsg = actionToMessage(contractAddress, transferNotificationRes.actions[0]);
     const lpWalletResponse = await lpWallet.sendInternalMessage(lpMsg);
 
     return {

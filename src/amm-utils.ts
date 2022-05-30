@@ -1,41 +1,9 @@
 import BN from "bn.js";
 import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "ton";
-import { OutAction } from "./utils";
+import { OutAction } from "ton-contract-executor";
 import { OPS } from "./ops";
 
-export function actionToInternalMessage(to: Address, from: Address, messageBody: Cell, messageValue = new BN(1000000000), bounce = false) {
-    let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
-    return new InternalMessage({
-        to,
-        from,
-        value: messageValue,
-        bounce,
-        body: msg,
-    });
-}
-
-export function actionToMessage(
-    to: Address,
-    from: Address,
-    action: OutAction | undefined,
-    messageValue = new BN(1000000000),
-    bounce = false
-) {
-    //@ts-ignore
-    const sendMessageAction = action as SendMsgOutAction;
-    const messageBody = sendMessageAction.message?.body;
-
-    let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
-    return new InternalMessage({
-        to,
-        from,
-        value: messageValue,
-        bounce,
-        body: msg,
-    });
-}
-
-export function actionToMessage2(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = true) {
+export function actionToMessage(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = true) {
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
 

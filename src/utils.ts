@@ -3,97 +3,9 @@ import BN from "bn.js";
 import { Address, Cell, RawCurrencyCollection, RawMessage, Slice } from "ton";
 import { readCurrencyCollection, readMessage } from "./messageUtils";
 // @ts-ignore
-import { ExecutionResult } from "ton-contract-executor";
+import { ExecutionResult, parseActionsList } from "ton-contract-executor";
 
-export type SendMsgOutAction = { type: "send_msg"; message: RawMessage; mode: number };
-export type ReserveCurrencyAction = {
-    type: "reserve_currency";
-    mode: number;
-    currency: RawCurrencyCollection;
-};
-export type UnknownOutAction = { type: "unknown" };
 const decimals = new BN("1000000000");
-const decimals18 = new BN("1000000000000000000");
-
-export type OutAction = SendMsgOutAction | ReserveCurrencyAction | UnknownOutAction;
-
-export function parseActionsList(actions: Slice | Cell): OutAction[] {
-    let list: any[] = [];
-
-    let ref: Slice;
-
-    let outAction: OutAction;
-
-    let slice;
-    if (actions instanceof Cell) {
-        slice = Slice.fromCell(actions);
-    } else {
-        slice = actions;
-    }
-
-    try {
-        ref = slice.readRef();
-    } catch (e) {
-        return list;
-    }
-
-    let magic = slice.readUint(32).toNumber();
-    if (magic === 0x0ec3c86d) {
-        outAction = {
-            type: "send_msg",
-            mode: slice.readUint(8).toNumber(),
-            message: readMessage(slice.readRef()),
-        };
-    } else if (magic === 0x36e6b809) {
-        outAction = {
-            type: "reserve_currency",
-            mode: slice.readUint(8).toNumber(),
-            currency: readCurrencyCollection(slice),
-        };
-    } else {
-        outAction = { type: "unknown" };
-    }
-
-    list.push(outAction);
-    list.push(...parseActionsList(ref));
-    return list;
-}
-
-export function parseTrc20Transfer(msgBody: Cell) {
-    let slice = msgBody.beginParse();
-    var op = slice.readUint(32);
-    var query = slice.readUint(64);
-    var to = sliceToAddress(slice);
-
-    var grams = slice.readCoins();
-    console.log("parseTrc20Transfer amount", grams.toString(10));
-    console.log("parseTrc20Transfer", to);
-    return {
-        op: op.toString(10),
-        query: query.toString(10),
-        to: to,
-        amount: grams,
-        // amount: fees
-    };
-}
-
-export function parseTrc20TransferRecipt(msgBody: Cell) {
-    let slice = msgBody.beginParse();
-    var op = slice.readUint(32);
-    var query = slice.readUint(64);
-    var to = sliceToAddress(slice);
-
-    var grams = slice.readCoins();
-    console.log("parseTrc20Transfer amount", grams.toString(10));
-    console.log("parseTrc20Transfer", to);
-    return {
-        op: op.toString(10),
-        query: query.toString(10),
-        to: to,
-        amount: grams,
-        // amount: fees
-    };
-}
 
 export function parseJettonTransfer(msg: Cell) {
     let slice = msg.beginParse();
@@ -101,14 +13,12 @@ export function parseJettonTransfer(msg: Cell) {
     var query = slice.readUint(64);
     var amount = slice.readCoins();
     var to = slice.readAddress();
-    var to2 = slice.readAddress();
 
     return {
         op: op.toString(10),
         query: query.toString(10),
         to,
         amount,
-        // amount: fees
     };
 }
 
@@ -162,16 +72,8 @@ export function toDecimals(num: number | string) {
 export function fromDecimals(num: BN) {
     const numStr = num.toString();
     const dotIndex = numStr.length - 9;
-    const formmatedStr = numStr.substring(0, dotIndex) + "." + numStr.substring(dotIndex, numStr.length);
-    return formmatedStr;
-}
-
-export function fmt18(num: number | string) {
-    return new BN(num).mul(decimals18);
-}
-
-export function unFmt18(num: BN) {
-    return new BN(num).div(decimals18);
+    const formattedStr = numStr.substring(0, dotIndex) + "." + numStr.substring(dotIndex, numStr.length);
+    return formattedStr;
 }
 
 export function stripBoc(bocStr: string) {
@@ -206,6 +108,7 @@ export function filterLogs(logs: string) {
     return beautified;
 }
 
+/// Ton Web impl for bytes to base64
 export function bytesToBase64(bytes: any) {
     let result = "";
     let i;

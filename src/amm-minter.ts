@@ -1,10 +1,10 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, parseActionsList } from "ton-contract-executor";
 import BN from "bn.js";
 import { filterLogs, parseInternalMessageResponse } from "./utils";
 import { AmmLpWallet } from "./amm-wallet";
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, contractAddress } from "ton";
-import { parseActionsList, sliceToAddress267, toUnixTime } from "./utils";
+import { sliceToAddress267, toUnixTime } from "./utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";

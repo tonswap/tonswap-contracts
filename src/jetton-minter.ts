@@ -1,5 +1,5 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, parseActionsList } from "ton-contract-executor";
 
 import {
     Address,
@@ -14,13 +14,11 @@ import {
     contractAddress,
 } from "ton";
 import BN from "bn.js";
-import { parseActionsList, toUnixTime, sliceToAddress, bytesToBase64 } from "./utils";
+import { toUnixTime, sliceToAddress, bytesToBase64 } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./messageUtils";
-
-const OP_MINT = 21;
-const BURN_NOTIFICATION = 0x7bdd97de;
+import { OPS } from "./ops";
 
 export class JettonMinter {
     private constructor(public readonly contract: SmartContract) {}
@@ -76,7 +74,7 @@ export class JettonMinter {
 
     static Mint(receiver: Address, jettonAmount: BN, tonAmount = toNano(0.04)) {
         let messageBody = new Cell();
-        messageBody.bits.writeUint(OP_MINT, 32); // action;
+        messageBody.bits.writeUint(OPS.MINT, 32); // action;
         messageBody.bits.writeUint(1, 64); // query;
         messageBody.bits.writeAddress(receiver);
         messageBody.bits.writeCoins(tonAmount);
@@ -139,7 +137,7 @@ export class JettonMinter {
     //           = InternalMsgBody;
     async receiveBurn(subWalletOwner: Address, sourceWallet: Address, amount: BN) {
         let messageBody = new Cell();
-        messageBody.bits.writeUint(BURN_NOTIFICATION, 32); // action
+        messageBody.bits.writeUint(OPS.Burn_notification, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
         messageBody.bits.writeCoins(amount); // jetton amount received
         messageBody.bits.writeAddress(sourceWallet);
@@ -174,8 +172,6 @@ export class JettonMinter {
     async getJettonData() {
         let data = await this.contract.invokeGetMethod("get_jetton_data", []);
         const rawAddress = data.result[2] as Slice;
-
-        // const admin = new Address(0, new BN(rawAddress).toBuffer() );
         return {
             totalSupply: data.result[0] as BN,
             mintable: data.result[1] as BN,
