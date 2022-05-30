@@ -13,8 +13,6 @@ import { writeString } from "./messageUtils";
 const myContractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
 class AmmMinterBase {
-    //constructor(opts = { address: Address, rpcClient: TonClient }) {}
-
     swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
@@ -70,7 +68,6 @@ export class AmmMinterRPC extends AmmMinterBase {
         try {
             let cell = new Cell();
             cell.bits.writeAddress(walletAddress);
-            // nodejs buffer
             let b64dataBuffer = (await cell.toBoc({ idx: false })).toString("base64");
             let res = await this.client.callGetMethod(this.address, "get_wallet_address", [["tvm.Slice", b64dataBuffer]]);
             return bytesToAddress(res.stack[0][1].bytes);
@@ -90,7 +87,6 @@ export class AmmMinterRPC extends AmmMinterBase {
         };
     }
     async getJettonData() {
-        // console.log(`GetJettonData ${minterAddress.toFriendly()}`);
         let res = await this.client.callGetMethod(this.address, "get_jetton_data", []);
 
         const totalSupply = res.stack[0][1] as string;
