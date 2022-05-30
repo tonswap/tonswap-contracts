@@ -14,9 +14,14 @@ The project depends on an Jetton standard implementation for [Jetton](https://gi
 
 run `npm install`
 
-### Compile contract and run Fift tests
+### Compile contract and run tests
 
-This project depends on the executables **fift**, **func** and **lite-client**. You can build them from [source](https://ton.org/docs/#/howto/getting-started), or you can download the [pre compiled binaries](https://github.com/ton-defi-org/ton-binaries/releases).
+This project depends on the executables **fift**, **func** . You can build them from [source](https://ton.org/docs/#/howto/getting-started), or you can download the [pre compiled binaries](https://github.com/ton-defi-org/ton-binaries/releases).
+
+### Func Compiler
+
+This project is using the latest func features such as `#include` and `const` so please use the latest func compiler ,
+If you want to set an explicit func path you may use the FUNC_PATH environment variable `export FUNC_PATH=/usr/local/bin/func`
 
 ### Run tests
 
