@@ -29,12 +29,9 @@ Use `npm run test` to execute the test suite.
 
 ## Roadmap
 
--   [x] AMM with 0.03% Fees
--   [x] Add Liquidity
--   [x] Remove Liquidity
--   [x]
+-   [x] Full functional AMM with 0.03% fees
 -   [x] End to end Jest test coverage using [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor)
--   [ ] Gas Optimizations , sender should recvie the gas change in the end of the message flows
+-   [ ] Gas Optimizations , sender should receive the gas change in the end of the message flows
 -   [x] Move to Jetton architecture
 -   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
 -   [x] Write end to end script that deploys on test/main-net
