@@ -1,5 +1,5 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult, parseActionsList } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
 
 import {
     Address,
@@ -12,17 +12,25 @@ import {
     toNano,
     TonClient,
     contractAddress,
+    Contract,
 } from "ton";
 import BN from "bn.js";
 import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { OPS } from "./ops";
+import { TvmBus } from "../tvm-bus/tvm-bus";
+import { iTvmBusContract } from "../tvm-bus/types";
 
-export class JettonMinter {
-    private constructor(public readonly contract: SmartContract) {}
+export class JettonMinter implements iTvmBusContract {
+    address: Address;
+    contract: SmartContract;
 
-    public address?: Address;
+    private constructor(contract: SmartContract, tvmBus: TvmBus, myAddress: Address) {
+        this.contract = contract;
+        this.address = myAddress;
+        tvmBus.registerContract(this);
+    }
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
@@ -56,20 +64,10 @@ export class JettonMinter {
         return res;
     }
 
-    // const body = new Cell();
-    // body.bits.writeUint(21, 32); // OP mint
-    // body.bits.writeUint(params.queryId || 0, 64); // query_id
-    // body.bits.writeAddress(params.destination);
-    // body.bits.writeCoins(params.amount); // in Toncoins
-
-    // const transferBody = new Cell(); // internal transfer
-    // transferBody.bits.writeUint(0x178d4519, 32); // internal_transfer op
-    // transferBody.bits.writeUint(params.queryId || 0, 64);
-    // transferBody.bits.writeCoins(params.jettonAmount);
-    // transferBody.bits.writeAddress(null); // from_address
-    // transferBody.bits.writeAddress(null); // response_address
-    // transferBody.bits.writeCoins(new BN(0)); // forward_amount
-    // transferBody.bits.writeBit(false); // forward_payload in this slice, not separate cell
+    sendInternalMessage(message: InternalMessage) {
+        //@ts-ignore
+        return this.contract.sendInternalMessage(message);
+    }
 
     static Mint(receiver: Address, jettonAmount: BN, tonAmount = toNano(0.04)) {
         let messageBody = new Cell();
@@ -107,8 +105,21 @@ export class JettonMinter {
             console.log("exception", e);
         }
     }
-
+    async mint2(sender: Address, receiver: Address, jettonAmount: BN) {
+        return new InternalMessage({
+            from: sender,
+            to: this.address as Address,
+            value: new BN(10001),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(JettonMinter.Mint(receiver, jettonAmount)),
+            }),
+        });
+    }
     async mint(sender: Address, receiver: Address, jettonAmount: BN) {
+        if (!this.contract) {
+            return;
+        }
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: sender,
@@ -180,10 +191,6 @@ export class JettonMinter {
         };
     }
 
-    setUnixTime(time: number) {
-        this.contract.setUnixTime(time);
-    }
-
     static async createDeployData(totalSupply: BN, tokenAdmin: Address, content: string) {
         const jettonWalletCode = await serializeWalletCodeToCell();
         const initDataCell = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
@@ -194,7 +201,7 @@ export class JettonMinter {
         };
     }
 
-    static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
+    static async create(totalSupply: BN, tokenAdmin: Address, content: string, tvmBus: TvmBus) {
         const jettonWalletCode = await serializeWalletCodeToCell();
         const stateInit = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
         const cellCode = await CompileCodeToCell();
@@ -207,13 +214,11 @@ export class JettonMinter {
             initialData: stateInit,
             initialCode: jettonWalletCode[0],
         });
-
-        const instance = new JettonMinter(contract);
-        instance.address = myAddress;
-        instance.contract.setC7Config({
+        contract.setC7Config({
             myself: myAddress,
         });
-        instance.setUnixTime(toUnixTime(Date.now()));
+        contract.setUnixTime(toUnixTime(Date.now()));
+        const instance = new JettonMinter(contract, tvmBus, myAddress);
         return instance;
     }
 }

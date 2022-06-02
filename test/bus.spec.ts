@@ -1,0 +1,280 @@
+import BN from "bn.js";
+import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage, toNano } from "ton";
+import { SendMsgAction } from "ton-contract-executor";
+import { AmmMinterMessages, AmmMinterTVM } from "../src/amm-minter";
+import { actionToMessage } from "../src/amm-utils";
+import { AmmLpWallet } from "../src/amm-wallet";
+import { JettonMinter } from "../src/jetton-minter";
+import { JettonWallet } from "../src/jetton-wallet";
+import { Wallet } from "../src/wallet";
+import { OPS } from "../src/ops";
+import { TvmBus } from "../tvm-bus/tvm-bus";
+
+const JETTON_LIQUIDITY = toNano(1000);
+const TON_LIQUIDITY = toNano(500);
+const LP_DEFAULT_AMOUNT = 707106781186;
+const INITIAL_JETTON_MINT = toNano(2050);
+
+describe("Ton Swap Bus Test Suite", () => {
+    it("mint USDC", async () => {
+        const tvmBus = new TvmBus();
+        const { masterUSDC, jettonWallet } = await createBaseContracts(tvmBus);
+        const data = await masterUSDC.getData();
+        expect((await jettonWallet.getData()).balance.toString()).toBe(data.totalSupply.toString());
+    });
+
+    it("mint USDC twice", async () => {
+        const tvmBus = new TvmBus();
+        const { masterUSDC, jettonWallet, deployWallet } = await createBaseContracts(tvmBus);
+
+        let mintMessage = await masterUSDC.mint2(deployWallet.address, deployWallet.address, toNano(7505));
+        await tvmBus.broadcast(mintMessage);
+        const data = await masterUSDC.getData();
+
+        expect((await jettonWallet.getData()).balance.toString()).toBe(data.totalSupply.toString());
+    });
+
+    it("add liquidity", async () => {
+        //  const { masterUSDC, jettonWallet } = await createBaseContracts(tvmBus);
+        await initAMM({});
+    });
+
+    it("remove liquidity", async () => {
+        const { deployerLpWallet, tvmBus, deployWallet } = await initAMM({});
+
+        const lpAmount = await deployerLpWallet.getData();
+        let messageBody = AmmLpWallet.RemoveLiquidityMessage(lpAmount.balance, deployWallet.address);
+        const message = messageGenerator({
+            from: deployWallet.address,
+            to: deployerLpWallet.address as Address,
+            value: toNano("0.2"),
+            body: messageBody,
+        });
+
+        let messagesLog = await tvmBus.broadcast(message);
+
+        let deployerLpWallet2 = messagesLog[0].contractImpl as AmmLpWallet;
+
+        let ammMinter = messagesLog[1].contractImpl as AmmMinterTVM;
+        let deployer = messagesLog[2].contractImpl as Wallet;
+        let ammJetton = messagesLog[3].contractImpl as JettonWallet;
+        let deployerJetton = messagesLog[4].contractImpl as JettonWallet;
+
+        const deployerLpWalletData = await deployerLpWallet2.getData();
+        expect(deployerLpWalletData.balance.toString()).toBe("0");
+
+        const ammMinterData = await ammMinter.getData();
+        expect(ammMinterData.tonReserves.toString()).toBe("0");
+        expect(ammMinterData.tokenReserves.toString()).toBe("0");
+
+        const ammJettonData = await ammJetton.getData();
+        expect(ammJettonData.balance.toString()).toBe("0");
+
+        const deployerJettonData = await deployerJetton.getData();
+        expect(deployerJettonData.balance.toString()).toBe(INITIAL_JETTON_MINT.toString());
+    });
+
+    it("swap ton to token", async () => {
+        let { ammMinter, tvmBus, deployWallet } = await initAMM({});
+        const tonSide = toNano(1);
+        const preSwapData = await ammMinter.getData();
+
+        const { tonReserves, tokenReserves } = await ammMinter.getData();
+        const { minAmountOut } = await ammMinter.getAmountOut(tonSide, tonReserves, tokenReserves);
+        const swapTonMessage = AmmMinterMessages.swapTon(toNano(1), minAmountOut);
+
+        const message = messageGenerator({
+            from: deployWallet.address,
+            to: ammMinter.address,
+            value: tonSide.add(toNano("0.2")),
+            body: swapTonMessage,
+        });
+        let messagesLog = await tvmBus.broadcast(message);
+        console.log(messagesLog);
+
+        ammMinter = messagesLog[0].contractImpl as AmmMinterTVM;
+        const ammMinterData = await ammMinter.getData();
+        expect(ammMinterData.tonReserves.toString()).toBe(preSwapData.tonReserves.add(tonSide).toString());
+        expect(ammMinterData.tokenReserves.toString()).toBe(preSwapData.tokenReserves.sub(minAmountOut).toString());
+    });
+
+    it.only("swap ton to token and revert", async () => {
+        let { ammMinter, tvmBus, deployWallet } = await initAMM({});
+        const tonSide = toNano(1);
+        const preSwapData = await ammMinter.getData();
+
+        const { tonReserves, tokenReserves } = await ammMinter.getData();
+        const { minAmountOut } = await ammMinter.getAmountOut(tonSide, tonReserves, tokenReserves);
+        const swapTonMessage = AmmMinterMessages.swapTon(toNano(1), minAmountOut.mul(new BN(2))); // using min amount is X2 should fail the transaction
+
+        const message = messageGenerator({
+            from: deployWallet.address,
+            to: ammMinter.address,
+            value: tonSide.add(toNano("0.2")),
+            body: swapTonMessage,
+        });
+        let messagesLog = await tvmBus.broadcast(message);
+        console.log(messagesLog);
+
+        ammMinter = messagesLog[0].contractImpl as AmmMinterTVM;
+        const ammMinterData = await ammMinter.getData();
+        expect(ammMinterData.tonReserves.toString()).toBe(preSwapData.tonReserves.toString());
+        expect(ammMinterData.tokenReserves.toString()).toBe(preSwapData.tokenReserves.toString());
+    });
+
+    it("swap token to ton", async () => {
+        let { ammMinter, deployerJetton, tvmBus, deployWallet } = await initAMM({});
+        const { tonReserves, tokenReserves } = await ammMinter.getData();
+        const jettonSide = toNano(10);
+        const preSwapData = await ammMinter.getData();
+
+        const { minAmountOut } = await ammMinter.getAmountOut(jettonSide, tokenReserves, tonReserves);
+        const swapTokenMessage = JettonWallet.TransferOverloaded(
+            ammMinter.address,
+            jettonSide,
+            ammMinter.address,
+            toNano(0.1),
+            OPS.SWAP_TOKEN,
+            minAmountOut
+        );
+
+        const message = messageGenerator({
+            from: deployWallet.address,
+            to: deployerJetton.address,
+            value: toNano("0.2"),
+            body: swapTokenMessage,
+        });
+        let messagesLog = await tvmBus.broadcast(message);
+
+        ammMinter = messagesLog[2].contractImpl as AmmMinterTVM;
+        const ammMinterData = await ammMinter.getData();
+        expect(ammMinterData.tokenReserves.toString()).toBe(preSwapData.tokenReserves.add(jettonSide).toString());
+        expect(ammMinterData.tonReserves.toString()).toBe(preSwapData.tonReserves.sub(minAmountOut).toString());
+
+        console.log(messagesLog);
+    });
+
+    it("swap token to TON and revert", async () => {
+        let { ammMinter, deployerJetton, tvmBus, deployWallet } = await initAMM({});
+        const { tonReserves, tokenReserves } = await ammMinter.getData();
+        const jettonSide = toNano(10);
+        const preSwapData = await ammMinter.getData();
+        const initialJettonBalance = await (await deployerJetton.getData()).balance;
+
+        const { minAmountOut } = await ammMinter.getAmountOut(jettonSide, tokenReserves, tonReserves);
+        const swapTokenMessage = JettonWallet.TransferOverloaded(
+            ammMinter.address,
+            jettonSide,
+            ammMinter.address,
+            toNano(0.1),
+            OPS.SWAP_TOKEN,
+            minAmountOut.mul(new BN(2)) // this should fail the swap
+        );
+
+        const message = messageGenerator({
+            from: deployWallet.address,
+            to: deployerJetton.address,
+            value: toNano("0.2"),
+            body: swapTokenMessage,
+        });
+        let messagesLog = await tvmBus.broadcast(message);
+
+        expect(messagesLog.length).toBe(7);
+
+        const deployerWallet = messagesLog[5].contractImpl as JettonWallet;
+
+        expect(deployerWallet).toBe(deployerJetton);
+        const currentBalance = (await deployerWallet.getData()).balance;
+        expect(currentBalance.toString()).toBe(initialJettonBalance.toString());
+
+        const ammMinterData = await ammMinter.getData();
+        expect(ammMinterData.tokenReserves.toString()).toBe(preSwapData.tokenReserves.toString());
+        expect(ammMinterData.tonReserves.toString()).toBe(preSwapData.tonReserves.toString());
+    });
+});
+
+async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_LIQUIDITY, addLiquiditySlippage = new BN(5) }) {
+    const tvmBus = new TvmBus();
+    tvmBus.registerCode(AmmLpWallet);
+
+    const { jettonWallet, masterAMM, deployWallet } = await createBaseContracts(tvmBus);
+
+    const messageBody = JettonWallet.TransferOverloaded(
+        masterAMM.address,
+        jettonLiquidity,
+        masterAMM.address,
+        tonLiquidity,
+        OPS.ADD_LIQUIDITY,
+        addLiquiditySlippage,
+        tonLiquidity
+    );
+    const addLiquidityMessage = messageGenerator({
+        from: deployWallet.address,
+        to: jettonWallet.address,
+        value: tonLiquidity.add(toNano("0.2")),
+        body: messageBody,
+    });
+
+    let messagesLog = await tvmBus.broadcast(addLiquidityMessage);
+
+    const deployerJettonData = await (messagesLog[0].contractImpl as JettonWallet).getData();
+    expect(deployerJettonData.balance.toString()).toBe(INITIAL_JETTON_MINT.sub(jettonLiquidity).toString());
+
+    const ammJettonData = await (messagesLog[1].contractImpl as JettonWallet).getData();
+    expect(ammJettonData.balance.toString()).toBe(jettonLiquidity.toString());
+
+    const ammMinterData = await (messagesLog[2].contractImpl as AmmMinterTVM).getData();
+    expect(ammMinterData.tonReserves.toString()).toBe(tonLiquidity.toString());
+
+    const deployerLpWalletData = await (messagesLog[3].contractImpl as AmmLpWallet).getData();
+    expect(deployerLpWalletData.balance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
+
+    return {
+        tvmBus,
+        deployWallet,
+        deployerJetton: messagesLog[0].contractImpl as JettonWallet,
+        ammJetton: messagesLog[1].contractImpl as JettonWallet,
+        ammMinter: messagesLog[2].contractImpl as AmmMinterTVM,
+        deployerLpWallet: messagesLog[3].contractImpl as AmmLpWallet,
+    };
+}
+
+function messageGenerator(opts: { to: Address; from: Address; body: Cell; value: BN; bounce?: boolean }) {
+    return new InternalMessage({
+        from: opts.from,
+        to: opts.to,
+        value: opts.value,
+        bounce: opts.bounce || false,
+        body: new CommonMessageInfo({
+            body: new CellMessage(opts.body),
+        }),
+    });
+}
+
+async function createBaseContracts(tvmBus: TvmBus) {
+    const deployWallet = await Wallet.Create(tvmBus, new BN(101), 0); // address EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI
+    const deployerAddress = deployWallet.address;
+
+    const masterUSDC = await JettonMinter.create(new BN(0), deployerAddress, "https://ipfs.io/ipfs/dasadas", tvmBus);
+    const data = await masterUSDC.getData();
+    expect(data.totalSupply.toString()).toBe("0");
+    tvmBus.registerCode(JettonWallet);
+
+    let mintAmount = INITIAL_JETTON_MINT;
+    let mintMessage = await masterUSDC.mint2(deployerAddress, deployerAddress, mintAmount);
+    let result = await tvmBus.broadcast(mintMessage);
+
+    const data2 = await masterUSDC.getData();
+    expect(data2.totalSupply.toString()).toBe(mintAmount.toString());
+
+    const jettonWallet = result[1].contractImpl as JettonWallet;
+
+    const masterAMM = await AmmMinterTVM.Create("https://ipfs.io/ipfs/dasadas", tvmBus);
+
+    return {
+        masterUSDC,
+        jettonWallet,
+        masterAMM,
+        deployWallet,
+    };
+}

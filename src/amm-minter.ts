@@ -9,11 +9,13 @@ import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./utils";
+import { iTvmBusContract } from "../tvm-bus/types";
+import { TvmBus } from "../tvm-bus/tvm-bus";
 
 const myContractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
-class AmmMinterBase {
-    swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+export class AmmMinterMessages {
+    static swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -21,12 +23,12 @@ class AmmMinterBase {
         cell.bits.writeCoins(minAmountOut); // minimum received
         return cell;
     }
-    compileCodeToCell() {
+    static compileCodeToCell() {
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
 
-    buildDataCell(content: string) {
+    static buildDataCell(content: string) {
         const contentCell = new Cell();
         writeString(contentCell, content);
 
@@ -36,7 +38,7 @@ class AmmMinterBase {
         dataCell.bits.writeCoins(0); // ton-reserves
         dataCell.bits.writeCoins(0); // token-reserves
         dataCell.refs.push(contentCell);
-        dataCell.refs.push(AmmLpWallet.compileWallet()[0]);
+        dataCell.refs.push(AmmLpWallet.getCodeCell()[0]);
         return {
             initDataCell: dataCell,
             codeCell: this.compileCodeToCell(),
@@ -44,19 +46,26 @@ class AmmMinterBase {
     }
 }
 
-export class AmmMinterRPC extends AmmMinterBase {
+export class AmmMinterRPC {
     address = zeroAddress();
     client: TonClient;
     resolveReady = () => {};
     ready = new Promise(this.resolveReady);
 
     constructor(opts: { address?: Address; rpcClient: TonClient }) {
-        super();
         this.client = opts.rpcClient;
         if (opts.address) {
             this.address = opts.address;
             this.resolveReady();
         }
+    }
+
+    buildDataCell(contentUri: string) {
+        return AmmMinterMessages.buildDataCell(contentUri);
+    }
+
+    swapTon(tonToSwap: BN, minAmountOut: BN) {
+        return AmmMinterMessages.swapTon(tonToSwap, minAmountOut);
     }
 
     setAddress(address: Address) {
@@ -104,26 +113,14 @@ export class AmmMinterRPC extends AmmMinterBase {
     }
 }
 
-export class AmmMinterTVM extends AmmMinterBase {
-    contract?: SmartContract;
-    ready?: Promise<SmartContract>;
+export class AmmMinterTVM implements iTvmBusContract {
+    address: Address;
+    contract: SmartContract;
 
-    constructor(contentUri: string) {
-        super();
-        this.init(contentUri);
-    }
-
-    async init(contentUri: string) {
-        const data = this.buildDataCell(contentUri);
-        const code = this.compileCodeToCell();
-        this.ready = SmartContract.fromCell(code[0], data.initDataCell, {
-            getMethodsMutate: true,
-            debug: true,
-        });
-        const contract = await this.ready;
-
+    private constructor(contract: SmartContract, address: Address, tvmBus: TvmBus) {
         this.contract = contract;
-        contract.setUnixTime(toUnixTime(Date.now()));
+        this.address = address;
+        tvmBus.registerContract(this);
     }
 
     async getData() {
@@ -154,13 +151,12 @@ export class AmmMinterTVM extends AmmMinterBase {
         if (!this.contract) {
             throw "contract is not initialized";
         }
-        let res = await this.contract.sendInternalMessage(message);
-        return parseInternalMessageResponse(res);
+        return this.contract.sendInternalMessage(message);
     }
 
     async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN) {
         const gasFee = new BN(100000000);
-        let messageBody = this.swapTon(tonToSwap, minAmountOut);
+        let messageBody = AmmMinterMessages.swapTon(tonToSwap, minAmountOut);
         return this.sendTvmMessage({ messageBody, from, value: tonToSwap.add(gasFee), to: myContractAddress, bounce: true });
     }
 
@@ -221,6 +217,26 @@ export class AmmMinterTVM extends AmmMinterBase {
             logs: filterLogs(res.logs),
             actions: parseActionsList(successResult.action_list_cell),
         };
+    }
+
+    static async Create(contentUri: string, tvmBus: TvmBus) {
+        const data = AmmMinterMessages.buildDataCell(contentUri);
+        const code = AmmMinterMessages.compileCodeToCell();
+        const myAddress = await contractAddress({
+            workchain: 0,
+            initialData: data.initDataCell,
+            initialCode: code[0],
+        });
+        const contract = await SmartContract.fromCell(code[0], data.initDataCell, {
+            getMethodsMutate: true,
+            debug: true,
+        });
+        contract.setC7Config({
+            myself: myAddress,
+        });
+
+        contract.setUnixTime(toUnixTime(Date.now()));
+        return new AmmMinterTVM(contract, myAddress, tvmBus);
     }
 
     // this method is using codeCell instead of .fromFuncSource

@@ -5,15 +5,23 @@ import BN from "bn.js";
 import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress, writeString } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
+import { compileFuncToB64 } from "../utils/funcToB64";
+import { ExecutionResult, iTvmBusContract } from "../tvm-bus/types";
+import { TvmBus } from "../tvm-bus/tvm-bus";
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
-export class JettonWallet {
+export class JettonWallet implements iTvmBusContract {
+    initMessageResultRaw?: ExecutionResult;
     public initMessageResult: { logs?: string; actions?: OutAction[] } = {};
     public address?: Address;
 
     private constructor(public readonly contract: SmartContract) {}
 
+    static getCodeCell() {
+        const jettonWalletCodeB64: string = compileFuncToB64(["contracts/jetton-wallet.fc"]);
+        return Cell.fromBoc(jettonWalletCodeB64);
+    }
     async getData() {
         let res = await this.contract.invokeGetMethod("get_wallet_data", []);
         const balance = res.result[0] as BN;
@@ -30,6 +38,10 @@ export class JettonWallet {
     }
 
     async sendInternalMessage(message: InternalMessage) {
+        return this.contract.sendInternalMessage(message);
+    }
+
+    async _sendInternalMessage(message: InternalMessage) {
         const res = await this.contract.sendInternalMessage(message);
         return parseInternalMessageResponse(res);
     }
@@ -126,11 +138,13 @@ export class JettonWallet {
         };
     }
 
-    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
+    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage, tvmBus: TvmBus): Promise<iTvmBusContract> {
+        console.log(`Create From Message  [${initMessage.to.toFriendly()}]`);
+
         const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
 
-        const contract = new JettonWallet(jettonWallet);
-        contract.setUnixTime(toUnixTime(Date.now()));
+        const instance = new JettonWallet(jettonWallet);
+        instance.setUnixTime(toUnixTime(Date.now()));
 
         const initRes = await jettonWallet.sendInternalMessage(initMessage);
         let successResult = initRes as SuccessfulExecutionResult;
@@ -138,10 +152,12 @@ export class JettonWallet {
             logs: filterLogs(successResult.logs),
             actions: parseActionsList(successResult.action_list_cell),
         };
+        instance.initMessageResultRaw = initRes;
         // @ts-ignore
-        contract.initMessageResult = initMessageResponse;
-        contract.address = initMessage.to;
-        return contract;
+        instance.initMessageResult = initMessageResponse;
+        instance.address = initMessage.to;
+        tvmBus.registerContract(instance);
+        return instance;
     }
 }
 

@@ -7,7 +7,10 @@ export function actionToMessage(from: Address, action: OutAction | undefined, me
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
 
-    let msg = new CommonMessageInfo({ body: new CellMessage(sendMessageAction.message?.body) });
+    let msg = new CommonMessageInfo({
+        body: new CellMessage(sendMessageAction.message?.body),
+    });
+
     return new InternalMessage({
         to: sendMessageAction.message?.info.dest,
         from,

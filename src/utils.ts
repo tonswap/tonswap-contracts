@@ -2,6 +2,7 @@ import BN from "bn.js";
 import { Address, Cell, Slice } from "ton";
 // @ts-ignore
 import { ExecutionResult, parseActionsList } from "ton-contract-executor";
+import { InternalMessageResponse } from "../tvm-bus/types";
 
 const decimals = new BN("1000000000");
 
@@ -79,7 +80,7 @@ export function stripBoc(bocStr: string) {
     return bocStr.substr(2, bocStr.length - 4);
 }
 
-export function parseInternalMessageResponse(result: ExecutionResult) {
+export function parseInternalMessageResponse(result: ExecutionResult): InternalMessageResponse {
     // @ts-ignore
     let res = result as SuccessfulExecutionResult;
     //console.log(res);
