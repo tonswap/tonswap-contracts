@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { Address, beginCell, Cell, contractAddress, InternalMessage, WalletV1R2Source } from "ton";
+import { Address, beginCell, Cell, contractAddress, InternalMessage, toNano, WalletV1R2Source } from "ton";
 import { SmartContract } from "ton-contract-executor";
 import { iTvmBusContract } from "../tvm-bus/types";
 import { TvmBus } from "../tvm-bus/tvm-bus";
@@ -12,10 +12,14 @@ export class Wallet implements iTvmBusContract {
     contract: SmartContract;
     address: Address;
 
-    private constructor(contract: SmartContract, address: Address, tvmBus: TvmBus) {
+    private constructor(contract: SmartContract, myAddress: Address, tvmBus: TvmBus, balance: BN) {
         this.contract = contract;
-        this.address = address;
+        this.address = myAddress;
         tvmBus.registerContract(this);
+        contract.setC7Config({
+            balance: balance.toNumber(),
+            myself: myAddress,
+        });
     }
 
     async sendInternalMessage(message: InternalMessage) {
@@ -23,12 +27,12 @@ export class Wallet implements iTvmBusContract {
         return this.contract.sendInternalMessage(message);
     }
 
-    static async Create(tvmBus: TvmBus, publicKey = new BN(0), walletId = 0) {
+    static async Create(tvmBus: TvmBus, balance = toNano(10), publicKey = new BN(0), walletId = 0) {
         const dataCell = beginCell().storeUint(0, 32).storeUint(walletId, 32).storeBuffer(publicKey.toBuffer()).endCell();
         const contract = await SmartContract.fromCell(walletCode, dataCell, {
             getMethodsMutate: true,
         });
         const myAddress = contractAddress({ workchain: 0, initialCode: walletCode, initialData: dataCell });
-        return new Wallet(contract, myAddress, tvmBus);
+        return new Wallet(contract, myAddress, tvmBus, balance);
     }
 }

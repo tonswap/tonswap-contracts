@@ -13,6 +13,7 @@ import {
     TonClient,
     contractAddress,
     Contract,
+    fromNano,
 } from "ton";
 import BN from "bn.js";
 import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils";
@@ -26,10 +27,14 @@ export class JettonMinter implements iTvmBusContract {
     address: Address;
     contract: SmartContract;
 
-    private constructor(contract: SmartContract, tvmBus: TvmBus, myAddress: Address) {
+    private constructor(contract: SmartContract, tvmBus: TvmBus, myAddress: Address, balance: BN) {
         this.contract = contract;
         this.address = myAddress;
         tvmBus.registerContract(this);
+        contract.setC7Config({
+            balance: balance.toNumber(),
+            myself: myAddress,
+        });
     }
 
     async getData() {
@@ -109,7 +114,7 @@ export class JettonMinter implements iTvmBusContract {
         return new InternalMessage({
             from: sender,
             to: this.address as Address,
-            value: new BN(10001),
+            value: toNano(0.1),
             bounce: false,
             body: new CommonMessageInfo({
                 body: new CellMessage(JettonMinter.Mint(receiver, jettonAmount)),
@@ -124,7 +129,7 @@ export class JettonMinter implements iTvmBusContract {
             new InternalMessage({
                 from: sender,
                 to: this.address as Address,
-                value: new BN(10001),
+                value: toNano(0.1),
                 bounce: false,
                 body: new CommonMessageInfo({
                     body: new CellMessage(JettonMinter.Mint(receiver, jettonAmount)),
@@ -201,7 +206,7 @@ export class JettonMinter implements iTvmBusContract {
         };
     }
 
-    static async create(totalSupply: BN, tokenAdmin: Address, content: string, tvmBus: TvmBus) {
+    static async Create(totalSupply: BN, tokenAdmin: Address, content: string, tvmBus: TvmBus, balance: BN) {
         const jettonWalletCode = await serializeWalletCodeToCell();
         const stateInit = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
         const cellCode = await CompileCodeToCell();
@@ -214,11 +219,8 @@ export class JettonMinter implements iTvmBusContract {
             initialData: stateInit,
             initialCode: jettonWalletCode[0],
         });
-        contract.setC7Config({
-            myself: myAddress,
-        });
         contract.setUnixTime(toUnixTime(Date.now()));
-        const instance = new JettonMinter(contract, tvmBus, myAddress);
+        const instance = new JettonMinter(contract, tvmBus, myAddress, balance);
         return instance;
     }
 }

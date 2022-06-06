@@ -52,6 +52,7 @@ export type ThinInternalMessage = {
 };
 
 export type ParsedExecutionResult = {
+    time: string;
     from: Address;
     inMessage?: ThinInternalMessage;
     contractImpl: iTvmBusContract;

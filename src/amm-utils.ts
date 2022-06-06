@@ -1,12 +1,28 @@
 import BN from "bn.js";
-import { Address, Cell, CellMessage, CommonMessageInfo, InternalMessage } from "ton";
+import { Address, Cell, CellMessage, CommonMessageInfo, fromNano, InternalMessage } from "ton";
 import { OutAction } from "ton-contract-executor";
+import { ExecutionResult } from "../tvm-bus/types";
 import { OPS } from "./ops";
 
-export function actionToMessage(from: Address, action: OutAction | undefined, messageValue = new BN(1000000000), bounce = true) {
+export function actionToMessage(
+    from: Address,
+    action: OutAction | undefined,
+    inMessage: InternalMessage,
+    response: ExecutionResult,
+    bounce = true
+) {
     //@ts-ignore
     const sendMessageAction = action as SendMsgOutAction;
 
+    let messageValue = sendMessageAction.message?.info?.value.coins;
+    if (sendMessageAction.mode == 64) {
+        messageValue = inMessage.value;
+        //console.log(`message.coins`, sendMessageAction.mode, fromNano(messageValue));
+    }
+
+    //  if (sendMessageAction.message?.info?.value.coins.toString() == "0") {
+    // console.log(sendMessageAction, sendMessageAction.message, fromNano(sendMessageAction.message?.info?.value.coins));
+    //  }
     let msg = new CommonMessageInfo({
         body: new CellMessage(sendMessageAction.message?.body),
     });

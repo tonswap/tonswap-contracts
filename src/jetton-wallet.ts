@@ -139,7 +139,7 @@ export class JettonWallet implements iTvmBusContract {
     }
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage, tvmBus: TvmBus): Promise<iTvmBusContract> {
-        console.log(`Create From Message  [${initMessage.to.toFriendly()}]`);
+        //console.log(`Create From Message  [${initMessage.to.toFriendly()}]`);
 
         const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
 

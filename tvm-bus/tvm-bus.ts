@@ -15,8 +15,6 @@ export class TvmBus {
     results = Array<ParsedExecutionResult>();
 
     getContractByAddress(address: Address) {
-        console.log(`getContractByAddress [${address.toFriendly()}] = ${this.pool.has(address.toFriendly())}`);
-
         return this.pool.get(address.toFriendly()) as iTvmBusContract;
     }
 
@@ -44,10 +42,11 @@ export class TvmBus {
 
     async iterateTasks(queue: Array<Function>) {
         if (queue.length == 0) {
-            console.log(this.results);
+            return this.results;
         }
 
         const task = queue.pop() as Function;
+
         if (!task) {
             throw "xxx";
         }
@@ -61,9 +60,7 @@ export class TvmBus {
     }
 
     private async _broadcast(msg: InternalMessage, taskQueue: Array<Function>) {
-        console.log(msg, msg.body.body);
-
-        console.log(`broadcastCounter: ${this.counters.messagesSent} msg.body `, msg.body, `dest ${msg.to.toFriendly()}`);
+        //console.log(`broadcastCounter: ${this.counters.messagesSent} msg.body `, msg.body, `dest ${msg.to.toFriendly()}`);
 
         let receiver = this.getContractByAddress(msg.to);
 
@@ -82,14 +79,14 @@ export class TvmBus {
         // queue all other message actions
         for (let it of response.actionList) {
             if (it.type != "send_msg") {
-                console.log(it.type);
+                //console.log(it.type);
                 continue;
             }
 
-            let itMsg = actionToMessage(msg.to, it);
+            let itMsg = actionToMessage(msg.to, it, msg, response);
             taskQueue.push(async () => {
                 it = it as SendMsgAction;
-                console.log(`task -> to:${itMsg.to.toFriendly()} body: ${itMsg.body.body}`);
+                //console.log(`task -> to:${itMsg.to.toFriendly()} body: ${itMsg.body.body}`);
 
                 // In case message has StateInit, and contract address is not registered
                 if (it.message.init && !this.getContractByAddress(itMsg.to)) {
@@ -107,12 +104,16 @@ export class TvmBus {
                         true
                     );
                     for (let action of parsedResult.actions) {
+                        // TODO reserve currency
                         if (action.type != "send_msg") {
-                            console.log(action.type);
+                            //  console.log(action.type);
                             continue;
                         }
                         taskQueue.push(async () => {
-                            return await this._broadcast(actionToMessage(deployedContract.address as Address, action), taskQueue);
+                            return await this._broadcast(
+                                actionToMessage(deployedContract.address as Address, action, msg, response),
+                                taskQueue
+                            );
                         });
                     }
                     return {
@@ -145,7 +146,7 @@ export class TvmBus {
 
         let contract = await impl.createFromMessage(codeCell, storage, message, this);
         this.registerContract(contract);
-        console.log(`deployContractFromMessage::register ${address.toFriendly()}`);
+        //console.log(`deployContractFromMessage::register ${address.toFriendly()}`);
         return contract;
     }
 }

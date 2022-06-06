@@ -12,6 +12,7 @@ export function parseResponse(
     let successResult = response as SuccessfulExecutionResult;
 
     return {
+        time: new Date().toISOString(),
         from: inMessage.from as Address,
         inMessage: stripMessage(inMessage),
         contractImpl: receivingContract,

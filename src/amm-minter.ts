@@ -117,10 +117,14 @@ export class AmmMinterTVM implements iTvmBusContract {
     address: Address;
     contract: SmartContract;
 
-    private constructor(contract: SmartContract, address: Address, tvmBus: TvmBus) {
+    private constructor(contract: SmartContract, address: Address, tvmBus: TvmBus, balance: BN) {
         this.contract = contract;
         this.address = address;
         tvmBus.registerContract(this);
+        contract.setC7Config({
+            balance: balance.toNumber(),
+            myself: address,
+        });
     }
 
     async getData() {
@@ -219,7 +223,7 @@ export class AmmMinterTVM implements iTvmBusContract {
         };
     }
 
-    static async Create(contentUri: string, tvmBus: TvmBus) {
+    static async Create(contentUri: string, tvmBus: TvmBus, balance: BN) {
         const data = AmmMinterMessages.buildDataCell(contentUri);
         const code = AmmMinterMessages.compileCodeToCell();
         const myAddress = await contractAddress({
@@ -231,12 +235,9 @@ export class AmmMinterTVM implements iTvmBusContract {
             getMethodsMutate: true,
             debug: true,
         });
-        contract.setC7Config({
-            myself: myAddress,
-        });
 
         contract.setUnixTime(toUnixTime(Date.now()));
-        return new AmmMinterTVM(contract, myAddress, tvmBus);
+        return new AmmMinterTVM(contract, myAddress, tvmBus, balance);
     }
 
     // this method is using codeCell instead of .fromFuncSource

@@ -13,7 +13,13 @@ export class AmmLpWallet implements iTvmBusContract {
     private initTime: number = Date.now();
     public address?: Address;
     initMessageResultRaw?: ExecutionResult;
-    private constructor(public readonly contract: SmartContract) {}
+
+    private constructor(public readonly contract: SmartContract, myAddress: Address) {
+        this.contract.setC7Config({
+            myself: myAddress,
+        });
+        this.address = myAddress;
+    }
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_wallet_data", []);
@@ -183,15 +189,11 @@ export class AmmLpWallet implements iTvmBusContract {
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage): Promise<iTvmBusContract> {
         const ammWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true });
-        const instance = new AmmLpWallet(ammWallet);
+        const instance = new AmmLpWallet(ammWallet, initMessage.to);
         instance.setUnixTime(toUnixTime(Date.now()));
         instance.initMessageResultRaw = await ammWallet.sendInternalMessage(initMessage);
         //console.log('amm-wallet -> initMessageResponse', initMessageResponse);
-        instance.address = initMessage.to;
 
-        instance.contract.setC7Config({
-            myself: initMessage.to,
-        });
         return instance;
     }
 }
