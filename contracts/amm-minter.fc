@@ -60,7 +60,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
     int slipage = in_msg_body~load_uint(32);
     int ton_liquidity = in_msg_body~load_grams();
-    ~dump jetton_amount;
     if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
         return ();
@@ -81,7 +80,6 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
             revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
             should_revert = 1;
-            ~dump should_revert;
         } else {
             int extra_ton = ton_liquidity - optimal_ton;
             int extra_jeton = jetton_amount - optimal_jetton;
