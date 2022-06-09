@@ -370,25 +370,25 @@ async function main() {
 
     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
 
-    //     //  ======== Swap Usdc -> TON
-    //     await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(4));
-    //     await sleep(BLOCK_TIME);
-    //     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
+    //  ======== Swap Usdc -> TON
+    await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(4));
+    await sleep(BLOCK_TIME);
+    await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
 
-    //     // // ======== Swap Ton -> USDC
-    //     await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
-    //     await sleep(BLOCK_TIME);
-    //     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
+    // // ======== Swap Ton -> USDC
+    await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
+    await sleep(BLOCK_TIME);
+    await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
 
-    //     // // ======= Remove Liquidity
-    //     await removeLiquidity(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, 64);
-    //     await sleep(BLOCK_TIME * 2);
+    // // ======= Remove Liquidity
+    await removeLiquidity(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, 64);
+    await sleep(BLOCK_TIME * 2);
 
-    //     const currentBalance = await client.getBalance(deployWallet.address);
-    //     console.log(`Deployer spent about ${fromNano(currentBalance.sub(walletBalance))} 💎`);
+    const currentBalance = await client.getBalance(deployWallet.address);
+    console.log(`Deployer spent about ${fromNano(currentBalance.sub(walletBalance))} 💎`);
 
-    //     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
-    //     printAddresses(addressToName);
+    await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
+    printAddresses(addressToName);
 }
 
 (async () => {
