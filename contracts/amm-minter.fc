@@ -39,14 +39,14 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
 const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 
-() mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
+() mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg, int ton_leftovers) impure {
   
   cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(to_wallet_address)
-    .store_coins(jetton_storage())
+    .store_coins(ton_leftovers)
     .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
     .store_ref(state_init)
     .store_ref(master_msg);
@@ -62,12 +62,12 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     int ton_liquidity = in_msg_body~load_grams();
 
     if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
-        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         return ();
     }
 
     if (ton_liquidity <= msg_value - (fwd_fee + jetton_storage())) | ton_liquidity < add_liquidity_dust() {
-        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
+        revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         return ();
     }
 
@@ -79,14 +79,14 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
 
         if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
-            revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id);
+            revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         } else {
             int extra_ton = ton_liquidity - optimal_ton;
             int extra_jeton = jetton_amount - optimal_jetton;
 
             ;; return extra's
             if extra_jeton > add_liquidity_dust() {
-                send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton);        
+                send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton, 100000000);  ;; TODO      
             }
             if extra_ton > add_liquidity_dust() {
                 send_grams(jetton_sender ,extra_ton);
@@ -112,7 +112,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         token_wallet_address = sender_address;
     }
 
-    mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg);
+    mint_tokens(jetton_sender, jetton_wallet_code, new_liquidity, mint_msg, ( msg_value - ton_liquidity ));
     save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
     return ();
 }
@@ -149,8 +149,8 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
             equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         
-        send_transfer_token_message(query_id, token_wallet_address, from_address, share_in_token_reserves);        
         send_grams(from_address ,share_in_ton_reserves);
+        send_transfer_token_message(query_id, token_wallet_address, from_address, share_in_token_reserves, msg_value);        
         save_data(total_supply - jetton_amount, token_wallet_address, ton_reserves - share_in_ton_reserves, token_reserves - share_in_token_reserves, content, jetton_wallet_code);
         
         return ();
@@ -160,12 +160,11 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
-        
         throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
         throw_if(601, 0 == token_reserves); ;; insufficent liquidity
         throw_if(602, equal_slices(token_wallet_address, zerro_address) ); ;; pool is not intialized 
         
-        (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address, query_id);
+        (ton_reserves, token_reserves) = swapTokens(min_amount_out, ton_to_swap, true, sender_address, ton_reserves, token_reserves, token_wallet_address, query_id, msg_value);
         save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
         return ();
     }
@@ -199,7 +198,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
           ;; bonuce message will be handled properly by the jetton sender
           throw_if(75, equal_slices(token_wallet_address, zerro_address));
           int min_amount_out = in_msg_body~load_grams();
-          (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address, query_id);
+          (ton_reserves, token_reserves) = swapTokens(min_amount_out, jetton_amount, false, jetton_sender, ton_reserves, token_reserves, token_wallet_address, query_id, msg_value);
           save_data(total_supply, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
           return ();
       }

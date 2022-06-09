@@ -93,11 +93,8 @@ describe("Ton Swap Test Suite", () => {
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
         expect(ammResponse.exit_code).toBe(0);
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgAction;
-        //@ts-ignore
-        expect(sendTonAfterRemoveLiquidity.message.info.value.coins.toString());
-        const transferTokenMessage = actionToMessage(amm, ammResponse.actions[0], toNano(0.1), true);
+        const transferTokenMessage = actionToMessage(amm, ammResponse.actions[1], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
-
         await aliceUSDC.sendInternalMessage(actionToMessage(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actions[0]));
 
         const aliceUsdcData2 = await aliceUSDC.getData();
@@ -254,7 +251,7 @@ describe("Ton Swap Test Suite", () => {
         // @ts-ignore
         expect(addLiquidityMessage.actions[1].message.info.value.coins.toString()).toBe(tonLiquidity.add(toNano(0.1)).toString());
         // @ts-ignore
-        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[0]?.message.body);
+        const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[1]?.message.body);
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });
