@@ -206,10 +206,11 @@ export async function mintJetton(
     usdcMinter: Address,
     deployWallet: WalletContract,
     privateKey: Buffer,
-    mintSize = MINT_SIZE
+    mintSize = MINT_SIZE,
+    recipient = deployWallet.address
 ) {
     console.log(`
-🎬 minting deployer some usdc's , 100$
+🎬 minting deployer some usdc's , 100$ (recipient=${recipient.toFriendly()})
 `);
     await sendTransaction(
         client,
@@ -217,7 +218,7 @@ export async function mintJetton(
         usdcMinter,
         toNano(GAS_FEES.MINT),
         privateKey,
-        JettonMinter.Mint(deployWallet.address, toNano(mintSize).add(toNano(TOKEN_TO_SWAP)))
+        JettonMinter.Mint(recipient, toNano(mintSize).add(toNano(TOKEN_TO_SWAP)))
     );
 }
 
