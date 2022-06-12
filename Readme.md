@@ -6,7 +6,7 @@
 
 ## Overview
 
-Tonswap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow traders to swap tokens and liquidity providers to supply liquidity and earn rewards.
+TonSwap is a DEX/AMM using the Uniswap V2 curve (a financial model shared by many popular AMMs like PancakeSwap, QuickSwap, Sushi) to create liquidity pairs and allow traders to swap tokens and liquidity providers to supply liquidity and earn rewards.
 
 The project depends on an Jetton standard implementation for [Jetton](https://github.com/ton-blockchain/token-contract/tree/jettons/ft).
 
@@ -34,9 +34,9 @@ Use `npm run test` to execute the test suite.
 
 ## Roadmap
 
--   [x] Full functional AMM with 0.03% fees
+-   [x] Full functional AMM with 0.3% fees
 -   [x] End to end Jest test coverage using [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor)
--   [ ] Gas Optimizations , sender should receive the gas change in the end of the message flows
+-   [x] Gas Optimizations , sender should receive the gas change in the end of the message flows
 -   [x] Move to Jetton architecture
 -   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
 -   [x] Write end to end script that deploys on test/main-net
