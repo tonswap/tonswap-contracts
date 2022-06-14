@@ -103,7 +103,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
                                                                 ;;TODO should put null instead of payload
     ;; end wallet is expecting the amount and owner,
     cell mint_msg = begin_cell()
-    .store_uint(op::internal_transfer(), 32)
+    .store_uint(OP_INTERNAL_TRANSFER, 32)
     .store_uint(query_id, 64)
     .store_coins(new_liquidity)
     .store_slice(jetton_sender) ;; 
@@ -144,7 +144,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
     (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code) = load_data();
 
-    if (op == op::burn_notification()) {
+    if (op == OP_BURN_NOTIFICAITON) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         int share_in_ton_reserves = (jetton_amount * ton_reserves) / total_supply;
@@ -161,7 +161,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         return ();
     }
 
-    if (op == op::swap_ton() ) {
+    if (op == OP_SWAP_TON ) {
         
         int ton_to_swap = in_msg_body~load_coins();
         int min_amount_out = in_msg_body~load_coins();
@@ -178,7 +178,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     ;;                          sender:MsgAddress forward_payload:(Either Cell ^Cell)
     ;;                          = InternalMsgBody
 
-    if (op == op::transfer_notification() ) {
+    if (op == OP_TRANSFER_NOTIFICATION ) {
       int jetton_amount = in_msg_body~load_coins();
       slice jetton_sender = in_msg_body~load_msg_addr();
       int noPayload = in_msg_body~load_uint(1); 
@@ -194,12 +194,12 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
       
       int sub_op = in_msg_body~load_uint(32);
       
-      if( sub_op == op::add_liquidity() ) {
+      if( sub_op == OP_ADD_LIQUIDITY ) {
         add_liquidity(in_msg_body ,jetton_amount, jetton_sender ,msg_value, sender_address ,fwd_fee, query_id);
         return ();
       }
 
-      if (sub_op == op::swap_token() ) {  ;; swap TRC20 -> TON
+      if (sub_op == OP_SWAP_TOKEN ) {  ;; swap TRC20 -> TON
           ;; bonuce message will be handled properly by the jetton sender
           throw_if(75, equal_slices(token_wallet_address, zerro_address));
           int min_amount_out = in_msg_body~load_grams();
