@@ -1,96 +1,131 @@
-import { fromNano } from "ton";
+import { Address, fromNano } from "ton";
 
-const data = [
+var data = [
     {
-        time: "2022-06-02T17:33:45.484Z",
-        from: "EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI",
+        time: "2022-06-26T07:59:55.052Z",
+        from: Address.parse("EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI"),
         inMessage: {
-            body: "x{0F8A7EA500000000000000015E8D4A51000800295A7213B7EF887BA390A4BFF42F0ACE16850E2D0B937D6B36B999993421061D00052B4E4276FDF10F74721497FE85E159C2D0A1C5A1726FAD66D73333268420C38ABA43B74000000000160000000555D21DBA000}",
+            value: 0,
+            body: "x{595F07BC00000000000000015A4A2D938028010DF211ECE5339F60C8FD3C88D120900EEE6DCAA4B741A983ED6E1052892FF21B_}",
             stateInit: "",
             mode: -1,
         },
-
-        contractAddress: "EQBz0LEPh_220w7OOmPF6YkxC4nISw2H75vytbXpP-68oKZr",
+        contractImpl: {
+            name: "x",
+            initTime: 1656230395,
+            contract: {},
+            address: Address.parse("EQDFFzPdq9EPc9Y-aAWZtST0UyVKqPWKDgJ1i_7P9m1NKKR1"),
+            initMessageResultRaw: [Object],
+        },
+        contractAddress: Address.parse("EQDFFzPdq9EPc9Y-aAWZtST0UyVKqPWKDgJ1i_7P9m1NKKR1"),
         exit_code: 0,
         returnValue: undefined,
         logs: [],
+        actions: [[Object]],
         isDeployedByAction: false,
     },
     {
-        time: "2022-06-02T17:33:45.498Z",
-        from: "EQBz0LEPh_220w7OOmPF6YkxC4nISw2H75vytbXpP-68oKZr",
+        time: "2022-06-26T07:59:55.066Z",
+        from: Address.parse("EQDFFzPdq9EPc9Y-aAWZtST0UyVKqPWKDgJ1i_7P9m1NKKR1"),
         inMessage: {
-            body: "x{178D451900000000000000015E8D4A510008010DF211ECE5339F60C8FD3C88D120900EEE6DCAA4B741A983ED6E1052892FF21B00052B4E4276FDF10F74721497FE85E159C2D0A1C5A1726FAD66D73333268420C39574876E80000000002C0000000AABA43B74001_}",
+            value: 0,
+            body: "x{7BDD97DE00000000000000015A4A2D938028010DF211ECE5339F60C8FD3C88D120900EEE6DCAA4B741A983ED6E1052892FF21B0021BE423D9CA673EC191FA7911A241201DDCDB95496E835307DADC20A5125FE436_}",
             stateInit: "",
             mode: -1,
         },
-
-        contractAddress: "EQBSUVChetZry2tY4dOHi2tHmkLfOMoEiAEIf8gJ975JXi9f",
+        contractImpl: {
+            name: "x",
+            contract: {},
+            address: Address.parse("EQBiEB1OVWd6Ovf2JTALSfRpzShtbQbgth-vBeYV9kxvhwcN"),
+        },
+        contractAddress: Address.parse("EQBiEB1OVWd6Ovf2JTALSfRpzShtbQbgth-vBeYV9kxvhwcN"),
         exit_code: 0,
         returnValue: undefined,
         logs: [],
+        actions: [[Object], [Object]],
         isDeployedByAction: false,
     },
     {
-        time: "2022-06-02T17:33:45.514Z",
-        from: "EQBSUVChetZry2tY4dOHi2tHmkLfOMoEiAEIf8gJ975JXi9f",
+        time: "2022-06-26T07:59:55.079Z",
+        from: Address.parse("EQBiEB1OVWd6Ovf2JTALSfRpzShtbQbgth-vBeYV9kxvhwcN"),
         inMessage: {
-            body: "x{7362D09C00000000000000015E8D4A510008010DF211ECE5339F60C8FD3C88D120900EEE6DCAA4B741A983ED6E1052892FF21A000000160000000555D21DBA000}",
-            stateInit: "",
-            mode: -1,
-        },
-        contractAddress: "EQAUrTkJ2_fEPdHIUl_6F4VnC0KHFoXJvrWbXMzMmhCDDvIE",
-        returnValue: undefined,
-        logs: ["1. #DEBUG#: s0 = 1000000000000", "2. #DEBUG#: s0 = 1"],
-        isDeployedByAction: false,
-    },
-    {
-        time: "2022-06-02T17:33:45.516Z",
-        from: "EQAUrTkJ2_fEPdHIUl_6F4VnC0KHFoXJvrWbXMzMmhCDDvIE",
-        contractAddress: "EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI",
-        logs: [],
-        isDeployedByAction: false,
-    },
-    {
-        time: "2022-06-02T17:33:45.530Z",
-        from: "EQAUrTkJ2_fEPdHIUl_6F4VnC0KHFoXJvrWbXMzMmhCDDvIE",
-        inMessage: {
+            value: 100000,
             body: "x{0F8A7EA500000000000000015E8D4A510008010DF211ECE5339F60C8FD3C88D120900EEE6DCAA4B741A983ED6E1052892FF21B0021BE423D9CA673EC191FA7911A241201DDCDB95496E835307DADC20A5125FE4341_}",
             stateInit: "",
             mode: -1,
         },
-
-        contractAddress: "EQBSUVChetZry2tY4dOHi2tHmkLfOMoEiAEIf8gJ975JXi9f",
+        contractImpl: {
+            name: "x",
+            initMessageResult: [Object],
+            contract: {},
+            initMessageResultRaw: [Object],
+            address: Address.parse("EQDUKO8nIPHWO6IJhYqh1gpGkExQr1c6K1nW6QE7YhtZoWba"),
+        },
+        contractAddress: Address.parse("EQDUKO8nIPHWO6IJhYqh1gpGkExQr1c6K1nW6QE7YhtZoWba"),
         exit_code: 0,
         returnValue: undefined,
         logs: [],
+        actions: [[Object]],
         isDeployedByAction: false,
     },
     {
-        time: "2022-06-02T17:33:45.544Z",
-        from: "EQBSUVChetZry2tY4dOHi2tHmkLfOMoEiAEIf8gJ975JXi9f",
+        time: "2022-06-26T07:59:55.093Z",
+        from: Address.parse("EQDUKO8nIPHWO6IJhYqh1gpGkExQr1c6K1nW6QE7YhtZoWba"),
         inMessage: {
-            body: "x{178D451900000000000000015E8D4A51000800295A7213B7EF887BA390A4BFF42F0ACE16850E2D0B937D6B36B999993421061D0021BE423D9CA673EC191FA7911A241201DDCDB95496E835307DADC20A5125FE4342_}",
+            value: 0xbebc200,
+            body: "x{178D451900000000000000015E8D4A51000800C4203A9CAACEF475EFEC4A601693E8D39A50DADA0DC16C3F5E0BCC2BEC98DF0F0021BE423D9CA673EC191FA7911A241201DDCDB95496E835307DADC20A5125FE4342_}",
             stateInit: "",
             mode: -1,
         },
-
-        contractAddress: "EQBz0LEPh_220w7OOmPF6YkxC4nISw2H75vytbXpP-68oKZr",
+        contractImpl: {
+            name: "x",
+            initMessageResult: [Object],
+            contract: {},
+            initMessageResultRaw: [Object],
+            address: Address.parse("EQC-pxTsYn8fEf_FeioTHYgIAQmWSaHXo-i8XJg-4MirVN4j"),
+        },
+        contractAddress: Address.parse("EQC-pxTsYn8fEf_FeioTHYgIAQmWSaHXo-i8XJg-4MirVN4j"),
         exit_code: 0,
         returnValue: undefined,
         logs: [],
+        actions: [[Object], [Object]],
         isDeployedByAction: false,
     },
     {
-        time: "2022-06-02T17:33:45.546Z",
-        from: "EQBz0LEPh_220w7OOmPF6YkxC4nISw2H75vytbXpP-68oKZr",
+        time: "2022-06-26T07:59:55.096Z",
+        from: Address.parse("EQC-pxTsYn8fEf_FeioTHYgIAQmWSaHXo-i8XJg-4MirVN4j"),
         inMessage: {
+            value: 0xb532b80,
             body: "x{D53276DB0000000000000001}",
             stateInit: "",
             mode: -1,
         },
-        contractAddress: "EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI",
+        contractImpl: {
+            name: "x",
+            contract: {},
+            address: Address.parse("EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI"),
+        },
+        contractAddress: Address.parse("EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI"),
+        exit_code: 0,
+        returnValue: 0xb532b80,
         logs: [],
+        actions: [],
+        isDeployedByAction: false,
+    },
+    {
+        time: "2022-06-26T07:59:55.097Z",
+        from: Address.parse("EQBiEB1OVWd6Ovf2JTALSfRpzShtbQbgth-vBeYV9kxvhwcN"),
+        inMessage: { value: 0, body: "x{}", stateInit: "", mode: -1 },
+        contractImpl: {
+            name: "x",
+            contract: {},
+            address: Address.parse("EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI"),
+        },
+        contractAddress: Address.parse("EQCG-Qj2cpnPsGR-nkRokEgHdzblUlug1MH2twgpRJf5DUOI"),
+        exit_code: 0,
+        returnValue: 0xbebc200,
+        logs: [],
+        actions: [],
         isDeployedByAction: false,
     },
 ];
@@ -101,40 +136,64 @@ interface StringArray {
 
 function enrich(data: any) {
     const enriched = data.map((it: any, i: number) => {
-        it.from = it.from.toFriendly();
-        it.contractAddress = it.contractAddress.toFriendly();
+        // it.from = it.from;
+        // it.contractAddress = it.contractAddress;
         it.index = i;
         if (i == 0) {
             return it;
         }
         it.prev = data[i - 1];
+        it.sender = findNearestSender(data, i, it.from);
+
+        if (it.sender) {
+            // throw "no sender";
+        } else {
+            console.log(`couldn't found sender ${it.from.toFriendly()}`);
+
+            // throw "sender not found"
+        }
         return it;
     });
 
     return enriched;
 }
 
+function findNearestSender(data: any, index: number, address: Address) {
+    for (let i = index; i >= 0; i--) {
+        if (data[i].contractAddress?.toFriendly() == address.toFriendly()) {
+            return data[i];
+        }
+    }
+    throw "not found";
+
+    return null;
+}
+
 function dataToTree(data: any) {
     let result: StringArray = {};
     data.forEach((it: object, i: number) => {
+        //genesis
         if (i == 0) {
             //@ts-ignore
             it.index = 0;
             return (result["0"] = it);
         }
-        //console.log(it);
 
+        // previous message is the sender
         // @ts-ignore
         if (it.prev.contractAddress == it.from) {
             //@ts-ignore
-            const key = `${it.from}-${it.prev.index}`;
+            const key = `${it.from.toFriendly()}-${it.prev.index}`;
             result[key] = result[key] || [];
             result[key].push(it);
-
+        } else {
             // @ts-ignore
-        } else if (it.prev.prev?.contractAddress == it.from) {
+            if (!it.sender) {
+                //  console.log(i, it);
+            }
             // @ts-ignore
-            const key = `${it.from}-${it.prev.prev.index}`;
+            const key = `${it.sender.contractAddress.toFriendly()}-${it.sender.index}`;
+            result[key] = result[key] || [];
             result[key].push(it);
         }
         // @ts-ignore
@@ -150,6 +209,7 @@ function treeToChains(data: StringArray) {
     let chains: StringArray = {};
 
     for (let key in data) {
+        // genesis message
         if (key == "0") {
             chains["0"] = [data[key]];
             continue;
@@ -157,8 +217,10 @@ function treeToChains(data: StringArray) {
         let arr = data[key];
         for (let j = 0; j < arr.length; j++) {
             const message = arr[j];
-            const senderKey = messageToKey(findMessageSender(message)); // go to previous message and extract key to find chains tail
+
+            const senderKey = messageToKey(message.sender); // go to previous message and extract key to find chains tail
             const chainKey = findChainByTail(chains, senderKey);
+
             if (chainKey) {
                 chains[chainKey].push(message);
             } else {
@@ -185,22 +247,25 @@ function findMessageSender(message: any) {
 function findChainByTail(chains: StringArray, newMessageSenderKey: string) {
     for (let key in chains) {
         const chain = chains[key];
-        //console.log(chain);
 
         let tailKey = messageToKey(chain[chain.length - 1]);
+        // console.log(`tailKey: ${tailKey} == ${newMessageSenderKey}`);
+
         if (tailKey == newMessageSenderKey) {
             return key;
         }
     }
     // no chains found
+
     return "";
 }
 
 function messageToKey(message: any) {
-    return `${message.contractAddress}-${message.index}`;
+    return `${message.contractAddress.toFriendly()}-${message.index}`;
 }
 export function printChain(data: any) {
     const richData = enrich(data);
+
     const result = dataToTree(richData);
 
     const chains = treeToChains(result);
@@ -212,18 +277,19 @@ function print(data: any) {
     let buffer = "";
 
     for (let key in data) {
-        buffer += `\n\n${key} ===> \n\t`;
+        buffer += `\n================\n${key} ===> \n\t`;
         let arr = data[key];
+
         for (let j = 0; j < arr.length; j++) {
-            if (j > 0) {
-                buffer += `\n \t`;
+            if (j == 0 && arr[j].sender) {
+                buffer += `Origin: ${addressEllipsis(arr[j].sender.contractAddress.toFriendly())}-${arr[j].sender.index}\n`;
             }
+
             const coins = fromNano(arr[j].inMessage.value);
-            buffer += `${arr[j].prev?.contractImpl?.constructor.name} ${addressEllipsis(arr[j].from)}  ->  Message::${messageOpToName(
-                arr[j]
-            )}(${coins}💎)   -> ${arr[j].contractImpl?.constructor.name} ${addressEllipsis(arr[j].contractAddress)} [${
-                arr[j].index
-            }] `.padEnd(100);
+            buffer += `\n\t [${arr[j].index}] 
+                ⬅️  From: ${arr[j].sender?.contractImpl?.constructor.name} ${addressEllipsis(arr[j].from)}  
+                🛄  Message: ${messageOpToName(arr[j])} ( ${coins}💎 )   
+                ➡️  To: ${arr[j].contractImpl?.constructor.name} ${addressEllipsis(arr[j].contractAddress)}`.padEnd(100);
         }
         buffer += `\n`;
     }
@@ -231,6 +297,15 @@ function print(data: any) {
 }
 
 function addressEllipsis(address: string) {
+    if (!address) {
+        return `...`;
+    }
+
+    if (typeof address == "object") {
+        // @ts-ignore
+        address = address.toFriendly();
+    }
+
     return `${address.substring(0, 6)}....${address.substring(42, 48)}`;
 }
 
