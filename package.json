@@ -6,7 +6,8 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "test": "npx jest test/amm-minter.spec.ts",
-    "e2e": "ts-node deploy/e2e.ts"
+    "e2e": "ts-node deploy/e2e.ts",
+    "deploy": "ts-node deploy/deploy.ts"
   },
   "dependencies": {
     "@babel/preset-env": "^7.16.11",

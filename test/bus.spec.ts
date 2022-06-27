@@ -74,7 +74,6 @@ describe("Ton Swap Bus Test Suite", () => {
         const { deployerLpWallet, tvmBus, deployWallet } = await initAMM({});
 
         const lpData = await deployerLpWallet.getData();
-        console.log("lpData", lpData);
 
         let messageBody = AmmLpWallet.RemoveLiquidityMessage(lpData.balance, deployWallet.address);
         const message = messageGenerator({
@@ -88,18 +87,21 @@ describe("Ton Swap Bus Test Suite", () => {
 
         let deployerLpWallet2 = messagesLog[0].contractImpl as AmmLpWallet;
 
+        let deployer = messagesLog[0].contractImpl as Wallet;
         let ammMinter = messagesLog[1].contractImpl as AmmMinterTVM;
-        let deployer = messagesLog[2].contractImpl as Wallet;
-        let ammJetton = messagesLog[3].contractImpl as JettonWallet;
-        let deployerJetton = messagesLog[4].contractImpl as JettonWallet;
+        let ammJetton = messagesLog[2].contractImpl as JettonWallet;
+        let deployerJetton = messagesLog[3].contractImpl as JettonWallet;
 
+        // deployer lp = 0
         const deployerLpWalletData = await deployerLpWallet2.getData();
         expect(deployerLpWalletData.balance.toString()).toBe("0");
 
+        // reserves should be 0 after remove liquidity
         const ammMinterData = await ammMinter.getData();
         expect(ammMinterData.tonReserves.toString()).toBe("0");
         expect(ammMinterData.tokenReserves.toString()).toBe("0");
 
+        // amm's jetton wallet balance should be 0
         const ammJettonData = await ammJetton.getData();
         expect(ammJettonData.balance.toString()).toBe("0");
 
