@@ -65,6 +65,9 @@
         master_msg_cs~skip_bits(32 + 64); ;; op + query_id
         int jetton_amount = master_msg_cs~load_coins();
         mint_tokens(to_address, jetton_wallet_code, amount, master_msg);
+        ;; AG What is content?
+        ;; AG What is master_msg?
+        ;; AG What is amount != jetton_amount
         save_data(total_supply + jetton_amount, admin_address, content, jetton_wallet_code);
         return ();
     }
@@ -77,11 +80,13 @@
         );
         save_data(total_supply - jetton_amount, admin_address, content, jetton_wallet_code);
         slice response_address = in_msg_body~load_msg_addr();
+        ;; AG What does this mechanism for?
         if (response_address.preload_uint(2) != 0) {
           var msg = begin_cell()
             .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
             .store_slice(response_address)
             .store_coins(0)
+            ;; AG What does this represent?
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_uint(OP_EXCESSES, 32)
             .store_uint(query_id, 64);

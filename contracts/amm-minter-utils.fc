@@ -95,26 +95,34 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 
 
 () revert_add_liquidity(int ton_liquidity, int token_liquidity, slice token_wallet_address, slice jetton_sender, int query_id, int msg_value) impure {
+    ;; AG can this be merged into one message with forwarding ton facility?
     send_grams(jetton_sender, ton_liquidity);
     send_transfer_token_message(query_id, token_wallet_address, jetton_sender, token_liquidity, msg_value);
 }
 
 (int, int, int, int) mint_lp(int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
     
+    ;; AG this is actually lp amount
     int new_liquidity = 0;
     int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
+    ;; AG Why this should be 1000 ?
 
     ;; TODO fix handle liquidtiy supply on its own param
+    ;; AG initialize when there is not LP yet
     if( token_reserves == 0 ) {
       ;; calc the user share  Sushi (Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);)
       new_liquidity = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
     } else {
       ;; liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
       int ton_share = (ton_amount * total_lp_supply) / ton_reserves;
+      ;; AG shouldn't be using muldiv to avoid overflow?
+      ;; AG share is total_lp_supply * (ton_amount / ton_reserves)
       int token_share = (token_amount * total_lp_supply) / token_reserves;
+      ;; AG can avoid having this calc and min() by using the optimal ton/jetton values that calculated before.
       new_liquidity = min(ton_share, token_share);
     }
 
+    ;; AG replace with += for consistency
     token_reserves = token_amount + token_reserves;
     ton_reserves = ton_amount + ton_reserves;
     total_lp_supply = new_liquidity + total_lp_supply;    

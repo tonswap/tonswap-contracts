@@ -6,7 +6,9 @@
 
 int jetton_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
+;; AG why this is represented using a function and not a const
 
+;; AG does this reflect the actual storage structure? we're missing *_reserves, jetton_->amm_
 ;; storage scheme
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
 
@@ -28,6 +30,7 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
             .store_slice(token_wallet_address)
             .store_coins(ton_reserves)
             .store_coins(token_reserves)
+            ;; AG isn't this redundant? Does not match the load_data()
             .store_coins(total_supply)
             .store_ref(content)
             .store_ref(jetton_wallet_code)
@@ -36,6 +39,7 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
 }
 
 
+;; AG zerro?
 const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 
@@ -58,10 +62,15 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
     (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code) = load_data();
 
+    ;; AG typo
     int slipage = in_msg_body~load_uint(32);
+    ;; AG load_grams? or load_coins?
     int ton_liquidity = in_msg_body~load_grams();
 
+    ;; AG should it used as uint or checked for jetton_amount >= 0?
+    ;; AG 0 == , slippage < 0?
     if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
+        ;;  AG why not bouncing? can't it fulfill the same goal of reverting?
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         return ();
     }
@@ -73,23 +82,32 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     int should_revert = 0;
 
     if ton_reserves > 0 {
+        ;; AG calculate optimal dT and dJ based for maintaining the price/ratio
+        ;; AG dT = dJ * [ T / J ]
+        ;; AG dJ = dT * [ J / T ]
         int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
         int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
 
+        ;; AG calculate the minimum accepted deal, taking into account the max slippage.
         int ton_liquidity_min = ton_liquidity * ( 100 - slipage ) / 100;
         int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
 
         if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
             revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
+             ;; AG should return() here and skip the should_revert hack?
             should_revert = 1;
         } else {
             int extra_ton = ton_liquidity - optimal_ton;
             int extra_jeton = jetton_amount - optimal_jetton;
 
             ;; return extra's
+            ;; AG this looks like a bug, 0.1 margin in token might be reasonable as oppsed to 0.1 ton dust
+             ;; AG replace liquidity dust with quote of 0.1T in Jetton 
             if extra_jeton > add_liquidity_dust() {
+                ;; AG change 100,000,000 to a const
                 send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton, 100000000);  ;; TODO      
             }
+            ;; AG throw exception if both extras > 0
             if extra_ton > add_liquidity_dust() {
                 send_grams(jetton_sender ,extra_ton);
             }
@@ -99,6 +117,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
       return ();
     }
 
+    ;; AG bug: should be (ton_liqueidty - extra_ton) and (jetton_amount - extra_jeton)
     (int new_liquidity, total_supply, ton_reserves, token_reserves) = mint_lp(ton_liquidity ,jetton_amount ,ton_reserves, token_reserves, total_supply);
                                                                 ;;TODO should put null instead of payload
     ;; end wallet is expecting the amount and owner,
@@ -129,6 +148,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     }
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
+      ;; AG ignore all bounced messages, why AMM can afford to ignore bounced messages?
     if (flags & 1) {
       return ();
     }
@@ -138,6 +158,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
     cs~skip_bits(1); ;; skip extracurrency collection
     cs~load_coins(); ;; skip ihr_fee
     int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs    
+    ;; AG I don't understand the mechanics/logic of the fwd_fees
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
@@ -190,6 +211,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
       ;;  if token_wallet_address != null && token_wallet_address != sender_address -> throw
       if (equal_slices(token_wallet_address, zerro_address) == false) & (equal_slices(token_wallet_address, sender_address) == false) {
         throw_if(76, true);
+        ;; AG why using throw_if and not throw_unless or throw_if(76, XX)?
       }
       
       int sub_op = in_msg_body~load_uint(32);

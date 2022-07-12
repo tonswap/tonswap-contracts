@@ -1,5 +1,6 @@
 int workchain() asm "0 PUSHINT";
 
+;; AG Whould we enforce WC #0 or enfore the "current" WC, where this object is tied to?
 () force_chain(slice addr) impure {
   (int wc, _) = parse_std_addr(addr);
   throw_unless(333, wc == workchain());
