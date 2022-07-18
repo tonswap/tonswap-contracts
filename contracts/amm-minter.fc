@@ -28,7 +28,6 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
             .store_slice(token_wallet_address)
             .store_coins(ton_reserves)
             .store_coins(token_reserves)
-            .store_coins(total_supply)
             .store_ref(content)
             .store_ref(jetton_wallet_code)
            .end_cell()
