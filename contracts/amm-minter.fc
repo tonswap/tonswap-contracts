@@ -4,8 +4,9 @@
 #include "amm-utils.fc";
 #include "amm-minter-utils.fc";
 
-int jetton_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
-int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
+const JETTON_STORAGE = 50000000; ;; 0.05 TON
+const ADD_LIQUIDTY_DUST = 100000000; ;; 0.1 TON
+const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 ;; storage scheme
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
@@ -35,7 +36,6 @@ int add_liquidity_dust() asm "100000000 PUSHINT"; ;; 0.1 TON
 }
 
 
-const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg, int ton_leftovers) impure {
@@ -57,15 +57,15 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 
     (int total_supply, slice token_wallet_address, int ton_reserves, int token_reserves, cell content, cell jetton_wallet_code) = load_data();
 
-    int slipage = in_msg_body~load_uint(32);
+    int slippage = in_msg_body~load_uint(32);
     int ton_liquidity = in_msg_body~load_grams();
 
-    if (0 == jetton_amount) | (msg_value == 0) | slipage > 100 {
+    if (0 == jetton_amount) | (msg_value == 0) | slippage > 100 {
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         return ();
     }
 
-    if (ton_liquidity <= msg_value - (fwd_fee + jetton_storage())) | ton_liquidity < add_liquidity_dust() {
+    if ( ton_liquidity <= msg_value - (fwd_fee + JETTON_STORAGE) ) | ton_liquidity < ADD_LIQUIDTY_DUST {
         revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
         return ();
     }
@@ -75,8 +75,8 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
         int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
         int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
 
-        int ton_liquidity_min = ton_liquidity * ( 100 - slipage ) / 100;
-        int jeton_liquidity_min = jetton_amount * ( 100 - slipage ) / 100;
+        int ton_liquidity_min = ton_liquidity * ( 100 - slippage ) / 100;
+        int jeton_liquidity_min = jetton_amount * ( 100 - slippage ) / 100;
 
         if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
             revert_add_liquidity(ton_liquidity, jetton_amount, token_wallet_address, jetton_sender, query_id, msg_value);
@@ -86,10 +86,10 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
             int extra_jeton = jetton_amount - optimal_jetton;
 
             ;; return extra's
-            if extra_jeton > add_liquidity_dust() {
+            if extra_jeton > ADD_LIQUIDTY_DUST {
                 send_transfer_token_message(query_id, token_wallet_address, jetton_sender, extra_jeton, 100000000);  ;; TODO      
             }
-            if extra_ton > add_liquidity_dust() {
+            if extra_ton > ADD_LIQUIDTY_DUST {
                 send_grams(jetton_sender ,extra_ton);
             }
         }
