@@ -70,7 +70,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;  
     int amount_out = get_amount_out( transferd_amount, src_resvers, trgt_resvers);
     
-    ;; siplage is to low or insfuiccent amount , sending back the funds to sender minus gas
+    ;; Slippage is to low or insufficient amount, sending back the funds to sender minus gas
     if( (amount_out < min_amount_out) | (amount_out > trgt_resvers) ) {
         if is_ton_src == true {
             send_grams(swap_sender, transferd_amount);
@@ -95,38 +95,34 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 
 
 () revert_add_liquidity(int ton_liquidity, int token_liquidity, slice token_wallet_address, slice jetton_sender, int query_id, int msg_value) impure {
-    ;; AG can this be merged into one message with forwarding ton facility?
+    ;; TODO This can potentially be merged into one message with forwarding ton facility?
     send_grams(jetton_sender, ton_liquidity);
     send_transfer_token_message(query_id, token_wallet_address, jetton_sender, token_liquidity, msg_value);
 }
 
 (int, int, int, int) mint_lp(int ton_amount, int token_amount, int ton_reserves, int token_reserves, int total_lp_supply) impure {
     
-    ;; AG this is actually lp amount
-    int new_liquidity = 0;
+    int lp_amount_to_mint = 0;
     int MINIMUM_LIQUIDITY = 1; ;; TODO IT SHOULD BE 1000 
-    ;; AG Why this should be 1000 ?
 
     ;; TODO fix handle liquidtiy supply on its own param
-    ;; AG initialize when there is not LP yet
+    ;; initialize when there is not LP yet
     if( token_reserves == 0 ) {
       ;; calc the user share  Sushi (Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);)
-      new_liquidity = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
+      lp_amount_to_mint = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
     } else {
       ;; liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
-      int ton_share = (ton_amount * total_lp_supply) / ton_reserves;
-      ;; AG shouldn't be using muldiv to avoid overflow?
-      ;; AG share is total_lp_supply * (ton_amount / ton_reserves)
-      int token_share = (token_amount * total_lp_supply) / token_reserves;
-      ;; AG can avoid having this calc and min() by using the optimal ton/jetton values that calculated before.
-      new_liquidity = min(ton_share, token_share);
+      int ton_share = total_lp_supply * (ton_amount / ton_reserves);
+      ;; TODO use muldiv to avoid overflow?
+      int token_share = total_lp_supply * (token_amount / token_reserves);
+      ;; TODO can avoid having this calc and min() by using the optimal ton/jetton values that calculated before.
+      lp_amount_to_mint = min(ton_share, token_share);
     }
 
-    ;; AG replace with += for consistency
-    token_reserves = token_amount + token_reserves;
-    ton_reserves = ton_amount + ton_reserves;
-    total_lp_supply = new_liquidity + total_lp_supply;    
-    return (new_liquidity, total_lp_supply, ton_reserves, token_reserves);
+    token_reserves += token_amount;
+    ton_reserves += ton_amount;
+    total_lp_supply += lp_amount_to_mint;    
+    return (lp_amount_to_mint, total_lp_supply, ton_reserves, token_reserves);
  }
 
 
