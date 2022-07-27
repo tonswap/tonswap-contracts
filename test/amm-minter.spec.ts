@@ -11,7 +11,7 @@ import { ERROR_CODES, OPS } from "../src/ops";
 
 const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const alice = Address.parse("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7");
-const liyi = Address.parse("EQDrjaLahLkMB-hMCmkzOyBuHJ139ZUYmPHu6RRBKnbdLIYI");
+const bob = Address.parse("EQDrjaLahLkMB-hMCmkzOyBuHJ139ZUYmPHu6RRBKnbdLIYI");
 const amm = Address.parse("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe");
 
 const ALICE_INITIAL_BALANCE = toNano(3500);
@@ -275,7 +275,7 @@ describe("Ton Swap Test Suite", () => {
             TON_LIQUIDITY,
             new BN(5),
             ERROR_CODES.ADD_LIQUIDITY_WRONG_JETTON_SENDER,
-            liyi
+            bob
         );
     });
 
@@ -302,7 +302,7 @@ describe("Ton Swap Test Suite", () => {
             TON_LIQUIDITY,
             new BN(5),
             ERROR_CODES.ADD_LIQUIDITY_WRONG_JETTON_SENDER,
-            liyi
+            bob
         );
     });
 });
