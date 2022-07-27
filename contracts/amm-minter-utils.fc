@@ -111,7 +111,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   transfer_token(query_id, token_wallet_address, jetton_sender, token_liquidity, msg_value);
 }
 
-(int, int, int, int) mint_lp(
+(int, int, int, int) calculate_new_lp(
   int ton_amount,
   int token_amount,
   int ton_reserves,
@@ -135,8 +135,6 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   token_reserves = token_amount + token_reserves;
   ton_reserves = ton_amount + ton_reserves;
   total_lp_supply = new_liquidity + total_lp_supply;
-
-  
 
   return (new_liquidity, total_lp_supply, ton_reserves, token_reserves);
 }

@@ -5,12 +5,13 @@ import BN from "bn.js";
 import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress, writeString } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
+const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
 export class JettonWallet {
     public initMessageResult: { logs?: string; actions?: OutAction[] } = {};
-    public address?: Address;
+    public address = ZERO_ADDRESS;
 
     private constructor(public readonly contract: SmartContract) {}
 
@@ -67,7 +68,7 @@ export class JettonWallet {
         return messageBody;
     }
 
-    async transferOverloaded(
+    async transfer(
         from: Address,
         to: Address,
         amount: BN,

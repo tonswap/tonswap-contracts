@@ -5,12 +5,12 @@ import { toUnixTime, toDecimals, parseInternalMessageResponse } from "./utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
-
+const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
 export class AmmLpWallet {
     private initTime: number = Date.now();
-    public address?: Address;
+    public address: Address = ZERO_ADDRESS;
     private constructor(public readonly contract: SmartContract) {}
 
     async getData() {

@@ -51,7 +51,7 @@ describe("Ton Swap Test Suite", () => {
         const { aliceUSDC } = await createBaseContracts();
 
         const jettonAmount = new BN(502);
-        const transferResponse = await aliceUSDC.transferOverloaded(
+        const transferResponse = await aliceUSDC.transfer(
             alice,
             amm,
             jettonAmount,
@@ -75,7 +75,7 @@ describe("Ton Swap Test Suite", () => {
         expect(bobUsdcData.balance.toString()).toBe(jettonAmount.toString());
     });
 
-    it("adds Liquidity", async () => {
+    it("add Liquidity - jetton wallet should be initialized", async () => {
         const { masterAMM, ammUsdcWallet } = await initAMM({});
         const { tokenWalletAddress } = await masterAMM.getData();
         expect(tokenWalletAddress).toBe(ammUsdcWallet.address?.toFriendly());
@@ -107,7 +107,7 @@ describe("Ton Swap Test Suite", () => {
         const { tonReserves, tokenReserves } = await masterAMM.getData();
         const { minAmountOut } = await masterAMM.getAmountOut(jettonToSwap, tokenReserves, tonReserves);
 
-        const transferResponse = await aliceUSDC.transferOverloaded(
+        const transferResponse = await aliceUSDC.transfer(
             alice,
             amm,
             jettonToSwap,
@@ -139,7 +139,7 @@ describe("Ton Swap Test Suite", () => {
         const { aliceUSDC, masterAMM, ammUsdcWallet } = await initAMM({}); //create
 
         const jettonAmount = new BN(251);
-        const transferResponse = await aliceUSDC.transferOverloaded(
+        const transferResponse = await aliceUSDC.transfer(
             alice,
             amm,
             jettonAmount,
@@ -257,14 +257,10 @@ describe("Ton Swap Test Suite", () => {
     });
 
     it("add liquidity from a bad source wallet", async () => {
-        const lpSize = LP_DEFAULT_AMOUNT;
-        const jettonLiquidity = JETTON_LIQUIDITY;
-        const tonLiquidity = TON_LIQUIDITY;
-
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({
-            jettonLiquidity: jettonLiquidity,
-            tonLiquidity: tonLiquidity,
-        }); //create
+            jettonLiquidity: JETTON_LIQUIDITY,
+            tonLiquidity: TON_LIQUIDITY,
+        });
 
         let amm0 = await masterAMM.getData();
         printAmmData(amm0);
@@ -274,7 +270,7 @@ describe("Ton Swap Test Suite", () => {
             ammUsdcWallet,
             masterAMM,
             lpWallet,
-            `${lpSize * 2}`,
+            `${LP_DEFAULT_AMOUNT * 2}`,
             JETTON_LIQUIDITY,
             TON_LIQUIDITY,
             new BN(5),
@@ -335,7 +331,7 @@ async function createBaseContracts() {
 async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_LIQUIDITY, addLiquiditySlippage = new BN(5) }) {
     const { aliceUSDC } = await createBaseContracts();
 
-    const transferWithAddLiquidityResponse = await aliceUSDC.transferOverloaded(
+    const transferWithAddLiquidityResponse = await aliceUSDC.transfer(
         alice,
         amm,
         jettonLiquidity,
@@ -373,9 +369,6 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
     let ammRes = await masterAMM.sendInternalMessage(usdcToAmmTransferNotification);
     expect(ammRes.exit_code).toBe(0);
 
-    //const ammData = await masterAMM.getData();
-    //printAmmData(ammData);
-
     let mintLpMessage = ammRes.actions[0] as SendMsgAction;
 
     const lpMsg = actionToMessage(contractAddress, ammRes.actions[0]);
@@ -410,7 +403,7 @@ async function addLiquidity(
 ) {
     tonLiquidity = tonLiquidity.add(toNano(0.1));
 
-    const transferResponse = await aliceUSDC.transferOverloaded(
+    const transferResponse = await aliceUSDC.transfer(
         alice,
         amm,
         jettonLiquidity,
