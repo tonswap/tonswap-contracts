@@ -89,9 +89,12 @@ describe("Ton Swap Test Suite", () => {
         const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm);
 
         const removeLiquidityNotification = actionToMessage(lpWallet.address as Address, removeLiquidityResponse.actions[0]);
+        expect(removeLiquidityResponse.exit_code).toBe(0);
 
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
+
         expect(ammResponse.exit_code).toBe(0);
+
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgAction;
         const transferTokenMessage = actionToMessage(amm, ammResponse.actions[1], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);

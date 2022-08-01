@@ -1,3 +1,5 @@
+const AMM_TON_STORAGE = 200000000;  ;;      0.2 TON
+
 ;; =============  Using babylonian method for Math.sqrt
 int squareRoot(int number) {
   if (number < 3) {
@@ -40,7 +42,7 @@ int squareRoot(int number) {
     .store_slice(to)
     .store_slice(to)
     .store_grams(0)
-    .store_uint(0, 1) ;; https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
+    .store_uint(1, 2) ;; https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
     .end_cell();
 
   var msg = begin_cell()
