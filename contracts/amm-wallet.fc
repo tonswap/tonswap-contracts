@@ -62,6 +62,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
     .store_slice(owner_address)
     .store_slice(response_address)
     .store_coins(forward_ton_amount)
+    .store_uint(1,1) ;; https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
     .store_slice(either_forward_payload)
     .end_cell();
 
@@ -196,7 +197,12 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
     }
 
     slice cs = in_msg_full.begin_parse();
-    int flags = cs~load_uint(4);
+    cs~skip_bits(2); 
+    int bounce = cs~load_uint(1);
+    
+    throw_unless(710, bounce & 1);
+
+    int flags = cs~load_uint(1);
     if (flags & 1) {
         on_bounce(in_msg_body);
         return ();

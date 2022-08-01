@@ -101,6 +101,17 @@ describe("Ton Swap Test Suite", () => {
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
     });
 
+    it("removes liquidity - should bounce in case ", async () => {
+        const { lpWallet } = await initAMM({}); //create
+
+        const { balance: lpBalance } = await lpWallet.getData();
+        expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
+        const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
+        console.log("removeLiquidityResponse", removeLiquidityResponse);
+
+        expect(removeLiquidityResponse.exit_code).toBe(710);
+    });
+
     it("swap usdc to TON", async () => {
         const jettonToSwap = toNano(51);
         const { aliceUSDC, masterAMM, ammUsdcWallet } = await initAMM({}); //create

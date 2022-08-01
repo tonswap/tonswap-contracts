@@ -49,14 +49,14 @@ export class AmmLpWallet {
         return res;
     }
 
-    async removeLiquidity(amount: BN, responseAddress: Address, from: Address, to: Address, value = new BN(100000000)) {
+    async removeLiquidity(amount: BN, responseAddress: Address, from: Address, to: Address, bounce = true, value = new BN(100000000)) {
         let messageBody = AmmLpWallet.RemoveLiquidityMessage(amount, responseAddress);
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: from,
                 to: to,
                 value,
-                bounce: false,
+                bounce,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })
         );
@@ -181,7 +181,7 @@ export class AmmLpWallet {
     }
 
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
-        const ammWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true });
+        const ammWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
         const instance = new AmmLpWallet(ammWallet);
         instance.setUnixTime(toUnixTime(Date.now()));
         const initMessageResponse = await ammWallet.sendInternalMessage(initMessage);
