@@ -12,12 +12,15 @@ import {
     toNano,
     TonClient,
     contractAddress,
+    beginCell,
 } from "ton";
 import BN from "bn.js";
 import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { OPS } from "./ops";
+
+const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
 export class JettonMinter {
     private constructor(public readonly contract: SmartContract) {}
@@ -236,15 +239,12 @@ async function CompileCodeToCell() {
     return Cell.fromBoc(ammMinterCodeB64);
 }
 
-async function buildStateInit(totalSupply: BN, token_wallet_address: Address, content: string, tokenCode: Cell) {
-    const contentCell = new Cell();
-    writeString(contentCell, content);
+async function buildStateInit(totalSupply: BN, admin: Address, contentUri: string, tokenCode: Cell) {
+    let contentCell = beginCell().storeInt(OFFCHAIN_CONTENT_PREFIX, 8).storeBuffer(Buffer.from(contentUri, "ascii")).endCell();
 
     let dataCell = new Cell();
     dataCell.bits.writeCoins(totalSupply);
-    dataCell.bits.writeAddress(token_wallet_address);
-    dataCell.bits.writeCoins(0);
-    dataCell.bits.writeCoins(0);
+    dataCell.bits.writeAddress(admin);
     dataCell.refs.push(contentCell);
     dataCell.refs.push(tokenCode);
     return dataCell;

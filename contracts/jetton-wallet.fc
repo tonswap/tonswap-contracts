@@ -49,6 +49,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   slice response_address = in_msg_body~load_msg_addr();
   cell custom_payload = in_msg_body~load_dict();
   int forward_ton_amount = in_msg_body~load_coins();
+  throw_unless(708, slice_bits(in_msg_body) >= 1); ;;https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
   slice either_forward_payload = in_msg_body;
   
   var msg = begin_cell()

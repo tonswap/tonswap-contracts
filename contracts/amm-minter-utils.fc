@@ -40,7 +40,7 @@ int squareRoot(int number) {
     .store_slice(to)
     .store_slice(to)
     .store_grams(0)
-    .store_uint(0, 1)
+    .store_uint(0, 1) ;; https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
     .end_cell();
 
   var msg = begin_cell()

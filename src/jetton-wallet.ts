@@ -1,11 +1,13 @@
 // @ts-ignore
 import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano } from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano, beginCell } from "ton";
 import BN from "bn.js";
 import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress, writeString } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
 const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
+
+const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
@@ -88,6 +90,8 @@ export class JettonWallet {
             overloadValue,
             tonLiquidity
         );
+
+
         const addLiquidityGas = "0.15";
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
@@ -150,14 +154,13 @@ export class JettonWallet {
 //   ds~load_msg_addr(), ;; admin_address
 //   ds~load_ref(), ;; content
 //   ds~load_ref()  ;; jetton_wallet_code
-async function createStateInit(totalSupply: BN, admin: Address, content: string, tokenCode: Cell) {
-    const contentCell = new Cell();
-    writeString(contentCell, content);
+async function createStateInit(totalSupply: BN, admin: Address, contentUri: string, tokenCode: Cell) {
+    let content = beginCell().storeInt(OFFCHAIN_CONTENT_PREFIX, 8).storeBuffer(Buffer.from(contentUri, "ascii")).endCell();
 
     let dataCell = new Cell();
     dataCell.bits.writeCoins(totalSupply);
     dataCell.bits.writeAddress(admin);
-    dataCell.refs.push(contentCell);
+    dataCell.refs.push(content);
     dataCell.refs.push(tokenCode);
     return dataCell;
 }
