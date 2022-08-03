@@ -14,7 +14,7 @@ const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 const MAX_SLIPAGE = 99; ;; TODO
 
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress ton_reserves:Coins 
-;; token_reserves:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
+;; token_reserves:Coins admin:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
 
 (int, slice, int, int, slice, cell, cell) load_data() inline {
   slice ds = get_data().begin_parse();
