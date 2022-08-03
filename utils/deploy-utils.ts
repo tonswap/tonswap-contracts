@@ -58,13 +58,13 @@ export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, 
     const balance = await client.getBalance(ammMinter.address);
     console.log(`-----==== AmmMinter ====-----  `);
     console.log(`[${ammMinter.address.toFriendly()}]
-💎 balance      : ${fromNano(balance)}
+💎 balance      : ${fromNano(balance)} ${fromNano(balance.sub(hexToBn(data.tonReserves)))}
 💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
 💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
 💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
 📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
 `);
-    await printDeployerBalances(client, deployer, deployerUSDCAddress);
+    // await printDeployerBalances(client, deployer, deployerUSDCAddress);
     console.log(`-----==== ***** ====-----
 `);
 }
