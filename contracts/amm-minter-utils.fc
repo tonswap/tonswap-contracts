@@ -46,7 +46,7 @@ int squareRoot(int number) {
 ;;           forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
 ;;           = InternalMsgBody;
 
-() transfer_token(int query_id, slice jetton_wallet_address, slice to, int jetton_amount, int ton_value) impure {
+() transfer_token(int query_id, slice to, int jetton_amount, int ton_value) impure {
 
   var msg_body = begin_cell()
     .store_uint(OP_TRANSFER, 32)
@@ -60,7 +60,7 @@ int squareRoot(int number) {
 
   var msg = begin_cell()
     .store_uint(0x18, 6)
-    .store_slice(jetton_wallet_address)
+    .store_slice(store::token_wallet_address)
     .store_grams(ton_value)
     .store_uint(4, 1 + 4 + 4 + 64 + 32)
     .store_uint(0, 1) ;; state-init null
@@ -78,20 +78,17 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   return numerator / denominator;
 }
 
-(int, int) swapTokens(
+() swapTokens(
   int min_amount_out,
   int in_amount,
   int is_ton_src,
   slice sender,
-  int ton_reserves,
-  int token_reserves,
-  slice token_wallet_address,
   int query_id,
   int msg_value,
   int fee) impure {
 
-  int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
-  int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;
+  int src_resvers = is_ton_src == true ? store::ton_reserves : store::token_reserves;
+  int trgt_resvers = is_ton_src == true ? store::token_reserves : store::ton_reserves;
   int amount_out = get_amount_out(in_amount, src_resvers, trgt_resvers);
 
   ;; Slippage is to low or insufficient amount, sending back the funds to sender minus gas
@@ -99,62 +96,54 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     if is_ton_src == true {
       send_grams(sender, in_amount);
     } else {
-      transfer_token(query_id, token_wallet_address, sender, in_amount, msg_value);
+      transfer_token(query_id, sender, in_amount, msg_value);
     }
-    return (ton_reserves, token_reserves);
-}
+    return ();
+  }
 
   ;; swap ton->token
   if (is_ton_src == true) {    
-    ton_reserves = src_resvers + in_amount;
-    token_reserves = trgt_resvers - amount_out;
-    raw_reserve( ton_reserves + AMM_MIN_TON_STORAGE, 2);
-    transfer_token(query_id, token_wallet_address, sender, amount_out, (msg_value - (in_amount + fee) ));
+    store::ton_reserves += in_amount;
+    store::token_reserves -= amount_out;
+    transfer_token(query_id, sender, amount_out, (msg_value - (in_amount + fee) ));
   } else {
-    ton_reserves = trgt_resvers - amount_out;
-    token_reserves = src_resvers + in_amount;
+    store::ton_reserves -= amount_out;
+    store::token_reserves += src_resvers + in_amount;
     send_grams(sender, amount_out);
   }
 
-  return (ton_reserves, token_reserves);
+  return ();
 }
 
 () revert_add_liquidity(int ton_liquidity,
   int token_liquidity,
-  slice token_wallet_address,
   slice jetton_sender,
   int query_id,
   int msg_value) impure {
+
   send_grams(jetton_sender, ton_liquidity);
-  transfer_token(query_id, token_wallet_address, jetton_sender, token_liquidity, msg_value);
+  transfer_token(query_id, jetton_sender, token_liquidity, msg_value);
 }
 
-(int, int, int, int) calculate_new_lp(
-  int ton_amount,
-  int token_amount,
-  int ton_reserves,
-  int token_reserves,
-  int total_lp_supply) impure {
+(int) calculate_new_lp(int ton_amount,int token_amount) impure {
 
   int new_liquidity = 0;
   int MINIMUM_LIQUIDITY = 1000;
-
-  ;; TODO fix handle liquidtiy supply on its own param
-  if (token_reserves == 0) {
+  if (store::token_reserves == 0) {
     ;; calc the user share  Sushi (Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);)
     new_liquidity = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
   } else {
     ;; liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
-    int ton_share = (ton_amount * total_lp_supply) / ton_reserves;
-    int token_share = (token_amount * total_lp_supply) / token_reserves;
+    int ton_share = (ton_amount * store::total_supply) / store::ton_reserves;
+    int token_share = (token_amount * store::total_supply) / store::token_reserves;
     new_liquidity = min(ton_share, token_share);
   }
 
-  token_reserves = token_amount + token_reserves;
-  ton_reserves = ton_amount + ton_reserves;
-  total_lp_supply = new_liquidity + total_lp_supply;
+  store::token_reserves = token_amount;
+  store::ton_reserves += ton_amount;
+  store::total_supply += new_liquidity ;
 
-  return (new_liquidity, total_lp_supply, ton_reserves, token_reserves);
+  return new_liquidity;
 }
 
 ;; uniswap v2

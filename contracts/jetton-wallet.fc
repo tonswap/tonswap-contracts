@@ -11,7 +11,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   storage#_ balance:Coins owner_address:MsgAddressInt jetton_master_address:MsgAddressInt jetton_wallet_code:^Cell = Storage;
 -}
 
-(int, slice, slice, cell) load_data() inline {
+(int, slice, slice, cell) load_data() impure {
   slice ds = get_data().begin_parse();
   return (ds~load_coins(), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
 }

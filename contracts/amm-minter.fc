@@ -3,56 +3,23 @@
 #include "op-codes-amm.fc";
 #include "params.fc";
 #include "jetton-utils.fc"; ;; https://github.com/ton-blockchain/token-contract/blob/main/ft/jetton-utils.fc
+#include "store.fc";
 #include "amm-minter-utils.fc";
-
-
 
 const MIN_JETTON_STORAGE = 10000000;     ;; 0.01 TON
 const JETTON_GAS_COMPUTATION = 10000000; ;; 0.01 TON
 const ADD_LIQUIDTY_DUST = 100000000;     ;; 0.1 
-const zerro_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
+const zero_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 const MAX_SLIPAGE = 99; ;; TODO
 
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress ton_reserves:Coins 
 ;; token_reserves:Coins admin:MsgAddress content:^Cell jetton_wallet_code:^Cell = Storage;
 
-(int, slice, int, int, slice, cell, cell) load_data() inline {
-  slice ds = get_data().begin_parse();
+
+
+() mint_tokens(slice to_address, int query_id, int amount, int ton_leftovers) impure {
   
-  return (
-      ds~load_coins(),      ;; total_supply
-      ds~load_msg_addr(),   ;; token_wallet_address
-      ds~load_coins(),      ;; ton_reserves
-      ds~load_coins(),      ;; token_reserves
-      ds~load_msg_addr(),      ;; admin
-      ds~load_ref(),        ;; content (uri to json)
-      ds~load_ref()         ;; jetton_wallet_code
-  );
-}
-
-() save_data(int total_supply,
-             slice token_wallet_address,
-             int ton_reserves,
-             int token_reserves,
-             slice admin,
-             cell content,
-             cell jetton_wallet_code) impure inline {
-
-  set_data(begin_cell()
-               .store_coins(total_supply)
-               .store_slice(token_wallet_address)
-               .store_coins(ton_reserves)
-               .store_coins(token_reserves)
-               .store_slice(admin)
-               .store_ref(content)
-               .store_ref(jetton_wallet_code)
-               .end_cell());
-}
-
-
-() mint_tokens(slice to_address, int query_id, cell jetton_wallet_code, int amount, int ton_leftovers) impure {
-  
-      ;; end wallet is expecting the amount and owner,
+    ;; end wallet is expecting the amount and owner,
     cell mint_msg = begin_cell()
     .store_uint(OP_INTERNAL_TRANSFER, 32)
     .store_uint(query_id, 64)
@@ -66,7 +33,7 @@ const MAX_SLIPAGE = 99; ;; TODO
   cell state_init = calculate_jetton_wallet_state_init(
     to_address, 
     my_address(), 
-    jetton_wallet_code
+    store::jetton_wallet_code
   );
 
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
@@ -86,24 +53,16 @@ const MAX_SLIPAGE = 99; ;; TODO
                  int jetton_amount,
                  slice jetton_sender,
                  int msg_value,
-                 slice sender_address,
+                 slice sender,
                  int fwd_fee,
                  int query_id) impure {
 
-  (int total_supply,
-    slice token_wallet_address,
-    int ton_reserves,
-    int token_reserves,
-    slice admin,
-    cell content,
-    cell jetton_wallet_code) = load_data();
-
   int slippage = in_msg_body~load_uint(32);
   int ton_liquidity = in_msg_body~load_grams();
-  if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {
+  
+  if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {  
     revert_add_liquidity(ton_liquidity,
                         jetton_amount,
-                        token_wallet_address,
                         jetton_sender,
                         query_id, msg_value);
     return ();
@@ -116,20 +75,16 @@ const MAX_SLIPAGE = 99; ;; TODO
   if ( ton_liquidity > msg_value - gas_cost ) | ton_liquidity < ADD_LIQUIDTY_DUST  {
     revert_add_liquidity(ton_liquidity,
                   jetton_amount,
-                  token_wallet_address,
                   jetton_sender,
                   query_id,
                   msg_value);
     return ();
   }
-
-  
-
   int should_revert = 0;
 
-  if ton_reserves > 0 {
-    int optimal_ton = quote(jetton_amount, token_reserves, ton_reserves);
-    int optimal_jetton = quote(ton_liquidity, ton_reserves, token_reserves);
+  if store::ton_reserves > 0 {
+    int optimal_ton = quote(jetton_amount, store::token_reserves, store::ton_reserves);
+    int optimal_jetton = quote(ton_liquidity, store::ton_reserves, store::token_reserves);
 
     int ton_liquidity_min = muldiv(ton_liquidity, ( 100 - slippage ), 100);
     int jeton_liquidity_min = muldiv(jetton_amount, ( 100 - slippage ), 100);
@@ -137,7 +92,6 @@ const MAX_SLIPAGE = 99; ;; TODO
     if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
         revert_add_liquidity(ton_liquidity,
                   jetton_amount,
-                  token_wallet_address,
                   jetton_sender,
                   query_id,
                   msg_value);
@@ -148,12 +102,12 @@ const MAX_SLIPAGE = 99; ;; TODO
 
         ;; return extra's
         if extra_jeton > ADD_LIQUIDTY_DUST {
-            transfer_token(query_id, token_wallet_address, jetton_sender, extra_jeton, fwd_fee * 2 );  ;; TODO send 0.1TON use fwd 
+            transfer_token(query_id, jetton_sender, extra_jeton, fwd_fee * 2 );  ;; TODO send 0.1TON use fwd 
             ton_liquidity = optimal_ton;
         }
         elseif extra_ton > ADD_LIQUIDTY_DUST {
             send_grams(jetton_sender ,extra_ton);
-   ;;         ton_liquidity = optimal_ton;
+            ;; token_liquidity = optimal_token;
         }
     }
   }
@@ -162,24 +116,39 @@ const MAX_SLIPAGE = 99; ;; TODO
     return ();
   }
 
-  (int minted_lp, total_supply, ton_reserves, token_reserves)
-    = calculate_new_lp(ton_liquidity, jetton_amount, ton_reserves, token_reserves, total_supply);
-  if equal_slices(token_wallet_address, zerro_address) {
-    token_wallet_address = sender_address;
+  int minted_lp = calculate_new_lp(ton_liquidity, jetton_amount);
+  if equal_slices(store::token_wallet_address, zero_address) {
+    store::token_wallet_address = sender;
   }
-
-  mint_tokens(jetton_sender, query_id, jetton_wallet_code, minted_lp, ( msg_value - ton_liquidity ));
-  save_data(total_supply,
-    token_wallet_address,
-    ton_reserves,
-    token_reserves,
-    admin,
-    content,
-    jetton_wallet_code);
+  ;; TODO add fee here
+  mint_tokens(jetton_sender, query_id,  minted_lp, ( msg_value - ton_liquidity ));
+  save_data();
   
   return ();
 }
 
+() remove_liquidity(int jetton_amount, slice from_address, int query_id, slice sender, int msg_value) impure inline {
+  int x = 1;
+  int ton_to_remove = muldiv(jetton_amount, store::ton_reserves, store::total_supply);
+  int token_to_remove = muldiv(jetton_amount, store::token_reserves, store::total_supply);
+  
+  throw_unless(74,
+    equal_slices(calculate_user_jetton_wallet_address(from_address,my_address(), store::jetton_wallet_code) 
+    , sender)
+  );
+  
+  send_grams(from_address, ton_to_remove);
+  
+  transfer_token(query_id,
+          from_address,
+          token_to_remove,
+          msg_value);
+
+  store::ton_reserves -= ton_to_remove;
+  store::token_reserves -= token_to_remove;
+  save_data();
+  return ();
+}
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) { ;; ignore empty messages
@@ -191,9 +160,9 @@ const MAX_SLIPAGE = 99; ;; TODO
     return ();
   }
   
-  slice sender_address = cs~load_msg_addr();
+  slice sender = cs~load_msg_addr();
 
-  ;; log_balance(sender_address, my_balance);
+  ;; log_balance(sender, my_balance);
   cs~load_msg_addr(); ;; skip dst
   cs~load_coins(); ;; skip value
   cs~skip_bits(1); ;; skip extracurrency collection
@@ -203,76 +172,39 @@ const MAX_SLIPAGE = 99; ;; TODO
   int op = in_msg_body~load_uint(32);
   int query_id = in_msg_body~load_uint(64);
 
-  (int total_supply,
-  slice token_wallet_address,
-  int ton_reserves,
-  int token_reserves,
-  slice admin,
-  cell content,
-  cell jetton_wallet_code) = load_data();
-  
-  ;; msg_value = maintain_contract_gas(msg_value, my_balance, ton_reserves);
+  load_data();
   
 
   if (op == OP_BURN_NOTIFICAITON) {
-      int jetton_amount = in_msg_body ~load_coins();
-      slice from_address = in_msg_body ~load_msg_addr();
-      int ton_to_remove = muldiv(jetton_amount, ton_reserves, total_supply);
-      int token_to_remove = muldiv(jetton_amount, token_reserves, total_supply);
-
-      throw_unless(74,
-        equal_slices(calculate_user_jetton_wallet_address(from_address,my_address(),jetton_wallet_code) 
-        ,sender_address)
-      );
-
-      send_grams(from_address, ton_to_remove);
-      transfer_token(query_id,
-              token_wallet_address,
-              from_address,
-              token_to_remove,
-              msg_value);
-
-      save_data(total_supply - jetton_amount,
-                token_wallet_address,
-                ton_reserves - ton_to_remove,
-                token_reserves - token_to_remove,
-                admin,
-                content,
-                jetton_wallet_code);
-      
-      return ();
+    ~dump op;  
+    int jetton_amount = in_msg_body ~load_coins();
+    slice from_address = in_msg_body ~load_msg_addr();
+    remove_liquidity(jetton_amount, from_address, query_id, sender, msg_value);
+    return ();  
   }
 
   if (op == OP_SWAP_TON ) {
       
     int ton_to_swap = in_msg_body~load_coins();
     int min_amount_out = in_msg_body~load_coins();
-    throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
-    throw_if(601, 0 == token_reserves); ;; insufficent liquidity
-    throw_if(602, equal_slices(token_wallet_address, zerro_address) ); ;; pool is not intialized 
+    throw_if(600, min_amount_out > store::token_reserves); ;;insufficent liquidity
+    throw_if(601, 0 == store::token_reserves); ;; insufficent liquidity
+    throw_if(602, equal_slices(store::token_wallet_address, zero_address) ); ;; pool is not intialized 
     
     int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
-    (ton_reserves, token_reserves) = swapTokens(min_amount_out,
-                                        ton_to_swap,
-                                        true,
-                                        sender_address,
-                                        ton_reserves,
-                                        token_reserves,
-                                        token_wallet_address,
-                                        query_id,
-                                        msg_value, 
-                                        fee);
-    save_data(total_supply,
-          token_wallet_address,
-          ton_reserves,
-          token_reserves,
-          admin,
-          content,
-          jetton_wallet_code);
+    swapTokens(min_amount_out,
+              ton_to_swap,
+              true,
+              sender,
+              query_id,
+              msg_value, 
+              fee);
+    save_data();
     return ();
   }
 
   if (op == OP_TRANSFER_NOTIFICATION ) {
+    
     int jetton_amount = in_msg_body~load_coins();
     slice jetton_sender = in_msg_body~load_msg_addr();
     int noPayload = in_msg_body~load_uint(1); 
@@ -281,10 +213,9 @@ const MAX_SLIPAGE = 99; ;; TODO
     }
 
     ;; accept add-liquidity and swap actions only from token_wallet_address
-    ;;  if token_wallet_address != null && token_wallet_address != sender_address -> throw
-    if (equal_slices(token_wallet_address, zerro_address) == false)
-      &(equal_slices(token_wallet_address, sender_address) == false) {
-        throw_if(76, true);
+    if (equal_slices(store::token_wallet_address, zero_address) == false)
+      &(equal_slices(store::token_wallet_address, sender) == false) {
+        throw(76);
     }
     
     int sub_op = in_msg_body~load_uint(32);
@@ -294,7 +225,7 @@ const MAX_SLIPAGE = 99; ;; TODO
             jetton_amount,
             jetton_sender,
             msg_value,
-            sender_address,
+            sender,
             fwd_fee,
             query_id);
       return ();
@@ -302,27 +233,21 @@ const MAX_SLIPAGE = 99; ;; TODO
 
     if (sub_op == OP_SWAP_TOKEN ) {  ;; swap TRC20 -> TON
       ;; bonuce message will be handled properly by the jetton sender
-      throw_if(75, equal_slices(token_wallet_address, zerro_address)); 
+      throw_if(75, equal_slices(store::token_wallet_address, zero_address)); 
+
       int min_amount_out = in_msg_body~load_grams();
       int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
-      (ton_reserves,
-        token_reserves) = swapTokens(min_amount_out, jetton_amount, false,
-                          jetton_sender, ton_reserves, token_reserves,
-                          token_wallet_address, query_id, msg_value, fee);
       
-      save_data(total_supply,
-          token_wallet_address,
-          ton_reserves,
-          token_reserves,
-          admin,
-          content,
-          jetton_wallet_code);
+      swapTokens(min_amount_out, jetton_amount, false,
+                 jetton_sender, query_id, msg_value, fee);
+
+      save_data();
       return ();
     }
     return ();
   }
 
-  if (op == OP_CODE_UPGRADE & equal_slices(sender_address, admin) ) {
+  if (op == OP_CODE_UPGRADE & equal_slices(sender, store::admin) ) {
     cell code = in_msg_body~load_ref();
     set_code(code);
     return ();
@@ -333,25 +258,13 @@ const MAX_SLIPAGE = 99; ;; TODO
 }
 
 
-
 (int, int, slice, int, int, slice, cell, cell) get_jetton_data() method_id {
-  (int total_supply,
-  slice token_wallet_address,
-  int ton_reserves,
-  int token_reserves,
-  slice admin,
-  cell content,
-  cell jetton_wallet_code) = load_data();
-  return (total_supply, -1, token_wallet_address, ton_reserves, token_reserves, admin, content, jetton_wallet_code);
+  load_data();
+
+  return (store::total_supply, -1, store::token_wallet_address, store::ton_reserves, store::token_reserves, store::admin, store::content, store::jetton_wallet_code);
 }
 
 slice get_wallet_address(slice owner_address) method_id {
-  (int total_supply,
-  slice token_wallet_address,
-  int ton_reserves,
-  int token_reserves,
-  slice admin,
-  cell content,
-  cell jetton_wallet_code) = load_data();
-  return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code);
+  load_data();
+  return calculate_user_jetton_wallet_address(owner_address, my_address(), store::jetton_wallet_code);
 }

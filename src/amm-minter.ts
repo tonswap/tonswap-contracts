@@ -146,15 +146,16 @@ export class AmmMinterTVM extends AmmMinterBase {
             throw "contract is not initialized";
         }
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
-
+        
         const totalSupply = res.result[0] as BN;
         const mintable = res.result[1] as BN;
+        
         //@ts-ignore
         const tokenWalletAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         //@ts-ignore
-        const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
+      //  const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
         const content = res.result[2] as Cell;
 
         return {
@@ -171,7 +172,6 @@ export class AmmMinterTVM extends AmmMinterBase {
         if (!this.contract) {
             throw "contract is not initialized";
         }
-        console.log(``);
 
         let nMessage = new InternalMessage({
             to: message.to,

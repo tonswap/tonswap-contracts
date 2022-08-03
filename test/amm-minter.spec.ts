@@ -96,10 +96,10 @@ describe("Ton Swap Test Suite", () => {
         expect(removeLiquidityResponse.exit_code).toBe(0);
 
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
-
         expect(ammResponse.exit_code).toBe(0);
 
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgAction;
+
         const transferTokenMessage = actionToMessage(amm, ammResponse.actions[1], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         await aliceUSDC.sendInternalMessage(actionToMessage(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actions[0]));
@@ -114,7 +114,6 @@ describe("Ton Swap Test Suite", () => {
         const { balance: lpBalance } = await lpWallet.getData();
         expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
         const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
-        console.log("removeLiquidityResponse", removeLiquidityResponse);
 
         expect(removeLiquidityResponse.exit_code).toBe(710);
     });
@@ -175,7 +174,6 @@ describe("Ton Swap Test Suite", () => {
 
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
-        console.log(ammSwapTokenResponse);
         const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgAction;
 
         const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
@@ -193,8 +191,6 @@ describe("Ton Swap Test Suite", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
 
         const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut);
-        console.log(swapTonResp);
-
         const transferTokenMessage = actionToMessage(amm, swapTonResp.actions[0], toNano("0.1"), true);
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         expect(ammUsdcResponseAfterSwap.exit_code).toBe(0);
@@ -258,7 +254,6 @@ describe("Ton Swap Test Suite", () => {
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
         const tenPercent = JETTON_LIQUIDITY.mul(new BN(900)).div(new BN(1000));
-        console.log({ tenPercent });
 
         const jettonLiquidity2 = JETTON_LIQUIDITY.sub(tenPercent);
 
@@ -279,7 +274,6 @@ describe("Ton Swap Test Suite", () => {
 
         // @ts-ignore
         const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[1]?.message.body);
-        console.log({ jettonMessage, amount: jettonMessage.amount.toString(), jettonLiquidity2: jettonLiquidity2.toString() });
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });
@@ -334,7 +328,7 @@ describe("Ton Swap Test Suite", () => {
         );
     });
 
-    it.only("should upgrade", async () => {
+    it("should upgrade", async () => {
         const { masterAMM } = await initAMM({
             jettonLiquidity: JETTON_LIQUIDITY,
             tonLiquidity: TON_LIQUIDITY,
@@ -358,7 +352,7 @@ describe("Ton Swap Test Suite", () => {
         expect(data.result.toString()).toBe("36");
     });
 
-    it.only("should upgrade - should throw exception wrong admin", async () => {
+    it("should upgrade - should throw exception wrong admin", async () => {
         const { masterAMM } = await initAMM({
             jettonLiquidity: JETTON_LIQUIDITY,
             tonLiquidity: TON_LIQUIDITY,
@@ -520,7 +514,6 @@ async function addLiquidity(
 }
 
 function printAmmData(data: { tonReserves: BN; tokenReserves: BN; totalSupply: BN }) {
-    // console.log(`ammData
     //     tonReservers:${fromNano(data.tonReserves).toString()}
     //     tokenReserves:${fromNano(data.tokenReserves).toString()}
     //     totalSupply:${fromNano(data.totalSupply).toString()}
