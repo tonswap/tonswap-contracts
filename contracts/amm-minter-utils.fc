@@ -94,7 +94,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;
   int amount_out = get_amount_out(in_amount, src_resvers, trgt_resvers);
 
-  ;; slippage is to low or insfuiccent amount , sending back the funds to sender minus gas
+  ;; Slippage is to low or insufficient amount, sending back the funds to sender minus gas
   if ((amount_out < min_amount_out) | (amount_out > trgt_resvers)) {
     if is_ton_src == true {
       send_grams(sender, in_amount);
