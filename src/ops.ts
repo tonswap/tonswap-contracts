@@ -10,6 +10,7 @@ export enum OPS {
     SWAP_TOKEN = 24,
     SWAP_TON = 25,
     MINT = 21,
+    UPGRADE = 26,
 }
 
 export enum ERROR_CODES {

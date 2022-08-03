@@ -334,20 +334,16 @@ describe("Ton Swap Test Suite", () => {
         );
     });
 
-    it("should upgrade", async () => {
-        const lpSize = LP_DEFAULT_AMOUNT;
-        const jettonLiquidity = JETTON_LIQUIDITY;
-        const tonLiquidity = TON_LIQUIDITY;
-
-        const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({
+    it.only("should upgrade", async () => {
+        const { masterAMM } = await initAMM({
             jettonLiquidity: JETTON_LIQUIDITY,
             tonLiquidity: TON_LIQUIDITY,
-        }); //create
+        });
 
-        let { codeCell } = masterAMM.buildDataCell("xxxxx");
-        const upgradeMessage = beginCell().storeUint(26, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
+        const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
 
         let msg = new InternalMessage({
+            from: alice,
             to: amm,
             value: new BN(100),
             bounce: false,
@@ -356,10 +352,32 @@ describe("Ton Swap Test Suite", () => {
             }),
         });
         let res = await masterAMM.sendInternalMessage(msg);
-        console.log(res);
+        expect(res.exit_code).toBe(0);
 
-        let data = await masterAMM.getHowOld();
-        console.log(data);
+        let data = await masterAMM.getHowOld(); // new method after upgrade
+        expect(data.result.toString()).toBe("36");
+    });
+
+    it.only("should upgrade - should throw exception wrong admin", async () => {
+        const { masterAMM } = await initAMM({
+            jettonLiquidity: JETTON_LIQUIDITY,
+            tonLiquidity: TON_LIQUIDITY,
+        });
+
+        const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
+
+        let msg = new InternalMessage({
+            from: bob,
+            to: amm,
+            value: new BN(100),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(upgradeMessage),
+            }),
+        });
+        let res = await masterAMM.sendInternalMessage(msg);
+
+        expect(res.exit_code).toBe(0xffff);
     });
 });
 
@@ -411,7 +429,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
         jettonInternalTransferMessage
     );
 
-    const masterAMM = new AmmMinterTVM("https://ipfs.io/ipfs/dasadas");
+    const masterAMM = new AmmMinterTVM("https://ipfs.io/ipfs/dasadas", alice);
     await masterAMM.ready;
 
     const { tokenWalletAddress } = await masterAMM.getData();

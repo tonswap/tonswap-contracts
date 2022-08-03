@@ -39,7 +39,7 @@ enum NETWORK {
     MAINNET = "",
 }
 
-const TON_LIQUIDITY = 4;
+const TON_LIQUIDITY = 1;
 const TOKEN_TO_SWAP = 25;
 const TOKEN_LIQUIDITY = toNano(100);
 const TON_TO_SWAP = 2;
@@ -109,7 +109,7 @@ export async function deployAmmMinter(
     client: TonClient,
     walletContract: WalletContract,
     privateKey: Buffer,
-    ammDataUri = "https://api.jsonbin.io/b/628f1df905f31f77b3a7c5d0",
+    ammDataUri = "https://api.jsonbin.io/b/7628f1df905f31f77b3a7c5d0",
     workchain = 0
 ) {
     const ammMinterRPC = new AmmMinterRPC({ rpcClient: client });
@@ -334,11 +334,13 @@ export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, 
     const balance = await client.getBalance(ammMinter.address);
     console.log(`-----==== AmmMinter ====-----  `);
     console.log(`[${ammMinter.address.toFriendly()}]
-💎 balance      : ${fromNano(balance)}
+💎 balance      : ${fromNano(balance)} | ${balance.sub(hexToBn(data.tonReserves)).toString()}  
 💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
 💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
 💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
 📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
+
+
 `);
     await printDeployerBalances(client, deployer, deployerUSDCAddress);
     console.log(`-----==== ***** ====-----

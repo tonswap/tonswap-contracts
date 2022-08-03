@@ -27,7 +27,7 @@ class AmmMinterBase {
         return Cell.fromBoc(ammMinterCodeB64);
     }
 
-    buildDataCell(content: string) {
+    buildDataCell(content: string, admin: Address) {
         const contentCell = new Cell();
         writeString(contentCell, content);
 
@@ -36,6 +36,7 @@ class AmmMinterBase {
         dataCell.bits.writeAddress(zeroAddress()); // token_wallet_address starts as null
         dataCell.bits.writeCoins(0); // ton-reserves
         dataCell.bits.writeCoins(0); // token-reserves
+        dataCell.bits.writeAddress(admin);
         dataCell.refs.push(contentCell);
         dataCell.refs.push(AmmLpWallet.compileWallet()[0]);
         return {
@@ -115,17 +116,17 @@ export class AmmMinterTVM extends AmmMinterBase {
     ready?: Promise<SmartContract>;
     balance: BN;
 
-    constructor(contentUri: string, balance: 1000000000000) {
+    constructor(contentUri: string, admin: Address, balance: 1000000000000) {
         super();
-        this.init(contentUri);
+        this.init(contentUri, admin);
         this.balance = new BN(balance);
         this.contract?.setC7Config({
             balance,
         });
     }
 
-    async init(contentUri: string) {
-        const data = this.buildDataCell(contentUri);
+    async init(contentUri: string, admin: Address) {
+        const data = this.buildDataCell(contentUri, admin);
         const code = this.compileCodeToCell();
         this.ready = SmartContract.fromCell(code[0], data.initDataCell, {
             getMethodsMutate: true,
@@ -152,6 +153,8 @@ export class AmmMinterTVM extends AmmMinterBase {
         const tokenWalletAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
+        //@ts-ignore
+        const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
         const content = res.result[2] as Cell;
 
         return {

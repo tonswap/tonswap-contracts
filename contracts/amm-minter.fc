@@ -16,13 +16,15 @@ const MAX_SLIPAGE = 99; ;; TODO
 ;; storage#_ total_supply:Coins token_wallet_address:MsgAddress ton_reserves:Coins 
 ;; token_reserves:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
 
-(int, slice, int, int, cell, cell) load_data() inline {
+(int, slice, int, int, slice, cell, cell) load_data() inline {
   slice ds = get_data().begin_parse();
+  
   return (
       ds~load_coins(),      ;; total_supply
       ds~load_msg_addr(),   ;; token_wallet_address
       ds~load_coins(),      ;; ton_reserves
       ds~load_coins(),      ;; token_reserves
+      ds~load_msg_addr(),      ;; admin
       ds~load_ref(),        ;; content (uri to json)
       ds~load_ref()         ;; jetton_wallet_code
   );
@@ -32,13 +34,16 @@ const MAX_SLIPAGE = 99; ;; TODO
              slice token_wallet_address,
              int ton_reserves,
              int token_reserves,
+             slice admin,
              cell content,
              cell jetton_wallet_code) impure inline {
+
   set_data(begin_cell()
                .store_coins(total_supply)
                .store_slice(token_wallet_address)
                .store_coins(ton_reserves)
                .store_coins(token_reserves)
+               .store_slice(admin)
                .store_ref(content)
                .store_ref(jetton_wallet_code)
                .end_cell());
@@ -89,6 +94,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     slice token_wallet_address,
     int ton_reserves,
     int token_reserves,
+    slice admin,
     cell content,
     cell jetton_wallet_code) = load_data();
 
@@ -167,6 +173,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     token_wallet_address,
     ton_reserves,
     token_reserves,
+    admin,
     content,
     jetton_wallet_code);
   
@@ -200,6 +207,7 @@ const MAX_SLIPAGE = 99; ;; TODO
   slice token_wallet_address,
   int ton_reserves,
   int token_reserves,
+  slice admin,
   cell content,
   cell jetton_wallet_code) = load_data();
   
@@ -228,6 +236,7 @@ const MAX_SLIPAGE = 99; ;; TODO
                 token_wallet_address,
                 ton_reserves - ton_to_remove,
                 token_reserves - token_to_remove,
+                admin,
                 content,
                 jetton_wallet_code);
       
@@ -257,6 +266,7 @@ const MAX_SLIPAGE = 99; ;; TODO
           token_wallet_address,
           ton_reserves,
           token_reserves,
+          admin,
           content,
           jetton_wallet_code);
     return ();
@@ -304,6 +314,7 @@ const MAX_SLIPAGE = 99; ;; TODO
           token_wallet_address,
           ton_reserves,
           token_reserves,
+          admin,
           content,
           jetton_wallet_code);
       return ();
@@ -311,7 +322,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     return ();
   }
 
-  if (op == OP_CODE_UPGRADE ) {
+  if (op == OP_CODE_UPGRADE & equal_slices(sender_address, admin) ) {
     cell code = in_msg_body~load_ref();
     set_code(code);
     return ();
@@ -323,14 +334,15 @@ const MAX_SLIPAGE = 99; ;; TODO
 
 
 
-(int, int, slice, int, int, cell, cell) get_jetton_data() method_id {
+(int, int, slice, int, int, slice, cell, cell) get_jetton_data() method_id {
   (int total_supply,
   slice token_wallet_address,
   int ton_reserves,
   int token_reserves,
+  slice admin,
   cell content,
   cell jetton_wallet_code) = load_data();
-  return (total_supply, -1, token_wallet_address, ton_reserves, token_reserves, content, jetton_wallet_code);
+  return (total_supply, -1, token_wallet_address, ton_reserves, token_reserves, admin, content, jetton_wallet_code);
 }
 
 slice get_wallet_address(slice owner_address) method_id {
@@ -338,6 +350,7 @@ slice get_wallet_address(slice owner_address) method_id {
   slice token_wallet_address,
   int ton_reserves,
   int token_reserves,
+  slice admin,
   cell content,
   cell jetton_wallet_code) = load_data();
   return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code);

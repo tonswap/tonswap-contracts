@@ -91,13 +91,11 @@ export class JettonWallet {
             tonLiquidity
         );
 
-
-        const addLiquidityGas = "0.15";
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: from,
                 to: to,
-                value: forwardTonAmount.add(toNano(addLiquidityGas)),
+                value: forwardTonAmount.add(toNano("0.08")), // TODO
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(messageBody) }),
             })
