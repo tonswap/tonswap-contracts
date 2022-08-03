@@ -1,4 +1,5 @@
-const AMM_TON_STORAGE = 200000000;  ;;      0.2 TON
+const AMM_MIN_TON_STORAGE = 100000000;  ;; 0.1 TON
+const TON_TOKEN_SWAP_FEE =  20000000;   ;; 0.01;
 
 ;; =============  Using babylonian method for Math.sqrt
 int squareRoot(int number) {
@@ -28,6 +29,18 @@ int squareRoot(int number) {
   send_raw_message(msg, 64); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
 }
 
+
+() log_balance(slice address, int amount) impure {
+  cell msg = begin_cell()
+    .store_uint(0x18, 6)
+    .store_slice(address)
+    .store_grams(100000000) ;; 0.1
+    .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
+    .store_coins(amount)
+    .end_cell();
+  send_raw_message(msg, 1); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
+}
+
 ;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
 ;;           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
 ;;           forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
@@ -51,11 +64,11 @@ int squareRoot(int number) {
     .store_grams(ton_value)
     .store_uint(4, 1 + 4 + 4 + 64 + 32)
     .store_uint(0, 1) ;; state-init null
-    .store_uint(1, 1); ;; message body
+    .store_uint(1, 1); ;; message body as
 
   msg = msg.store_ref(msg_body);
 
-  send_raw_message(msg.end_cell(), 3); ;; revert on errors
+  send_raw_message(msg.end_cell(), 2 + 1); ;; revert on errors
 }
 
 int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
@@ -74,7 +87,8 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   int token_reserves,
   slice token_wallet_address,
   int query_id,
-  int msg_value) impure {
+  int msg_value,
+  int fee) impure {
 
   int src_resvers = is_ton_src == true ? ton_reserves : token_reserves;
   int trgt_resvers = is_ton_src == true ? token_reserves : ton_reserves;
@@ -88,12 +102,14 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
       transfer_token(query_id, token_wallet_address, sender, in_amount, msg_value);
     }
     return (ton_reserves, token_reserves);
-  }
+}
 
-  if (is_ton_src == true) {
+  ;; swap ton->token
+  if (is_ton_src == true) {    
     ton_reserves = src_resvers + in_amount;
     token_reserves = trgt_resvers - amount_out;
-    transfer_token(query_id, token_wallet_address, sender, amount_out, (msg_value - in_amount));
+    raw_reserve( ton_reserves + AMM_MIN_TON_STORAGE, 2);
+    transfer_token(query_id, token_wallet_address, sender, amount_out, (msg_value - (in_amount + fee) ));
   } else {
     ton_reserves = trgt_resvers - amount_out;
     token_reserves = src_resvers + in_amount;

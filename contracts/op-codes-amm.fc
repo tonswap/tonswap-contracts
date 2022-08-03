@@ -1,7 +1,7 @@
-;; AMM  TODO  OPPS should be more unique or future on chain indexing
+;; s TODO  OPPS should be more unique or future on chain indexing
 const OP_ADD_LIQUIDITY = 22;
 const OP_REMOVE_LIOUIDTY = 23;
 const OP_SWAP_TOKEN = 24;
 const OP_SWAP_TON = 25;
-
+const OP_CODE_UPGRADE = 26;
 
