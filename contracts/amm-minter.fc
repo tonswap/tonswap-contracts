@@ -321,7 +321,8 @@ const MAX_SLIPAGE = 99; ;; TODO
     }
     return ();
   }
-
+  
+  ;; this action is intended for code upgrades during the beta phase 
   if (op == OP_CODE_UPGRADE & equal_slices(sender_address, admin) ) {
     cell code = in_msg_body~load_ref();
     set_code(code);
