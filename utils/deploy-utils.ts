@@ -54,19 +54,22 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
 }
 
 export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, deployer: Address, deployerUSDCAddress: Address) {
-    const data = await ammMinter.getJettonData();
-    const balance = await client.getBalance(ammMinter.address);
-    console.log(`-----==== AmmMinter ====-----  `);
-    console.log(`[${ammMinter.address.toFriendly()}]
-💎 balance      : ${fromNano(balance)} ${fromNano(balance.sub(hexToBn(data.tonReserves)))}
-💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
-💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
-💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
-📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
-`);
-    // await printDeployerBalances(client, deployer, deployerUSDCAddress);
-    console.log(`-----==== ***** ====-----
-`);
+    try {
+
+        const data = await ammMinter.getJettonData();
+        const balance = await client.getBalance(ammMinter.address);
+        console.log(`-----==== AmmMinter ====-----  `);
+        console.log(`[${ammMinter.address.toFriendly()}]
+        💎 balance      : ${fromNano(balance)} ${fromNano(balance.sub(hexToBn(data.tonReserves)))}
+        💰 totalSupply  : ${hexToBn(data.totalSupply)} (${bnFmt(hexToBn(data.totalSupply))})
+        💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
+        💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
+        📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
+        `);
+        // await printDeployerBalances(client, deployer, deployerUSDCAddress);
+        console.log(`-----==== ***** ====-----
+        `);
+    } catch(e) {}
 }
 
 export function hexToBn(num: string) {
