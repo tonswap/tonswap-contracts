@@ -45,8 +45,9 @@ const client = new TonClient({
 enum GAS_FEES {
     ADD_LIQUIDITY = 0.2,
     REMOVE_LIQUIDITY = 0.25,
-    SWAP_FEE = 0.2,
-    SWAP_FORWARD_TON = 0.2,
+    SWAP_FEE = 0.04,
+    SWAP_TON_FEE = 0.08,
+    SWAP_FORWARD_TON = 0.04,
     MINT = 0.2,
 }
 
@@ -55,8 +56,8 @@ enum NETWORK {
     TESTNET = "test.",
     MAINNET = "",
 }
-
-const metadataURI = "https://api.jsonbin.io/b/qwererwe1";
+// this acts as a seed go generate minter on different addresses 
+const metadataURI = "https://api.jsonbin.io/b/qwererwe12";
 
 const TON_LIQUIDITY = 4;
 const TOKEN_LIQUIDITY = toNano(100);
@@ -308,7 +309,7 @@ async function swapTonToUsdc(ammMinter: AmmMinterRPC, deployWallet: WalletContra
         client,
         deployWallet,
         ammMinter.address,
-        tonSwapAmount.add(toNano(GAS_FEES.SWAP_FEE)),
+        tonSwapAmount.add(toNano(GAS_FEES.SWAP_TON_FEE)),
         privateKey,
         swapTonMessage
     );
@@ -360,10 +361,11 @@ async function codeUpgrade(ammMinter: AmmMinterRPC, deployWallet: WalletContract
     console.log(age);
 }
 
-function readValue() {
-    let cell = beginCell().storeBuffer(Buffer.from("4FD429826", "hex")).endCell();
-    let coins = cell.beginParse().readCoins();
-    console.log(`coins ${coins}`);
+async function printAmmStorage(ammMinter: Address) {
+    let state = await client.getContractState(ammMinter);
+    console.log("-------====== AmmMinter Storage ========----------");
+    console.log(Cell.fromBoc(state.data as Buffer).toString());
+    console.log("-------====== **************** ========----------");
 }
 
 async function main() {
@@ -391,15 +393,9 @@ async function main() {
 
     // // ======== add-liquidity
 
-    await addLiquidity(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
-    await sleep(BLOCK_TIME * 2);
+   await addLiquidity(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
+   await sleep(BLOCK_TIME * 2);
 
-    await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(4));
-    await sleep(BLOCK_TIME);
-    await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
-
-    await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
-    await sleep(BLOCK_TIME);
 
     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
 
@@ -410,10 +406,13 @@ async function main() {
         await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
         await sleep(BLOCK_TIME * 2);
         await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
+     //   await printAmmStorage(ammMinter.address);
+
         //  ======== Swap Usdc -> TON
         await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, new BN(4));
         await sleep(BLOCK_TIME * 2);
         await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
+    //        await printAmmStorage(ammMinter.address);
     }
 
     await sleep(BLOCK_TIME);
@@ -425,7 +424,7 @@ async function main() {
     await removeLiquidity(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, 64);
     await sleep(BLOCK_TIME);
 
-    await codeUpgrade(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
+    //await codeUpgrade(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey);
 
     const currentBalance = await client.getBalance(deployWallet.address);
     console.log(`Deployer spent about ${fromNano(currentBalance.sub(walletBalance))} 💎`);
@@ -436,7 +435,11 @@ async function main() {
 
 (async () => {
     await main();
-    // await printBalances(client, Address.parse("EQCAbOdZOdk0C2GlwSwLLKmYe2NTXJCxcWndi1rYpMhs41rO"));
+    
+})();
+
+
+// await printBalances(client, Address.parse("EQCAbOdZOdk0C2GlwSwLLKmYe2NTXJCxcWndi1rYpMhs41rO"));
 
     // await printDeployer(
     //     client,
@@ -444,7 +447,7 @@ async function main() {
     //     Address.parse("kQD05JqOhN8IY1FU_RspKhx4o9jn5aLlqJouYMZgpIi6Zu9h")
     // );
     //await testJettonAddressCalc();
-})();
+    
 
 // async function testJettonAddressCalc() {
 //     const ammUSDCWallet = (await JettonMinter.GetWalletAddress(

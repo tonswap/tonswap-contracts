@@ -250,8 +250,8 @@ const MAX_SLIPAGE = 99; ;; TODO
     throw_if(600, min_amount_out > token_reserves); ;;insufficent liquidity
     throw_if(601, 0 == token_reserves); ;; insufficent liquidity
     throw_if(602, equal_slices(token_wallet_address, zerro_address) ); ;; pool is not intialized 
-    
-    int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
+    throw_if(603, ton_to_swap > msg_value ); ;; pool is not intialized 
+
     (ton_reserves, token_reserves) = swapTokens(min_amount_out,
                                         ton_to_swap,
                                         true,
@@ -261,7 +261,7 @@ const MAX_SLIPAGE = 99; ;; TODO
                                         token_wallet_address,
                                         query_id,
                                         msg_value, 
-                                        fee);
+                                        fwd_fee);
     save_data(total_supply,
           token_wallet_address,
           ton_reserves,
@@ -304,11 +304,10 @@ const MAX_SLIPAGE = 99; ;; TODO
       ;; bonuce message will be handled properly by the jetton sender
       throw_if(75, equal_slices(token_wallet_address, zerro_address)); 
       int min_amount_out = in_msg_body~load_grams();
-      int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
       (ton_reserves,
         token_reserves) = swapTokens(min_amount_out, jetton_amount, false,
                           jetton_sender, ton_reserves, token_reserves,
-                          token_wallet_address, query_id, msg_value, fee);
+                          token_wallet_address, query_id, msg_value, fwd_fee);
       
       save_data(total_supply,
           token_wallet_address,
