@@ -96,10 +96,10 @@ describe("Ton Swap Test Suite", () => {
         expect(removeLiquidityResponse.exit_code).toBe(0);
 
         const ammResponse = await masterAMM.sendInternalMessage(removeLiquidityNotification);
-
         expect(ammResponse.exit_code).toBe(0);
 
         let sendTonAfterRemoveLiquidity = ammResponse.actions[0] as SendMsgAction;
+
         const transferTokenMessage = actionToMessage(amm, ammResponse.actions[1], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         await aliceUSDC.sendInternalMessage(actionToMessage(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actions[0]));
@@ -108,16 +108,15 @@ describe("Ton Swap Test Suite", () => {
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
     });
 
-    it("removes liquidity - should bounce in case ", async () => {
-        const { lpWallet } = await initAMM({}); //create
+    // it("removes liquidity - should bounce in case ", async () => {
+    //     const { lpWallet } = await initAMM({}); //create
 
-        const { balance: lpBalance } = await lpWallet.getData();
-        expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
-        const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
-        console.log("removeLiquidityResponse", removeLiquidityResponse);
+    //     const { balance: lpBalance } = await lpWallet.getData();
+    //     expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
+    //     const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
 
-        expect(removeLiquidityResponse.exit_code).toBe(710);
-    });
+    //     expect(removeLiquidityResponse.exit_code).toBe(710);
+    // });
 
     it("swap usdc to TON", async () => {
         const jettonToSwap = toNano(51);
@@ -175,7 +174,6 @@ describe("Ton Swap Test Suite", () => {
 
         const ammSwapTokenResponse = await masterAMM.sendInternalMessage(msgTransferUsdcToAmm);
         expect(ammSwapTokenResponse.exit_code).toBe(0); // expect to fail
-        console.log(ammSwapTokenResponse);
         const sendTonAfterSwapMessage = ammSwapTokenResponse.actions[0] as SendMsgAction;
 
         const { amount } = parseJettonTransfer(sendTonAfterSwapMessage.message.body);
@@ -193,8 +191,6 @@ describe("Ton Swap Test Suite", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, tonReserves, tokenReserves);
 
         const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut);
-        console.log(swapTonResp);
-
         const transferTokenMessage = actionToMessage(amm, swapTonResp.actions[0], toNano("0.1"), true);
         const ammUsdcResponseAfterSwap = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         expect(ammUsdcResponseAfterSwap.exit_code).toBe(0);
@@ -227,28 +223,30 @@ describe("Ton Swap Test Suite", () => {
         expect(sendTonBackMessage.message.info?.dest.toFriendly()).toBe(alice.toFriendly());
     });
 
-    it("swap TON to USDC not enough value should fail, expecting message to bounced", async () => {
-        const { masterAMM } = await initAMM({}); //create
-
-        let tonSide = toNano(1);
-        const ammData = await masterAMM.getData();
-        const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
-        // exceeded the minAmount out by one
-        const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)), tonSide.div(new BN(2)));
-        
-        
-        expect(swapTonResp.exit_code).toBe(603);
-    });
-
     it("add liquidity twice", async () => {
         const lpSize = LP_DEFAULT_AMOUNT;
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({}); //create
-        let alRes = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`);
+        const lpWalletData1 = await lpWallet.getData();
+        expect(lpWalletData1.balance.toString()).toBe(`${lpSize}`);
+        
+
+        console.log(await (await lpWallet.getData()).balance.toString());
+        
+
+        let ratio = new BN(10);
+        let alRes = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`, JETTON_LIQUIDITY.div(ratio), TON_LIQUIDITY.div(ratio) );
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
-        const lpWalletData = await lpWallet.getData();
+        const lpWalletData2 = await lpWallet.getData();
         // data should be rested to now() after balance change
-        expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
+        
+        const ammData = await masterAMM.getData()
+        console.log(await (await lpWallet.getData()).balance.toString());
+        
+        expect(lpWalletData2.balance.toString()).toBe(ammData.totalSupply.toString());
+        expect(lpWalletData2.balance.toString()).toBe(`${Math.floor(lpSize * 1.1)}`);
+
+
     });
 
     it("add liquidity twice and fail the second time, send back funds to sender", async () => {
@@ -271,7 +269,6 @@ describe("Ton Swap Test Suite", () => {
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
         const tenPercent = JETTON_LIQUIDITY.mul(new BN(900)).div(new BN(1000));
-        console.log({ tenPercent });
 
         const jettonLiquidity2 = JETTON_LIQUIDITY.sub(tenPercent);
 
@@ -292,7 +289,6 @@ describe("Ton Swap Test Suite", () => {
 
         // @ts-ignore
         const jettonMessage = parseJettonTransfer(addLiquidityMessage.actions[1]?.message.body);
-        console.log({ jettonMessage, amount: jettonMessage.amount.toString(), jettonLiquidity2: jettonLiquidity2.toString() });
 
         expect(jettonMessage.amount.toString()).toBe(jettonLiquidity2.toString());
     });
@@ -346,6 +342,19 @@ describe("Ton Swap Test Suite", () => {
             bob
         );
     });
+    
+    it("swap TON to USDC not enough value should fail, expecting message to bounced", async () => {
+        const { masterAMM } = await initAMM({}); //create
+
+        let tonSide = toNano(1);
+        const ammData = await masterAMM.getData();
+        const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
+        // exceeded the minAmount out by one
+        const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)), tonSide.div(new BN(2)));
+        
+        
+        expect(swapTonResp.exit_code).toBe(603);
+    });
 
     // it("should upgrade", async () => {
     //     const { masterAMM } = await initAMM({
@@ -367,31 +376,31 @@ describe("Ton Swap Test Suite", () => {
     //     let res = await masterAMM.sendInternalMessage(msg);
     //     expect(res.exit_code).toBe(0);
 
-    //     let data = await masterAMM.getHowOld(); // new method after upgrade
+    //     let data = await masterAMM.getHowOld(); // new method after upgrade       
     //     expect(data.result.toString()).toBe("36");
     // });
 
-    it("should upgrade - should throw exception wrong admin", async () => {
-        const { masterAMM } = await initAMM({
-            jettonLiquidity: JETTON_LIQUIDITY,
-            tonLiquidity: TON_LIQUIDITY,
-        });
+    // it("should upgrade - should throw exception wrong admin", async () => {
+    //     const { masterAMM } = await initAMM({
+    //         jettonLiquidity: JETTON_LIQUIDITY,
+    //         tonLiquidity: TON_LIQUIDITY,
+    //     });
 
-        const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
+    //     const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
 
-        let msg = new InternalMessage({
-            from: bob,
-            to: amm,
-            value: new BN(100),
-            bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(upgradeMessage),
-            }),
-        });
-        let res = await masterAMM.sendInternalMessage(msg);
+    //     let msg = new InternalMessage({
+    //         from: bob,
+    //         to: amm,
+    //         value: new BN(100),
+    //         bounce: false,
+    //         body: new CommonMessageInfo({
+    //             body: new CellMessage(upgradeMessage),
+    //         }),
+    //     });
+    //     let res = await masterAMM.sendInternalMessage(msg);
 
-        expect(res.exit_code).toBe(0xffff);
-    });
+    //     expect(res.exit_code).toBe(0xffff);
+    // });
 });
 
 async function createBaseContracts() {
@@ -533,7 +542,6 @@ async function addLiquidity(
 }
 
 function printAmmData(data: { tonReserves: BN; tokenReserves: BN; totalSupply: BN }) {
-    // console.log(`ammData
     //     tonReservers:${fromNano(data.tonReserves).toString()}
     //     tokenReserves:${fromNano(data.tokenReserves).toString()}
     //     totalSupply:${fromNano(data.totalSupply).toString()}

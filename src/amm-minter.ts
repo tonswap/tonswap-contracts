@@ -146,15 +146,16 @@ export class AmmMinterTVM extends AmmMinterBase {
             throw "contract is not initialized";
         }
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
-
+        
         const totalSupply = res.result[0] as BN;
         const mintable = res.result[1] as BN;
+        
         //@ts-ignore
         const tokenWalletAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         //@ts-ignore
-        const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
+      //  const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
         const content = res.result[2] as Cell;
 
         return {
@@ -171,7 +172,6 @@ export class AmmMinterTVM extends AmmMinterBase {
         if (!this.contract) {
             throw "contract is not initialized";
         }
-        console.log(``);
 
         let nMessage = new InternalMessage({
             to: message.to,
@@ -193,7 +193,6 @@ export class AmmMinterTVM extends AmmMinterBase {
     async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN, valueOverride?: BN) {
         const gasFee = new BN(200000000);
         let messageBody = this.swapTon(tonToSwap, minAmountOut);
-        console.log({tonToSwap :tonToSwap.toString(), valueOverride: valueOverride?.toString()});
         
         if(valueOverride) {
             tonToSwap = valueOverride.add(gasFee);
@@ -201,6 +200,7 @@ export class AmmMinterTVM extends AmmMinterBase {
         }
         return this.sendTvmMessage({ messageBody, from, value: tonToSwap.add(gasFee), to: myContractAddress, bounce: true });
     }
+
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
@@ -247,7 +247,6 @@ export class AmmMinterTVM extends AmmMinterBase {
             new InternalMessage({
                 from: opts.from,
                 to: myContractAddress,
-                //value: opts.value.add(this.balance),
                 value: opts.value,
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(opts.messageBody) }),
