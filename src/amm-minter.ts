@@ -176,7 +176,7 @@ export class AmmMinterTVM extends AmmMinterBase {
         let nMessage = new InternalMessage({
             to: message.to,
             from: message.from,
-            value: message.value.add(this.balance),
+            value: message.value, //ignore this.balance for now
             bounce: message.bounce,
             body: message.body,
         });
@@ -190,11 +190,18 @@ export class AmmMinterTVM extends AmmMinterBase {
         return parsedResponse;
     }
 
-    async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN) {
+    async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN, valueOverride?: BN) {
         const gasFee = new BN(200000000);
         let messageBody = this.swapTon(tonToSwap, minAmountOut);
+        console.log({tonToSwap :tonToSwap.toString(), valueOverride: valueOverride?.toString()});
+        
+        if(valueOverride) {
+            tonToSwap = valueOverride.add(gasFee);
+
+        }
         return this.sendTvmMessage({ messageBody, from, value: tonToSwap.add(gasFee), to: myContractAddress, bounce: true });
     }
+
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
@@ -241,7 +248,7 @@ export class AmmMinterTVM extends AmmMinterBase {
             new InternalMessage({
                 from: opts.from,
                 to: myContractAddress,
-                value: opts.value.add(this.balance),
+                value: opts.value,
                 bounce: false,
                 body: new CommonMessageInfo({ body: new CellMessage(opts.messageBody) }),
             })

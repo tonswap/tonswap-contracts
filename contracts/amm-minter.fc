@@ -176,7 +176,6 @@ const MAX_SLIPAGE = 99; ;; TODO
   
 
   if (op == OP_BURN_NOTIFICAITON) {
-    ~dump op;  
     int jetton_amount = in_msg_body ~load_coins();
     slice from_address = in_msg_body ~load_msg_addr();
     remove_liquidity(jetton_amount, from_address, query_id, sender, msg_value);
@@ -190,15 +189,15 @@ const MAX_SLIPAGE = 99; ;; TODO
     throw_if(600, min_amount_out > store::token_reserves); ;;insufficent liquidity
     throw_if(601, 0 == store::token_reserves); ;; insufficent liquidity
     throw_if(602, equal_slices(store::token_wallet_address, zero_address) ); ;; pool is not intialized 
-    
-    int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
+    throw_if(603, ton_to_swap > msg_value ); ;; insfucient ton in the message 
+
     swapTokens(min_amount_out,
               ton_to_swap,
               true,
               sender,
               query_id,
               msg_value, 
-              fee);
+              fwd_fee);
     save_data();
     return ();
   }
@@ -236,10 +235,8 @@ const MAX_SLIPAGE = 99; ;; TODO
       throw_if(75, equal_slices(store::token_wallet_address, zero_address)); 
 
       int min_amount_out = in_msg_body~load_grams();
-      int fee = fwd_fee * 2 + TON_TOKEN_SWAP_FEE;
-      
       swapTokens(min_amount_out, jetton_amount, false,
-                 jetton_sender, query_id, msg_value, fee);
+                 jetton_sender, query_id, msg_value, fwd_fee);  ;; TODO use fwd fee only
 
       save_data();
       return ();

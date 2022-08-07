@@ -45,8 +45,9 @@ const client = new TonClient({
 enum GAS_FEES {
     ADD_LIQUIDITY = 0.2,
     REMOVE_LIQUIDITY = 0.25,
-    SWAP_FEE = 0.1,
-    SWAP_FORWARD_TON = 0.1,
+    SWAP_FEE = 0.04,
+    SWAP_TON_FEE = 0.08,
+    SWAP_FORWARD_TON = 0.04,
     MINT = 0.2,
 }
 
@@ -308,7 +309,7 @@ async function swapTonToUsdc(ammMinter: AmmMinterRPC, deployWallet: WalletContra
         client,
         deployWallet,
         ammMinter.address,
-        tonSwapAmount.add(toNano(GAS_FEES.SWAP_FEE)),
+        tonSwapAmount.add(toNano(GAS_FEES.SWAP_TON_FEE)),
         privateKey,
         swapTonMessage
     );
@@ -360,19 +361,13 @@ async function codeUpgrade(ammMinter: AmmMinterRPC, deployWallet: WalletContract
     console.log(age);
 }
 
-function readValue() {
-    let cell = beginCell().storeBuffer(Buffer.from("4FD429826", "hex")).endCell();
-    let coins = cell.beginParse().readCoins();
-    console.log(`coins ${coins}`);
-}
 
 async function main() {
-    //readValue();
 
     if (fs.existsSync("./build/tmp.fif")) {
         fs.rmSync("./build/tmp.fif");
     }
-    // initialize deployer wallet
+    
     const walletKey = await initDeployKey();
     let { wallet: deployWallet, walletBalance } = await initWallet(client, walletKey.publicKey);
     saveAddress("Deployer", deployWallet.address);

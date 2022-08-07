@@ -327,6 +327,19 @@ describe("Ton Swap Test Suite", () => {
             bob
         );
     });
+    
+    it("swap TON to USDC not enough value should fail, expecting message to bounced", async () => {
+        const { masterAMM } = await initAMM({}); //create
+
+        let tonSide = toNano(1);
+        const ammData = await masterAMM.getData();
+        const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
+        // exceeded the minAmount out by one
+        const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)), tonSide.div(new BN(2)));
+        
+        
+        expect(swapTonResp.exit_code).toBe(603);
+    });
 
     it("should upgrade", async () => {
         const { masterAMM } = await initAMM({
