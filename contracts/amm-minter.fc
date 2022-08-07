@@ -128,11 +128,10 @@ const MAX_SLIPAGE = 99; ;; TODO
 }
 
 () remove_liquidity(int jetton_amount, slice from_address, int query_id, slice sender, int msg_value) impure inline {
-  int x = 1;
   int ton_to_remove = muldiv(jetton_amount, store::ton_reserves, store::total_supply);
   int token_to_remove = muldiv(jetton_amount, store::token_reserves, store::total_supply);
   
-  throw_unless(74,
+  throw_unless(ERROR::WRONG_JETTON_SENDER_ADDRESS,
     equal_slices(calculate_user_jetton_wallet_address(from_address,my_address(), store::jetton_wallet_code) 
     , sender)
   );
@@ -146,6 +145,7 @@ const MAX_SLIPAGE = 99; ;; TODO
 
   store::ton_reserves -= ton_to_remove;
   store::token_reserves -= token_to_remove;
+  store::total_supply -= jetton_amount;
   save_data();
   return ();
 }
@@ -173,7 +173,6 @@ const MAX_SLIPAGE = 99; ;; TODO
   int query_id = in_msg_body~load_uint(64);
 
   load_data();
-  
 
   if (op == OP_BURN_NOTIFICAITON) {
     int jetton_amount = in_msg_body ~load_coins();
@@ -186,10 +185,10 @@ const MAX_SLIPAGE = 99; ;; TODO
       
     int ton_to_swap = in_msg_body~load_coins();
     int min_amount_out = in_msg_body~load_coins();
-    throw_if(600, min_amount_out > store::token_reserves); ;;insufficent liquidity
-    throw_if(601, 0 == store::token_reserves); ;; insufficent liquidity
-    throw_if(602, equal_slices(store::token_wallet_address, zero_address) ); ;; pool is not intialized 
-    throw_if(603, ton_to_swap > msg_value ); ;; insfucient ton in the message 
+    throw_if(ERROR::INSFUCIENT_FUNDS, min_amount_out > store::token_reserves); 
+    throw_if(ERROR::ZERO_RESERVES, 0 == store::token_reserves); 
+    throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address) );
+    throw_if(ERROR::MSG_VALUE_INSUFFICIENT, ton_to_swap > msg_value ); ;; insfucient ton in the message 
 
     swapTokens(min_amount_out,
               ton_to_swap,
@@ -211,10 +210,12 @@ const MAX_SLIPAGE = 99; ;; TODO
       return ();
     }
 
+    ;; W-ADDRESS != ZERO    &&   W-ADDRESS != SENDER => THROW , WRONG SENDER
+
     ;; accept add-liquidity and swap actions only from token_wallet_address
     if (equal_slices(store::token_wallet_address, zero_address) == false)
       &(equal_slices(store::token_wallet_address, sender) == false) {
-        throw(76);
+        throw(ERROR::WRONG_JETTON_WALLET);
     }
     
     int sub_op = in_msg_body~load_uint(32);
@@ -229,10 +230,11 @@ const MAX_SLIPAGE = 99; ;; TODO
             query_id);
       return ();
     }
-
-    if (sub_op == OP_SWAP_TOKEN ) {  ;; swap TRC20 -> TON
+    ;; swap TRC20 -> TON
+    if (sub_op == OP_SWAP_TOKEN ) {  
+      
       ;; bonuce message will be handled properly by the jetton sender
-      throw_if(75, equal_slices(store::token_wallet_address, zero_address)); 
+      throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address)); 
 
       int min_amount_out = in_msg_body~load_grams();
       swapTokens(min_amount_out, jetton_amount, false,

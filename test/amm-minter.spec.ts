@@ -108,15 +108,15 @@ describe("Ton Swap Test Suite", () => {
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
     });
 
-    it("removes liquidity - should bounce in case ", async () => {
-        const { lpWallet } = await initAMM({}); //create
+    // it("removes liquidity - should bounce in case ", async () => {
+    //     const { lpWallet } = await initAMM({}); //create
 
-        const { balance: lpBalance } = await lpWallet.getData();
-        expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
-        const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
+    //     const { balance: lpBalance } = await lpWallet.getData();
+    //     expect(lpBalance.toString()).toBe(LP_DEFAULT_AMOUNT.toString());
+    //     const removeLiquidityResponse = await lpWallet.removeLiquidity(lpBalance, alice, alice, amm, false);
 
-        expect(removeLiquidityResponse.exit_code).toBe(710);
-    });
+    //     expect(removeLiquidityResponse.exit_code).toBe(710);
+    // });
 
     it("swap usdc to TON", async () => {
         const jettonToSwap = toNano(51);
@@ -226,12 +226,27 @@ describe("Ton Swap Test Suite", () => {
     it("add liquidity twice", async () => {
         const lpSize = LP_DEFAULT_AMOUNT;
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({}); //create
-        let alRes = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`);
+        const lpWalletData1 = await lpWallet.getData();
+        expect(lpWalletData1.balance.toString()).toBe(`${lpSize}`);
+        
+
+        console.log(await (await lpWallet.getData()).balance.toString());
+        
+
+        let ratio = new BN(10);
+        let alRes = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`, JETTON_LIQUIDITY.div(ratio), TON_LIQUIDITY.div(ratio) );
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
-        const lpWalletData = await lpWallet.getData();
+        const lpWalletData2 = await lpWallet.getData();
         // data should be rested to now() after balance change
-        expect(lpWalletData.balance.toString()).toBe(`${lpSize * 2}`);
+        
+        const ammData = await masterAMM.getData()
+        console.log(await (await lpWallet.getData()).balance.toString());
+        
+        expect(lpWalletData2.balance.toString()).toBe(ammData.totalSupply.toString());
+        expect(lpWalletData2.balance.toString()).toBe(`${Math.floor(lpSize * 1.1)}`);
+
+
     });
 
     it("add liquidity twice and fail the second time, send back funds to sender", async () => {
@@ -341,29 +356,29 @@ describe("Ton Swap Test Suite", () => {
         expect(swapTonResp.exit_code).toBe(603);
     });
 
-    it("should upgrade", async () => {
-        const { masterAMM } = await initAMM({
-            jettonLiquidity: JETTON_LIQUIDITY,
-            tonLiquidity: TON_LIQUIDITY,
-        });
+    // it("should upgrade", async () => {
+    //     const { masterAMM } = await initAMM({
+    //         jettonLiquidity: JETTON_LIQUIDITY,
+    //         tonLiquidity: TON_LIQUIDITY,
+    //     });
 
-        const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
+    //     const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
 
-        let msg = new InternalMessage({
-            from: alice,
-            to: amm,
-            value: new BN(100),
-            bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(upgradeMessage),
-            }),
-        });
-        let res = await masterAMM.sendInternalMessage(msg);
-        expect(res.exit_code).toBe(0);
+    //     let msg = new InternalMessage({
+    //         from: alice,
+    //         to: amm,
+    //         value: new BN(100),
+    //         bounce: false,
+    //         body: new CommonMessageInfo({
+    //             body: new CellMessage(upgradeMessage),
+    //         }),
+    //     });
+    //     let res = await masterAMM.sendInternalMessage(msg);
+    //     expect(res.exit_code).toBe(0);
 
-        let data = await masterAMM.getHowOld(); // new method after upgrade
-        expect(data.result.toString()).toBe("36");
-    });
+    //     let data = await masterAMM.getHowOld(); // new method after upgrade       
+    //     expect(data.result.toString()).toBe("36");
+    // });
 
     it("should upgrade - should throw exception wrong admin", async () => {
         const { masterAMM } = await initAMM({

@@ -29,7 +29,7 @@ int squareRoot(int number) {
   cell msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(address)
-    .store_grams(amount)
+    .store_coins(amount)
     .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
     .end_cell();
   send_raw_message(msg, 64); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
@@ -40,7 +40,7 @@ int squareRoot(int number) {
   cell msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(address)
-    .store_grams(100000000) ;; 0.1
+    .store_coins(100000000) ;; 0.1
     .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
     .store_coins(amount)
     .end_cell();
@@ -57,17 +57,17 @@ int squareRoot(int number) {
     var jetton_transfer_message = begin_cell()
     .store_uint(OP_TRANSFER, 32)
     .store_uint(query_id, 64)
-    .store_grams(jetton_amount)
+    .store_coins(jetton_amount)
     .store_slice(to)
     .store_slice(to)
-    .store_grams(0)
+    .store_coins(0)
     .store_uint(1, 2) ;; https://github.com/ton-blockchain/token-contract/blob/2c13d3ef61ca4288293ad65bf0cfeaed83879b93/ft/jetton-wallet.fc#L60
     .end_cell();
 
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(store::token_wallet_address)
-    .store_grams(ton_value) ;; gas
+    .store_coins(ton_value) ;; gas
     .store_uint(4, 1 + 4 + 4 + 64 + 32)
     .store_uint(0, 1) ;; state-init null
     .store_uint(1, 1); ;; message body as
@@ -82,6 +82,12 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
   int numerator = amountInWithFee * reserveOut;
   int denominator = reserveIn * 1000 + amountInWithFee;
   return numerator / denominator;
+}
+
+int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
+  int numerator = reserveIn * amountOut * 1000;
+  int denominator = (reserveOut - amountOut) * 997;
+  return  ( numerator / denominator) + 1;
 }
 
 () swapTokens(
@@ -114,7 +120,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     store::token_reserves -= amount_out;
     int transfer_token_gas = msg_value - ( in_amount + AMM_GAS_CONSUMPTION + fwd_fee * 2);
     int jetton_fee = jetton_transfer_fee(0, fwd_fee);
-    throw_unless(711, transfer_token_gas > jetton_fee);
+    throw_unless(ERROR::SWAP_TON_NO_GAS, transfer_token_gas > jetton_fee);
     transfer_token(query_id, sender, amount_out, transfer_token_gas);
   } else {
     store::ton_reserves -= amount_out;
@@ -151,14 +157,14 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
 
   store::token_reserves += token_amount;
   store::ton_reserves += ton_amount;
-  store::total_supply += new_liquidity ;
+  store::total_supply += new_liquidity;
 
   return new_liquidity;
 }
 
 ;; uniswap v2
 (int) quote(int amount_a, int reserve_a, int reserve_b) impure {
-  throw_unless(420, amount_a > 0);
-  throw_unless(421, (reserve_a > 0) & (reserve_b > 0));
+  throw_unless(ERROR::QUOTE_BAD_AMOUNT, amount_a > 0);
+  throw_unless(ERROR::QUOTE_BAD_RESERVES, (reserve_a > 0) & (reserve_b > 0));
   return muldiv(amount_a, reserve_b, reserve_a);
 }

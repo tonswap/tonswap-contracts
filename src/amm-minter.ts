@@ -193,7 +193,6 @@ export class AmmMinterTVM extends AmmMinterBase {
     async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN, valueOverride?: BN) {
         const gasFee = new BN(200000000);
         let messageBody = this.swapTon(tonToSwap, minAmountOut);
-        console.log({tonToSwap :tonToSwap.toString(), valueOverride: valueOverride?.toString()});
         
         if(valueOverride) {
             tonToSwap = valueOverride.add(gasFee);
