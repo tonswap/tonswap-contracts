@@ -149,7 +149,7 @@ int get_amount_out(int amountIn, int reserveIn, int reserveOut) method_id {
     new_liquidity = min(ton_share, token_share);
   }
 
-  store::token_reserves = token_amount;
+  store::token_reserves += token_amount;
   store::ton_reserves += ton_amount;
   store::total_supply += new_liquidity ;
 
