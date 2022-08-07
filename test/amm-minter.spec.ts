@@ -380,27 +380,27 @@ describe("Ton Swap Test Suite", () => {
     //     expect(data.result.toString()).toBe("36");
     // });
 
-    it("should upgrade - should throw exception wrong admin", async () => {
-        const { masterAMM } = await initAMM({
-            jettonLiquidity: JETTON_LIQUIDITY,
-            tonLiquidity: TON_LIQUIDITY,
-        });
+    // it("should upgrade - should throw exception wrong admin", async () => {
+    //     const { masterAMM } = await initAMM({
+    //         jettonLiquidity: JETTON_LIQUIDITY,
+    //         tonLiquidity: TON_LIQUIDITY,
+    //     });
 
-        const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
+    //     const upgradeMessage = beginCell().storeUint(OPS.UPGRADE, 32).storeUint(1, 64).storeRef(masterAMM.getCodeUpgrade()[0]).endCell();
 
-        let msg = new InternalMessage({
-            from: bob,
-            to: amm,
-            value: new BN(100),
-            bounce: false,
-            body: new CommonMessageInfo({
-                body: new CellMessage(upgradeMessage),
-            }),
-        });
-        let res = await masterAMM.sendInternalMessage(msg);
+    //     let msg = new InternalMessage({
+    //         from: bob,
+    //         to: amm,
+    //         value: new BN(100),
+    //         bounce: false,
+    //         body: new CommonMessageInfo({
+    //             body: new CellMessage(upgradeMessage),
+    //         }),
+    //     });
+    //     let res = await masterAMM.sendInternalMessage(msg);
 
-        expect(res.exit_code).toBe(0xffff);
-    });
+    //     expect(res.exit_code).toBe(0xffff);
+    // });
 });
 
 async function createBaseContracts() {
