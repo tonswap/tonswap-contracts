@@ -115,6 +115,7 @@ export class AmmMinterTVM extends AmmMinterBase {
     contract?: SmartContract;
     ready?: Promise<SmartContract>;
     balance: BN;
+    address?: Address;
 
     constructor(contentUri: string, admin: Address, balance: 1000000000000) {
         super();
@@ -128,16 +129,24 @@ export class AmmMinterTVM extends AmmMinterBase {
     async init(contentUri: string, admin: Address) {
         const data = this.buildDataCell(contentUri, admin);
         const code = this.compileCodeToCell();
+        const address = contractAddress({
+            workchain: 0,
+            initialCode:code[0],
+            initialData: data.initDataCell
+        })
+        this.address = address;
+
         this.ready = SmartContract.fromCell(code[0], data.initDataCell, {
             getMethodsMutate: true,
             debug: true,
         });
         const contract = await this.ready;
+        
 
         this.contract = contract;
         contract.setUnixTime(toUnixTime(Date.now()));
         contract.setC7Config({
-            balance: toNano("12").toNumber(),
+            myself: address
         });
     }
 

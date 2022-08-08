@@ -99,11 +99,11 @@ const GAS_CONSUMPTION = 10000000; ;; 0.01 TON
   balance += jetton_amount;
   slice from_address = in_msg_body~load_msg_addr();
   slice response_address = in_msg_body~load_msg_addr();
-  ;; throw_unless(707,
-  ;;     equal_slices(jetton_master_address, sender_address)
-  ;;     |
-  ;;     equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
-  ;; );
+  throw_unless(707,
+      equal_slices(jetton_master_address, sender_address)
+      |
+      equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
+  );
   int forward_ton_amount = in_msg_body~load_coins();
 
   int ton_balance_before_msg = my_ton_balance - msg_value;

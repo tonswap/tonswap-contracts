@@ -3,7 +3,7 @@ import { SendMsgAction } from "ton-contract-executor";
 import BN from "bn.js";
 import { JettonMinter } from "../src/jetton-minter";
 import { AmmMinterTVM } from "../src/amm-minter";
-import { parseJettonTransfer } from "../src/utils";
+import { parseJettonTransfer, sliceToAddress } from "../src/utils";
 import { JettonWallet } from "../src/jetton-wallet";
 import { AmmLpWallet } from "../src/amm-wallet";
 import { actionToMessage } from "../src/amm-utils";
@@ -228,25 +228,22 @@ describe("Ton Swap Test Suite", () => {
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({}); //create
         const lpWalletData1 = await lpWallet.getData();
         expect(lpWalletData1.balance.toString()).toBe(`${lpSize}`);
-        
-
-        console.log(await (await lpWallet.getData()).balance.toString());
-        
-
         let ratio = new BN(10);
-        let alRes = await addLiquidity(aliceUSDC, ammUsdcWallet, masterAMM, lpWallet, `${lpSize * 2}`, JETTON_LIQUIDITY.div(ratio), TON_LIQUIDITY.div(ratio) );
+        let alRes = await addLiquidity(
+            aliceUSDC,
+            ammUsdcWallet,
+            masterAMM,
+            lpWallet,
+            `${lpSize * 2}`,
+            JETTON_LIQUIDITY.div(ratio),
+            TON_LIQUIDITY.div(ratio)
+        );
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
         const lpWalletData2 = await lpWallet.getData();
-        // data should be rested to now() after balance change
-        
-        const ammData = await masterAMM.getData()
-        console.log(await (await lpWallet.getData()).balance.toString());
-        
-        expect(lpWalletData2.balance.toString()).toBe(ammData.totalSupply.toString());
+        const ammData2 = await masterAMM.getData();
+        expect(lpWalletData2.balance.toString()).toBe(ammData2.totalSupply.toString());
         expect(lpWalletData2.balance.toString()).toBe(`${Math.floor(lpSize * 1.1)}`);
-
-
     });
 
     it("add liquidity twice and fail the second time, send back funds to sender", async () => {
@@ -257,7 +254,7 @@ describe("Ton Swap Test Suite", () => {
         const { masterAMM, lpWallet, aliceUSDC, ammUsdcWallet } = await initAMM({
             jettonLiquidity: jettonLiquidity,
             tonLiquidity: tonLiquidity,
-        }); //create
+        });
 
         let amm0 = await masterAMM.getData();
         printAmmData(amm0);
@@ -269,7 +266,6 @@ describe("Ton Swap Test Suite", () => {
         expect(alRes.addLiquidityMessage.exit_code).toBe(0);
 
         const tenPercent = JETTON_LIQUIDITY.mul(new BN(900)).div(new BN(1000));
-
         const jettonLiquidity2 = JETTON_LIQUIDITY.sub(tenPercent);
 
         const { addLiquidityMessage } = await addLiquidity(
@@ -342,7 +338,7 @@ describe("Ton Swap Test Suite", () => {
             bob
         );
     });
-    
+
     it("swap TON to USDC not enough value should fail, expecting message to bounced", async () => {
         const { masterAMM } = await initAMM({}); //create
 
@@ -351,8 +347,7 @@ describe("Ton Swap Test Suite", () => {
         const { minAmountOut } = await masterAMM.getAmountOut(tonSide, ammData.tonReserves, ammData.tokenReserves);
         // exceeded the minAmount out by one
         const swapTonResp = await masterAMM.swapTonTVM(alice, tonSide, minAmountOut.add(new BN(1)), tonSide.div(new BN(2)));
-        
-        
+
         expect(swapTonResp.exit_code).toBe(603);
     });
 
@@ -376,7 +371,7 @@ describe("Ton Swap Test Suite", () => {
     //     let res = await masterAMM.sendInternalMessage(msg);
     //     expect(res.exit_code).toBe(0);
 
-    //     let data = await masterAMM.getHowOld(); // new method after upgrade       
+    //     let data = await masterAMM.getHowOld(); // new method after upgrade
     //     expect(data.result.toString()).toBe("36");
     // });
 
@@ -468,7 +463,7 @@ async function initAMM({ jettonLiquidity = JETTON_LIQUIDITY, tonLiquidity = TON_
 
     let mintLpMessage = ammRes.actions[0] as SendMsgAction;
 
-    const lpMsg = actionToMessage(contractAddress, ammRes.actions[0]);
+    const lpMsg = actionToMessage(masterAMM.address as Address, ammRes.actions[0]);
     const lpWallet = await AmmLpWallet.createFromMessage(
         mintLpMessage.message?.init?.code as Cell,
         mintLpMessage.message?.init?.data as Cell,
@@ -532,7 +527,7 @@ async function addLiquidity(
         };
     }
 
-    const lpMsg = actionToMessage(contractAddress, transferNotificationRes.actions[0]);
+    const lpMsg = actionToMessage(masterAMM.address as Address, transferNotificationRes.actions[0]);
     const lpWalletResponse = await lpWallet.sendInternalMessage(lpMsg);
 
     return {
