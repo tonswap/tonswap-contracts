@@ -92,9 +92,6 @@ async function deployUSDCMinter(
         };
     }
 
-    let cll = new Cell();
-    new StateInit({ data: initDataCell, code: codeCell[0] }).writeTo(cll);
-    let b64 = cll.toString("base64");
 
     const seqno = await walletContract.getSeqNo();
 
