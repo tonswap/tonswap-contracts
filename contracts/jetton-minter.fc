@@ -1,7 +1,7 @@
-#include "stdlib.fc";
-#include "params.fc";
-#include "op-codes.fc";
-#include "jetton-utils.fc";
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/op-codes.fc";
+#include "imports/jetton-utils.fc";
 
 
 

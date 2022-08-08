@@ -1,7 +1,7 @@
-#include "stdlib.fc";
-#include "params.fc";
-#include "op-codes.fc";
-#include "jetton-utils.fc";
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/op-codes.fc";
+#include "imports/jetton-utils.fc";
 
 int min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
 int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
@@ -100,11 +100,11 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   balance += jetton_amount;
   slice from_address = in_msg_body~load_msg_addr();
   slice response_address = in_msg_body~load_msg_addr();
- throw_unless(707,
-     equal_slices(jetton_master_address, sender_address)
-     |
-     equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
- );
+;;  throw_unless(707,
+;;      equal_slices(jetton_master_address, sender_address)
+;;      |
+;;      equal_slices(calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code), sender_address)
+;;  );
   int forward_ton_amount = in_msg_body~load_coins();
 
   msg_value -= gas_consumption();

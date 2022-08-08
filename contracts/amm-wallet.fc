@@ -1,7 +1,7 @@
-#include "stdlib.fc";
-#include "op-codes.fc";
-#include "params.fc";
-#include "amm-utils.fc";
+#include "imports/stdlib.fc";
+#include "imports/op-codes.fc";
+#include "imports/params.fc";
+#include "imports/jetton-utils.fc";
 
 const MIN_TONS_FOR_STORAGE = 10000000; ;; 0.01 TON
 const GAS_CONSUMPTION = 10000000; ;; 0.01 TON
