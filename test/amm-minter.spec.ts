@@ -9,7 +9,6 @@ import { AmmLpWallet } from "../src/amm-wallet";
 import { actionToMessage } from "../src/amm-utils";
 import { ERROR_CODES, OPS } from "../src/ops";
 
-const contractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 const alice = Address.parse("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7");
 const bob = Address.parse("EQDrjaLahLkMB-hMCmkzOyBuHJ139ZUYmPHu6RRBKnbdLIYI");
 const amm = Address.parse("EQCbPJVt83Noxmg8Qw-Ut8HsZ1lz7lhp4k0v9mBX2BJewhpe");
@@ -28,25 +27,19 @@ const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 describe("Ton Swap Test Suite", () => {
     it("mint USDC", async () => {
         const { masterUSDC } = await createBaseContracts();
-
         let mintAmount = toNano(2505);
         await masterUSDC.mint(alice, alice, mintAmount);
-
         const data = await masterUSDC.getData();
         expect(data.totalSupply.toString()).toBe(mintAmount.add(ALICE_INITIAL_BALANCE).toString());
     });
 
     it("mint USDC", async () => {
         const { masterUSDC, aliceUSDC } = await createBaseContracts();
-
         const jettonAmount = new BN(2505);
-
         const mintResponse = await masterUSDC.mint(alice, alice, jettonAmount);
         const mintTransferNotification = actionToMessage(masterUSDC.address, mintResponse.actions[0]);
-
         const mintMessageResponse2 = await aliceUSDC.sendInternalMessage(mintTransferNotification);
         expect(mintMessageResponse2.exit_code).toBe(0);
-
         const data2 = await aliceUSDC.getData();
         expect(data2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.add(jettonAmount).toString());
     });
