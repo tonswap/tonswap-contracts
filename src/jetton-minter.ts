@@ -223,19 +223,19 @@ export class JettonMinter {
 
 // custom solution, using func to compile, and fift to serialize the code into a string
 async function serializeWalletCodeToCell() {
-    const jettonWalletCodeB64: string = compileFuncToB64(["contracts/jetton-wallet.fc"]);
+    const jettonWalletCodeB64: string = compileFuncToB64(["test/jetton-wallet.fc"]);
     return Cell.fromBoc(jettonWalletCodeB64);
 }
 
 async function serializeMinterCodeToCell(replaceMyAddress = true) {
     if (replaceMyAddress) {
     }
-    const jettonMinterCodeB64: string = compileFuncToB64(["./contracts/jetton-minter.fc"]);
+    const jettonMinterCodeB64: string = compileFuncToB64(["test/jetton-minter.fc"]);
     return Cell.fromBoc(jettonMinterCodeB64);
 }
 
 async function CompileCodeToCell() {
-    const ammMinterCodeB64: string = compileFuncToB64(["contracts/jetton-minter.fc"]);
+    const ammMinterCodeB64: string = compileFuncToB64(["test/jetton-minter.fc"]);
     return Cell.fromBoc(ammMinterCodeB64);
 }
 

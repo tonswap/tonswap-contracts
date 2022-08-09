@@ -1,0 +1,35 @@
+;; storage#_ total_supply:Coins token_wallet_address:MsgAddress ton_reserves:Coins 
+;; token_reserves:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
+
+global int store::total_supply;
+global slice store::token_wallet_address;
+global int store::ton_reserves;
+global int store::token_reserves;
+global slice store::admin;
+global cell store::content;
+global cell store::jetton_wallet_code;
+
+() load_data() impure {
+  slice ds = get_data().begin_parse();
+  store::total_supply = ds~load_coins();              ;; total_supply
+  store::token_wallet_address = ds~load_msg_addr();   ;; token_wallet_address
+  store::ton_reserves = ds~load_coins();              ;; ton_reserves
+  store::token_reserves = ds~load_coins();            ;; token_reserves
+  store::admin = ds~load_msg_addr();                  ;; admin
+  store::content = ds~load_ref();                     ;; content (uri to json)
+  store::jetton_wallet_code = ds~load_ref();          ;; jetton_wallet_code
+}
+
+() save_data() impure inline_ref {
+
+  set_data(begin_cell()
+    .store_coins(store::total_supply)
+    .store_slice(store::token_wallet_address)
+    .store_coins(store::ton_reserves)
+    .store_coins(store::token_reserves)
+    .store_slice(store::admin)
+    .store_ref(store::content)
+    .store_ref(store::jetton_wallet_code)
+    .end_cell()
+  );
+}
