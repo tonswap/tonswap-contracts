@@ -1,9 +1,10 @@
 import { mnemonicNew, mnemonicToWalletKey } from "ton-crypto";
 import * as fs from "fs";
-import { Address, Cell, fromNano, TonClient, WalletContract, WalletV3R2Source } from "ton";
+import { Address, Cell, CellMessage, CommonMessageInfo, fromNano, InternalMessage, TonClient, WalletContract, WalletV3R2Source } from "ton";
 import { AmmMinterRPC } from "../src/amm-minter";
 import { JettonWallet } from "../src/jetton-wallet";
 import BN from "bn.js";
+const BOC_MAX_LENGTH = 48;
 
 export async function initDeployKey() {
     const deployConfigJson = `./build/deploy.config.json`;
@@ -53,9 +54,8 @@ export async function printDeployerBalances(client: TonClient, deployer: Address
     console.log(``);
 }
 
-export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, deployer: Address, deployerUSDCAddress: Address) {
+export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, deployer: Address, deployerUSDCAddress?: Address) {
     try {
-
         const data = await ammMinter.getJettonData();
         const balance = await client.getBalance(ammMinter.address);
         console.log(`-----==== AmmMinter ====-----  `);
@@ -69,7 +69,7 @@ export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, 
         // await printDeployerBalances(client, deployer, deployerUSDCAddress);
         console.log(`-----==== ***** ====-----
         `);
-    } catch(e) {}
+    } catch (e) {}
 }
 
 export function hexToBn(num: string) {
@@ -125,4 +125,51 @@ export async function waitForSeqno(walletContract: WalletContract, seqno: number
         if (seqnoAfter > seqno) break;
     }
     console.log(`⌛️ seqno update after ${((attempt + 1) * seqnoStepInterval) / 1000}s`);
+}
+
+export async function waitForContractToBeDeployed(client: TonClient, deployedContract: Address) {
+    const seqnoStepInterval = 2500;
+    console.log(`⏳ waiting for contract to be deployed at [${deployedContract.toFriendly()}]`);
+    for (var attempt = 0; attempt < 10; attempt++) {
+        await sleep(seqnoStepInterval);
+        if (await client.isContractDeployed(deployedContract)) {
+            break;
+        }
+    }
+    console.log(`⌛️ waited for contract deployment ${((attempt + 1) * seqnoStepInterval) / 1000}s`);
+}
+
+export async function sendTransaction(
+    client: TonClient,
+    walletContract: WalletContract,
+    receivingContract: Address,
+    value: BN,
+    privateKey: Buffer,
+    messageBody: Cell,
+    bounce = false,
+    sendMode = 3
+) {
+    const seqno = await walletContract.getSeqNo();
+    const bocStr = await messageBody.toString();
+    const boc = bocStr.substring(0, bocStr.length < BOC_MAX_LENGTH ? bocStr.length : BOC_MAX_LENGTH).toString();
+    console.log(`🧱 send Transaction to ${receivingContract.toFriendly()} value:${fromNano(value)}💎 [boc:${boc}]`);
+
+    const transfer = await walletContract.createTransfer({
+        secretKey: privateKey,
+        seqno: seqno,
+        sendMode: sendMode,
+        order: new InternalMessage({
+            to: receivingContract,
+            value: value,
+            bounce,
+            body: new CommonMessageInfo({
+                body: new CellMessage(messageBody),
+            }),
+        }),
+    });
+    console.log(`🚀 sending transaction to contract [seqno:${seqno}]`);
+
+    client.sendExternalMessage(walletContract, transfer);
+
+    await waitForSeqno(walletContract, seqno);
 }
