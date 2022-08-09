@@ -23,20 +23,12 @@ import { OPS } from "../src/ops";
 import { JettonWallet } from "../src/jetton-wallet";
 import { AmmLpWallet } from "../src/amm-wallet";
 
-axiosThrottle.use(axios, { requestsPerSecond: 0.5 }); // required since toncenter jsonRPC limits to 1 req/sec without API key
-
 enum GAS_FEES {
     ADD_LIQUIDITY = 0.2,
     REMOVE_LIQUIDITY = 0.25,
     SWAP_FEE = 0.2,
     SWAP_FORWARD_TON = 0.2,
     MINT = 0.2,
-}
-
-enum NETWORK {
-    SANDBOX = "sandbox.",
-    TESTNET = "test.",
-    MAINNET = "",
 }
 
 const TON_LIQUIDITY = 1;
@@ -168,6 +160,7 @@ export async function sendTransaction(
     value: BN,
     privateKey: Buffer,
     messageBody: Cell,
+    bounce = false,
     sendMode = 3
 ) {
     const seqno = await walletContract.getSeqNo();
@@ -182,7 +175,7 @@ export async function sendTransaction(
         order: new InternalMessage({
             to: receivingContract,
             value: value,
-            bounce: false,
+            bounce,
             body: new CommonMessageInfo({
                 body: new CellMessage(messageBody),
             }),
@@ -275,7 +268,16 @@ export async function removeLiquidity(
 
     const removeLiqMessage = AmmLpWallet.RemoveLiquidityMessage(new BN(lpData.balance.toString()), deployWallet.address);
 
-    await sendTransaction(client, deployWallet, lpAddress, toNano(GAS_FEES.REMOVE_LIQUIDITY), privateKey, removeLiqMessage, sendMode);
+    await sendTransaction(
+        client,
+        deployWallet,
+        lpAddress,
+        toNano(GAS_FEES.REMOVE_LIQUIDITY),
+        privateKey,
+        removeLiqMessage,
+        false,
+        sendMode
+    );
 
     sleep(BLOCK_TIME);
     // await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
@@ -339,12 +341,9 @@ export async function printBalances(client: TonClient, ammMinter: AmmMinterRPC, 
 💰 tonReserves  : ${hexToBn(data.tonReserves)} (${bnFmt(hexToBn(data.tonReserves))})
 💰 tokenReserves: ${hexToBn(data.tokenReserves)} (${bnFmt(hexToBn(data.tokenReserves))})
 📪 JettonWallet : ${data.jettonWalletAddress.toFriendly()}
-
-
 `);
     await printDeployerBalances(client, deployer, deployerUSDCAddress);
-    console.log(`-----==== ***** ====-----
-`);
+    console.log(`-----==== ***** ====-----\n`);
 }
 
 export function hexToBn(num: string) {
@@ -391,8 +390,9 @@ balance: ${fromNano(await client.getBalance(wallet.address))} | seqno: ${await w
     return { wallet, walletBalance };
 }
 
+const seqnoStepInterval = 3000;
+
 export async function waitForSeqno(walletContract: WalletContract, seqno: number) {
-    const seqnoStepInterval = 3000;
     console.log(`⏳ waiting for seqno to update (${seqno})`);
     for (var attempt = 0; attempt < 10; attempt++) {
         await sleep(seqnoStepInterval);
