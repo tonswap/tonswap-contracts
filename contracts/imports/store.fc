@@ -1,3 +1,6 @@
+;; storage#_ total_supply:Coins token_wallet_address:MsgAddress ton_reserves:Coins 
+;; token_reserves:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
+
 global int store::total_supply;
 global slice store::token_wallet_address;
 global int store::ton_reserves;

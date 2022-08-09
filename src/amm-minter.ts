@@ -131,9 +131,9 @@ export class AmmMinterTVM extends AmmMinterBase {
         const code = this.compileCodeToCell();
         const address = contractAddress({
             workchain: 0,
-            initialCode:code[0],
-            initialData: data.initDataCell
-        })
+            initialCode: code[0],
+            initialData: data.initDataCell,
+        });
         this.address = address;
 
         this.ready = SmartContract.fromCell(code[0], data.initDataCell, {
@@ -141,12 +141,11 @@ export class AmmMinterTVM extends AmmMinterBase {
             debug: true,
         });
         const contract = await this.ready;
-        
 
         this.contract = contract;
         contract.setUnixTime(toUnixTime(Date.now()));
         contract.setC7Config({
-            myself: address
+            myself: address,
         });
     }
 
@@ -155,16 +154,14 @@ export class AmmMinterTVM extends AmmMinterBase {
             throw "contract is not initialized";
         }
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
-        
         const totalSupply = res.result[0] as BN;
         const mintable = res.result[1] as BN;
-        
         //@ts-ignore
         const tokenWalletAddress = sliceToAddress267(res.result[2] as BN).toFriendly();
         const tonReserves = res.result[3] as BN;
         const tokenReserves = res.result[4] as BN;
         //@ts-ignore
-      //  const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
+        //  const admin = sliceToAddress267(res.result[5] as BN).toFriendly();
         const content = res.result[2] as Cell;
 
         return {
@@ -202,14 +199,12 @@ export class AmmMinterTVM extends AmmMinterBase {
     async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN, valueOverride?: BN) {
         const gasFee = new BN(200000000);
         let messageBody = this.swapTon(tonToSwap, minAmountOut);
-        
-        if(valueOverride) {
-            tonToSwap = valueOverride.add(gasFee);
 
+        if (valueOverride) {
+            tonToSwap = valueOverride.add(gasFee);
         }
         return this.sendTvmMessage({ messageBody, from, value: tonToSwap.add(gasFee), to: myContractAddress, bounce: true });
     }
-
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
