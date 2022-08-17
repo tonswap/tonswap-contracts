@@ -56,20 +56,29 @@ const MAX_SLIPAGE = 99; ;; TODO
 
   int slippage = in_msg_body~load_uint(32);
   int ton_liquidity = in_msg_body~load_grams();
-  
   if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {  
-    revert_add_liquidity(ton_liquidity,
-                        jetton_amount,
-                        jetton_sender,
-                        query_id, msg_value);
+    revert_add_liquidity(
+      ton_liquidity,
+      jetton_amount,
+      jetton_sender,
+      query_id, msg_value
+    );
     return ();
   }
 
+  ;; - ton_liquidity is the amount that stays in the reserves
+  ;; - fwd_fee + gas_consumption needs to cover the gas fees in the execuation 
+  int mint_gas = msg_value - (ton_liquidity + fwd_fee + JETTON_GAS_CONSUMPTION);
+  ;; mint_gas should cover the new LP or updating it ,and the rest should return
+  ;; to jetton owenr via excess message
+
   ;; min jetton storage for the lp wallet plus 1 message for mint 1
   int gas_cost = (fwd_fee * 2) + (JETTON_GAS_COMPUTATION * 2) + MIN_JETTON_STORAGE;
-  
-  ;;   ton liquidity should cover jettonStorage+ fwd fee for the mint message
-  if ( ton_liquidity > msg_value - gas_cost ) | ton_liquidity < ADD_LIQUIDTY_DUST  {
+  ;; gas_left should cover 
+  if( mint_gas < gas_cost ) 
+      | 
+    ( ton_liquidity < ADD_LIQUIDTY_DUST)  {
+
     revert_add_liquidity(
       ton_liquidity,
       jetton_amount,
@@ -121,14 +130,21 @@ const MAX_SLIPAGE = 99; ;; TODO
   if equal_slices(store::token_wallet_address, zero_address) {
     store::token_wallet_address = sender;
   }
-  ;; TODO add fee here
-  mint_tokens(jetton_sender, query_id,  minted_lp, ( msg_value - ton_liquidity ));
+
+  mint_tokens(jetton_sender, query_id,  minted_lp, mint_gas);
   save_data();
   
   return ();
 }
 
-() remove_liquidity(int jetton_amount, slice from_address, int query_id, slice sender, int msg_value) impure inline {
+() remove_liquidity(
+    int jetton_amount,
+    slice from_address,
+    int query_id, 
+    slice sender, 
+    int msg_value,
+    int fwd_fee) impure inline {
+
   int ton_to_remove = muldiv(jetton_amount, store::ton_reserves, store::total_supply);
   int token_to_remove = muldiv(jetton_amount, store::token_reserves, store::total_supply);
   
@@ -140,12 +156,18 @@ const MAX_SLIPAGE = 99; ;; TODO
     , sender)
   );
   
+  ;; 1 fwd-fee for grams message 
+  ;; 1 token_transfer_fee
+  msg_value -= jetton_transfer_fee(fwd_fee) + fwd_fee;
+  
   send_grams(from_address, ton_to_remove);
   
-  transfer_token(query_id,
-          from_address,
-          token_to_remove,
-          msg_value);
+  transfer_token(
+    query_id,
+    from_address,
+    token_to_remove,
+    msg_value
+  );
 
   store::ton_reserves -= ton_to_remove;
   store::token_reserves -= token_to_remove;
@@ -165,8 +187,6 @@ const MAX_SLIPAGE = 99; ;; TODO
   }
   
   slice sender = cs~load_msg_addr();
-
-  ;; log_balance(sender, my_balance);
   cs~load_msg_addr(); ;; skip dst
   cs~load_coins(); ;; skip value
   cs~skip_bits(1); ;; skip extracurrency collection
@@ -177,11 +197,20 @@ const MAX_SLIPAGE = 99; ;; TODO
   int query_id = in_msg_body~load_uint(64);
 
   load_data();
-
+  
   if (op == OP_BURN_NOTIFICAITON) {
+
     int jetton_amount = in_msg_body ~load_coins();
     slice from_address = in_msg_body ~load_msg_addr();
-    remove_liquidity(jetton_amount, from_address, query_id, sender, msg_value);
+
+    remove_liquidity(
+      jetton_amount, 
+      from_address, 
+      query_id, 
+      sender,
+      msg_value,
+      fwd_fee
+    );
     return ();  
   }
 
@@ -195,7 +224,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     ;; insfucient ton in the message 
     throw_if(ERROR::MSG_VALUE_INSUFFICIENT, ton_to_swap > msg_value ); 
 
-    swapTokens(
+    swap_tokens(
       min_amount_out,
       ton_to_swap,
       true,
@@ -247,7 +276,7 @@ const MAX_SLIPAGE = 99; ;; TODO
       throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address)); 
 
       int min_amount_out = in_msg_body~load_grams();
-      swapTokens(
+      swap_tokens(
         min_amount_out,
         jetton_amount,
         false,

@@ -2,9 +2,10 @@ const TON_TOKEN_SWAP_FEE =  20000000;   ;; 0.02 TON;
 const AMM_GAS_CONSUMPTION = 10000000; ;;  0.01 TON
 const JETTON_GAS_CONSUMPTION = 10000000; ;;  0.01 TON
 const JETTON_MIN_TON_FOR_STORAGE = 10000000; ;;  0.01 TON
+const MIN_TON_STORAGE = 200000000; ;; 0.2 TON
 
 ;; =============  Using babylonian method for Math.sqrt
-int squareRoot(int number) {
+int square_root(int number) {
   if (number < 3) {
     return 1;
   }
@@ -21,8 +22,10 @@ int squareRoot(int number) {
   return hi;
 }
 
-(int) jetton_transfer_fee(int forward_ton_amount, int fwd_fee) inline {
-  return forward_ton_amount + 2 * fwd_fee + (2 * JETTON_GAS_CONSUMPTION + JETTON_MIN_TON_FOR_STORAGE);
+(int) jetton_transfer_fee(int fwd_fee) inline {
+  ;;  2X Fwd_fee + 1 gas-computation for current
+  ;;  + 1 gas-computation for reciver
+  return  2 * fwd_fee + (2 * JETTON_GAS_CONSUMPTION + JETTON_MIN_TON_FOR_STORAGE);
 }
 
 () send_grams(slice address, int amount) impure {
@@ -36,16 +39,6 @@ int squareRoot(int number) {
 }
 
 
-() log_balance(slice address, int amount) impure {
-  cell msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(address)
-    .store_coins(100000000) ;; 0.1
-    .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
-    .store_coins(amount)
-    .end_cell();
-  send_raw_message(msg, 1); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
-}
 
 ;;transfer query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
 ;;           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
@@ -90,7 +83,7 @@ int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
   return  ( numerator / denominator) + 1;
 }
 
-() swapTokens(
+() swap_tokens(
   int min_amount_out,
   int in_amount,
   int is_ton_src,
@@ -119,7 +112,7 @@ int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
     store::ton_reserves += in_amount;
     store::token_reserves -= amount_out;
     int transfer_token_gas = msg_value - ( in_amount + AMM_GAS_CONSUMPTION + fwd_fee * 2);
-    int jetton_fee = jetton_transfer_fee(0, fwd_fee);
+    int jetton_fee = jetton_transfer_fee(fwd_fee);
     throw_unless(ERROR::SWAP_TON_NO_GAS, transfer_token_gas > jetton_fee);
     transfer_token(query_id, sender, amount_out, transfer_token_gas);
   } else {
@@ -147,7 +140,7 @@ int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
   int MINIMUM_LIQUIDITY = 1000;
   if (store::token_reserves == 0) {
     ;; calc the user share  Sushi (Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);)
-    new_liquidity = squareRoot(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
+    new_liquidity = square_root(ton_amount * token_amount) / MINIMUM_LIQUIDITY;
   } else {
     ;; liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
     int ton_share = (ton_amount * store::total_supply) / store::ton_reserves;
