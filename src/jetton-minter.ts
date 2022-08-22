@@ -1,5 +1,5 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult, parseActionsList } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
 
 import {
     Address,
@@ -12,6 +12,7 @@ import {
     toNano,
     TonClient,
     contractAddress,
+    Contract,
     beginCell,
 } from "ton";
 import BN from "bn.js";
@@ -19,6 +20,7 @@ import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils"
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { OPS } from "./ops";
+import { TvmBus, iTvmBusContract } from "tvm-bus";
 
 const OFFCHAIN_CONTENT_PREFIX = 0x01;
 

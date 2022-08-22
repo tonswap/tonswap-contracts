@@ -7,15 +7,23 @@ import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
 const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
 
+import { iDeployableContract, iTvmBusContract, TvmBus } from "ton-tvm-bus";
+import { compileFuncToB64 } from "../utils/funcToB64";
+
 const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
-export class JettonWallet {
+export class JettonWallet implements iTvmBusContract {
     public initMessageResult: { logs?: string; actions?: OutAction[] } = {};
     public address = ZERO_ADDRESS;
 
     private constructor(public readonly contract: SmartContract) {}
+
+    async getCodeCell() {
+        const jettonWalletCodeB64: string = compileFuncToB64(["test/jetton-wallet.fc"]);
+        return Cell.fromBoc(jettonWalletCodeB64);
+    }
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_wallet_data", []);
@@ -129,7 +137,9 @@ export class JettonWallet {
         };
     }
 
-    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
+    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage, tvmBus: TvmBus): Promise<iTvmBusContract> {
+        console.log(`Create From Message  [${initMessage.to.toFriendly()}]`);
+
         const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
 
         const contract = new JettonWallet(jettonWallet);
@@ -144,6 +154,8 @@ export class JettonWallet {
         // @ts-ignore
         contract.initMessageResult = initMessageResponse;
         contract.address = initMessage.to;
+        tvmBus.registerContract(contract);
+
         return contract;
     }
 }
