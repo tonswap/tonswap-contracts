@@ -53,14 +53,14 @@ enum GAS_FEES {
     MINT = 0.2,
 }
 
-const metadataURI = "https://api.jsonbin.io/b/abcd";
+const metadataURI = "https://api.jsonbin.io/b/eloelo1"; // Salt for ammMinter contract
 
 const TON_LIQUIDITY = 4;
 const TOKEN_LIQUIDITY = toNano(100);
 const TOKEN_TO_SWAP = toNano(25);
 const TON_TO_SWAP = toNano(1);
 const MINT_SIZE = toNano(100);
-const JETTON_URI = "http://tonswap.co/token/usdc31.json";
+const JETTON_URI = "http://tonswap.co/token/usdc31.json"; // Salt for USDC contract
 
 const BLOCK_TIME = 10000;
 
@@ -341,15 +341,18 @@ async function main() {
 
     await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
 
-    console.log(`Swapping 10times both ways`);
+    const swapCount = 8;
+    console.log(`Swapping ${swapCount} times both ways`);
 
-    for (let i = 0; i < 8; i++) {
-        // // ======== Swap Ton -> USDC
-        await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, TON_TO_SWAP);
+    for (let i = 0; i < swapCount; i++) {
+        
+        //  ======== Swap Usdc -> TON
+        await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, TOKEN_TO_SWAP);
         await sleep(BLOCK_TIME * 2);
         await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
-        //  ======== Swap Usdc -> TON
-        await swapUsdcToTon(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, TOKEN_TO_SWAP );
+
+        // // ======== Swap Ton -> USDC
+        await swapTonToUsdc(ammMinter, deployWallet, deployerUSDCAddress as Address, walletKey.secretKey, TON_TO_SWAP);
         await sleep(BLOCK_TIME * 2);
         await printBalances(client, ammMinter, deployWallet.address, deployerUSDCAddress);
     }
