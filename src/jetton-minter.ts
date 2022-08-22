@@ -24,8 +24,15 @@ import { TvmBus, iTvmBusContract } from "tvm-bus";
 
 const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
-export class JettonMinter {
-    private constructor(public readonly contract: SmartContract) {}
+export class JettonMinter implements iTvmBusContract {
+
+    private let contract SmartContract;
+
+    private constructor(contract: SmartContract, tvmBus: TvmBus, myAddress: Address) {
+        this.contract = contract;
+        this.address = myAddress;
+        tvmBus.registerContract(this);
+    }
 
     public address?: Address;
 
