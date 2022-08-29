@@ -1,20 +1,21 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult, parseActionsList } from "ton-contract-executor";
+import { SmartContract } from "ton-contract-executor";
 import BN from "bn.js";
 import { filterLogs, parseInternalMessageResponse } from "./utils";
 import { AmmLpWallet } from "./amm-wallet";
-import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, contractAddress, toNano } from "ton";
+import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, contractAddress, toNano, fromNano } from "ton";
 import { sliceToAddress267, toUnixTime } from "./utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { writeString } from "./utils";
 import { OutAction } from "ton-contract-executor";
+import { printChain, TvmBus, iTvmBusContract } from "ton-tvm-bus";
 
-const myContractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
+const myContractAddress = Address.parse("EQBZjEzfbSslRltL4z7ncz_tb-t1z5R98zAKUuWLO1QTINTA");
 
-class AmmMinterBase {
-    swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+export class AmmMinterMessages {
+    static swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -22,12 +23,12 @@ class AmmMinterBase {
         cell.bits.writeCoins(minAmountOut); // minimum received
         return cell;
     }
-    compileCodeToCell() {
+    static compileCodeToCell() {
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
 
-    buildDataCell(content: string, admin: Address) {
+    static buildDataCell(content: string, admin: Address) {
         const contentCell = new Cell();
         writeString(contentCell, content);
 
@@ -45,20 +46,19 @@ class AmmMinterBase {
         };
     }
 
-    getCodeUpgrade() {
+    static getCodeUpgrade() {
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter-upgrade.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
 }
 
-export class AmmMinterRPC extends AmmMinterBase {
+export class AmmMinterRPC {
     address = zeroAddress();
     client: TonClient;
     resolveReady = () => {};
     ready = new Promise(this.resolveReady);
 
     constructor(opts: { address?: Address; rpcClient: TonClient }) {
-        super();
         this.client = opts.rpcClient;
         if (opts.address) {
             this.address = opts.address;
@@ -111,24 +111,19 @@ export class AmmMinterRPC extends AmmMinterBase {
     }
 }
 
-export class AmmMinterTVM extends AmmMinterBase {
+export class AmmMinterTVM implements iTvmBusContract {
     contract?: SmartContract;
     ready?: Promise<SmartContract>;
-    balance: BN;
+    balance?: BN;
     address?: Address;
 
-    constructor(contentUri: string, admin: Address, balance: 1000000000000) {
-        super();
-        this.init(contentUri, admin);
-        this.balance = new BN(balance);
-        this.contract?.setC7Config({
-            balance,
-        });
+    constructor(contentUri: string, admin: Address, tvmBus?: TvmBus, balance = toNano(1)) {
+        this.init(contentUri, admin, balance, tvmBus);
     }
 
-    async init(contentUri: string, admin: Address) {
-        const data = this.buildDataCell(contentUri, admin);
-        const code = this.compileCodeToCell();
+    async init(contentUri: string, admin: Address, balance: BN, tvmBus?: TvmBus) {
+        const data = AmmMinterMessages.buildDataCell(contentUri, admin);
+        const code = AmmMinterMessages.compileCodeToCell();
         const address = contractAddress({
             workchain: 0,
             initialCode: code[0],
@@ -141,12 +136,17 @@ export class AmmMinterTVM extends AmmMinterBase {
             debug: true,
         });
         const contract = await this.ready;
-
         this.contract = contract;
+        this.balance = balance;
+
         contract.setUnixTime(toUnixTime(Date.now()));
         contract.setC7Config({
             myself: address,
+            balance: balance,
         });
+        if (tvmBus) {
+            tvmBus.registerContract(this);
+        }
     }
 
     async getData() {
@@ -191,14 +191,14 @@ export class AmmMinterTVM extends AmmMinterBase {
 
         let parsedResponse = parseInternalMessageResponse(res);
         if (res.exit_code == 0) {
-            this.calculateBalance(message.value, parsedResponse.actions);
+            // this.calculateBalance(message.value, parsedResponse.actions);
         }
         return parsedResponse;
     }
 
     async swapTonTVM(from: Address, tonToSwap: BN, minAmountOut: BN, valueOverride?: BN) {
         const gasFee = new BN(200000000);
-        let messageBody = this.swapTon(tonToSwap, minAmountOut);
+        let messageBody = AmmMinterMessages.swapTon(tonToSwap, minAmountOut);
 
         if (valueOverride) {
             tonToSwap = valueOverride.add(gasFee);
@@ -257,37 +257,35 @@ export class AmmMinterTVM extends AmmMinterBase {
             })
         );
 
-        let successResult = res as SuccessfulExecutionResult;
-        const actions = parseActionsList(successResult.action_list_cell);
-        if (res.exit_code == 0) {
-            this.calculateBalance(opts.value, actions);
-        }
+        // let successResult = res as SuccessfulExecutionResult;
+        // const actions = parseActionsList(successResult.action_list_cell);
+        // if (res.exit_code == 0) {
+        //     this.calculateBalance(opts.value, actions);
+        // }
 
         return {
-            exit_code: res.exit_code,
-            returnValue: res.result[1] as BN,
+            ...res,
             logs: filterLogs(res.logs),
-            actions: parseActionsList(successResult.action_list_cell),
         };
     }
 
-    calculateBalance(inValue: BN, actions: OutAction[]) {
-        this.balance = this.balance.add(inValue);
-        let outGoingTon = actions.map((action: OutAction) => {
-            // @ts-ignore
-            const sendMessageAction = action as SendMsgOutAction;
-            return sendMessageAction.value?.coins;
-        });
-        let outGoingTonSum = new BN(0);
-        outGoingTon.forEach((it: BN) => {
-            if (it) {
-                outGoingTonSum.add(it);
-            }
-        });
+    // calculateBalance(inValue: BN, actions: OutAction[]) {
+    //     this.balance = this.balance?.add(inValue);
+    //     let outGoingTon = actions.map((action: OutAction) => {
+    //         // @ts-ignore
+    //         const sendMessageAction = action as SendMsgOutAction;
+    //         return sendMessageAction.value?.coins;
+    //     });
+    //     let outGoingTonSum = new BN(0);
+    //     outGoingTon.forEach((it: BN) => {
+    //         if (it) {
+    //             outGoingTonSum.add(it);
+    //         }
+    //     });
 
-        //console.log({ outGoingTonSum: outGoingTonSum.toString(), balance: this.balance.toString() });
-        this.balance = this.balance.sub(outGoingTonSum);
-    }
+    //     //console.log({ outGoingTonSum: outGoingTonSum.toString(), balance: this.balance.toString() });
+    //     this.balance = this.balance?.sub(outGoingTonSum);
+    // }
 
     async getHowOld() {
         if (!this.contract) {

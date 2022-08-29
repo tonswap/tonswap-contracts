@@ -5,13 +5,24 @@ import { toUnixTime, toDecimals, parseInternalMessageResponse } from "./utils";
 import { OPS } from "./ops";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
+import { printChain, iTvmBusContract, ExecutionResult, iDeployableContract } from "ton-tvm-bus";
+import { isNamedExportBindings, isNumericLiteral } from "typescript";
 const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
+
 type UsdcTransferNextOp = OPS.REMOVE_LIQUIDITY;
 
-export class AmmLpWallet {
+export class AmmLpWallet implements iTvmBusContract {
     private initTime: number = Date.now();
     public address: Address = ZERO_ADDRESS;
-    private constructor(public readonly contract: SmartContract) {}
+    initMessageResultRaw?: ExecutionResult;
+
+    private constructor(public readonly contract: SmartContract, myAddress: Address, balance = toNano(0.5)) {
+        this.contract.setC7Config({
+            myself: myAddress,
+            balance,
+        });
+        this.address = myAddress;
+    }
 
     async getData() {
         let res = await this.contract.invokeGetMethod("get_wallet_data", []);
@@ -30,7 +41,11 @@ export class AmmLpWallet {
         };
     }
 
-    async sendInternalMessage(message: InternalMessage) {
+    sendInternalMessage(message: InternalMessage) {
+        return this.contract.sendInternalMessage(message);
+    }
+
+    async sendInternalMessage2(message: InternalMessage) {
         const res = await this.contract.sendInternalMessage(message);
         return parseInternalMessageResponse(res);
     }
@@ -180,17 +195,18 @@ export class AmmLpWallet {
         return Cell.fromBoc(ammWalletCodeB64);
     }
 
+    static getCodeCell(): Cell[] {
+        const ammWalletCodeB64: string = compileFuncToB64(["contracts/amm-wallet.fc"]);
+        return Cell.fromBoc(ammWalletCodeB64);
+    }
+
     static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage) {
         const ammWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
-        const instance = new AmmLpWallet(ammWallet);
+        const instance = new AmmLpWallet(ammWallet, initMessage.to);
         instance.setUnixTime(toUnixTime(Date.now()));
         const initMessageResponse = await ammWallet.sendInternalMessage(initMessage);
-        //console.log('amm-wallet -> initMessageResponse', initMessageResponse);
-        instance.address = initMessage.to;
+        instance.initMessageResultRaw = initMessageResponse;
 
-        instance.contract.setC7Config({
-            myself: initMessage.to,
-        });
         return instance;
     }
 }

@@ -1,26 +1,26 @@
 // @ts-ignore
-import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult, FailedExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
 import { Address, Cell, CellMessage, InternalMessage, Slice, CommonMessageInfo, TonClient, toNano, beginCell } from "ton";
 import BN from "bn.js";
 import { toUnixTime, parseInternalMessageResponse, filterLogs, sliceToAddress, writeString } from "./utils";
 import { OPS } from "./ops";
 import { bytesToAddress } from "../utils/deploy-utils";
 const ZERO_ADDRESS = Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c");
+export declare type ExecutionResult = FailedExecutionResult | SuccessfulExecutionResult;
 
-import { iDeployableContract, iTvmBusContract, TvmBus } from "ton-tvm-bus";
+import { iTvmBusContract, TvmBus } from "ton-tvm-bus";
 import { compileFuncToB64 } from "../utils/funcToB64";
-
-const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
 type UsdcTransferNextOp = OPS.ADD_LIQUIDITY | OPS.SWAP_TOKEN;
 
 export class JettonWallet implements iTvmBusContract {
-    public initMessageResult: { logs?: string; actions?: OutAction[] } = {};
+    public initMessageResult: { logs?: string; actionsList?: OutAction[] } = {};
     public address = ZERO_ADDRESS;
+    public initMessageResultRaw?: ExecutionResult;
 
     private constructor(public readonly contract: SmartContract) {}
 
-    async getCodeCell() {
+    static getCodeCell(): Cell[] {
         const jettonWalletCodeB64: string = compileFuncToB64(["test/jetton-wallet.fc"]);
         return Cell.fromBoc(jettonWalletCodeB64);
     }
@@ -39,8 +39,12 @@ export class JettonWallet implements iTvmBusContract {
             code,
         };
     }
+    //BUS implementation
+    sendInternalMessage(message: InternalMessage) {
+        return this.contract.sendInternalMessage(message);
+    }
 
-    async sendInternalMessage(message: InternalMessage) {
+    async sendInternalMessage2(message: InternalMessage) {
         const res = await this.contract.sendInternalMessage(message);
         return parseInternalMessageResponse(res);
     }
@@ -112,10 +116,9 @@ export class JettonWallet implements iTvmBusContract {
         let successResult = res as SuccessfulExecutionResult;
 
         return {
-            exit_code: res.exit_code,
+            ...res,
             returnValue: res.result[1] as BN,
             logs: filterLogs(res.logs),
-            actions: parseActionsList(successResult.action_list_cell),
         };
     }
 
@@ -137,9 +140,7 @@ export class JettonWallet implements iTvmBusContract {
         };
     }
 
-    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage, tvmBus: TvmBus): Promise<iTvmBusContract> {
-        console.log(`Create From Message  [${initMessage.to.toFriendly()}]`);
-
+    static async createFromMessage(code: Cell, data: Cell, initMessage: InternalMessage, tvmBus?: TvmBus): Promise<iTvmBusContract> {
         const jettonWallet = await SmartContract.fromCell(code, data, { getMethodsMutate: true, debug: true });
 
         const contract = new JettonWallet(jettonWallet);
@@ -148,29 +149,17 @@ export class JettonWallet implements iTvmBusContract {
         const initRes = await jettonWallet.sendInternalMessage(initMessage);
         let successResult = initRes as SuccessfulExecutionResult;
         const initMessageResponse = {
+            ...successResult,
             logs: filterLogs(successResult.logs),
-            actions: parseActionsList(successResult.action_list_cell),
         };
         // @ts-ignore
         contract.initMessageResult = initMessageResponse;
+        contract.initMessageResultRaw = initRes;
         contract.address = initMessage.to;
-        tvmBus.registerContract(contract);
+        if (tvmBus) {
+            tvmBus.registerContract(contract as iTvmBusContract);
+        }
 
         return contract;
     }
-}
-
-//   ds~load_coins(), ;; total_supply
-//   ds~load_msg_addr(), ;; admin_address
-//   ds~load_ref(), ;; content
-//   ds~load_ref()  ;; jetton_wallet_code
-async function createStateInit(totalSupply: BN, admin: Address, contentUri: string, tokenCode: Cell) {
-    let content = beginCell().storeInt(OFFCHAIN_CONTENT_PREFIX, 8).storeBuffer(Buffer.from(contentUri, "ascii")).endCell();
-
-    let dataCell = new Cell();
-    dataCell.bits.writeCoins(totalSupply);
-    dataCell.bits.writeAddress(admin);
-    dataCell.refs.push(content);
-    dataCell.refs.push(tokenCode);
-    return dataCell;
 }

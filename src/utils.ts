@@ -1,7 +1,7 @@
 import BN from "bn.js";
 import { Address, Cell, Slice } from "ton";
 // @ts-ignore
-import { ExecutionResult, parseActionsList } from "ton-contract-executor";
+import { ExecutionResult } from "ton-contract-executor";
 
 const decimals = new BN("1000000000");
 
@@ -84,10 +84,9 @@ export function parseInternalMessageResponse(result: ExecutionResult) {
     let res = result as SuccessfulExecutionResult;
     //console.log(res);
     return {
-        exit_code: res.exit_code,
+        ...res,
         returnValue: res.result[1] as BN,
         logs: filterLogs(res.logs),
-        actions: parseActionsList(res.action_list_cell),
     };
 }
 

@@ -1,5 +1,5 @@
 //@ts-ignore
-import { SmartContract, SuccessfulExecutionResult, parseActionsList, OutAction } from "ton-contract-executor";
+import { SmartContract, SuccessfulExecutionResult } from "ton-contract-executor";
 
 import {
     Address,
@@ -16,27 +16,33 @@ import {
     beginCell,
 } from "ton";
 import BN from "bn.js";
-import { toUnixTime, sliceToAddress, bytesToBase64, writeString } from "./utils";
+import { toUnixTime, sliceToAddress, bytesToBase64, writeString, filterLogs } from "./utils";
 import { compileFuncToB64 } from "../utils/funcToB64";
 import { bytesToAddress } from "../utils/deploy-utils";
 import { OPS } from "./ops";
-import { TvmBus, iTvmBusContract } from "tvm-bus";
+import { TvmBus, iTvmBusContract, ExecutionResult } from "ton-tvm-bus";
 
 const OFFCHAIN_CONTENT_PREFIX = 0x01;
 
 export class JettonMinter implements iTvmBusContract {
-
-    private let contract SmartContract;
-
-    private constructor(contract: SmartContract, tvmBus: TvmBus, myAddress: Address) {
+    private constructor(contract: SmartContract, myAddress: Address, balance: BN) {
         this.contract = contract;
         this.address = myAddress;
-        tvmBus.registerContract(this);
+
+        this.contract.setC7Config({
+            myself: myAddress,
+            balance: balance,
+        });
     }
 
+    contract?: SmartContract;
     public address?: Address;
 
     async getData() {
+        if (!this.contract) {
+            return;
+        }
+
         let res = await this.contract.invokeGetMethod("get_jetton_data", []);
         //@ts-ignore
         const totalSupply = res.result[0] as BN;
@@ -55,6 +61,9 @@ export class JettonMinter implements iTvmBusContract {
     }
 
     async init(fakeAddress: Address) {
+        if (!this.contract) {
+            return;
+        }
         let messageBody = new Cell();
         messageBody.bits.writeUint(1, 1);
         let msg = new CommonMessageInfo({ body: new CellMessage(messageBody) });
@@ -121,6 +130,9 @@ export class JettonMinter implements iTvmBusContract {
     }
 
     async mint(sender: Address, receiver: Address, jettonAmount: BN) {
+        if (!this.contract) {
+            return;
+        }
         let res = await this.contract.sendInternalMessage(
             new InternalMessage({
                 from: sender,
@@ -136,17 +148,38 @@ export class JettonMinter implements iTvmBusContract {
         let successResult = res as SuccessfulExecutionResult;
 
         return {
-            exit_code: res.exit_code,
+            ...res,
             returnValue: res.result[1] as BN,
-            logs: res.logs,
-            actions: parseActionsList(successResult.action_list_cell),
+            logs: filterLogs(res.logs),
         };
+    }
+
+    async sendInternalMessage(message: InternalMessage) {
+        if (!this.contract) {
+            return Promise.resolve({} as ExecutionResult);
+        }
+        return this.contract.sendInternalMessage(message);
+    }
+
+    async mintMessage(sender: Address, receiver: Address, jettonAmount: BN) {
+        return new InternalMessage({
+            from: sender,
+            to: this.address as Address,
+            value: toNano(0.1),
+            bounce: false,
+            body: new CommonMessageInfo({
+                body: new CellMessage(JettonMinter.Mint(receiver, jettonAmount)),
+            }),
+        });
     }
 
     // burn#595f07bc query_id:uint64 amount:(VarUInteger 16)
     //           response_destination:MsgAddress custom_payload:(Maybe ^Cell)
     //           = InternalMsgBody;
     async receiveBurn(subWalletOwner: Address, sourceWallet: Address, amount: BN) {
+        if (!this.contract) {
+            return;
+        }
         let messageBody = new Cell();
         messageBody.bits.writeUint(OPS.Burn_notification, 32); // action
         messageBody.bits.writeUint(1, 64); // query-id
@@ -173,14 +206,16 @@ export class JettonMinter implements iTvmBusContract {
         let successResult = res as SuccessfulExecutionResult;
         //console.log(res);
         return {
-            exit_code: res.exit_code,
+            ...res,
             returnValue: res.result[1] as BN,
-            logs: res.logs,
-            actions: parseActionsList(successResult.action_list_cell),
+            logs: filterLogs(res.logs),
         };
     }
 
     async getJettonData() {
+        if (!this.contract) {
+            return;
+        }
         let data = await this.contract.invokeGetMethod("get_jetton_data", []);
         const rawAddress = data.result[2] as Slice;
         return {
@@ -193,6 +228,9 @@ export class JettonMinter implements iTvmBusContract {
     }
 
     setUnixTime(time: number) {
+        if (!this.contract) {
+            return;
+        }
         this.contract.setUnixTime(time);
     }
 
@@ -206,7 +244,7 @@ export class JettonMinter implements iTvmBusContract {
         };
     }
 
-    static async create(totalSupply: BN, tokenAdmin: Address, content: string) {
+    static async Create(totalSupply: BN, tokenAdmin: Address, content: string, tvmBus?: TvmBus, balance = toNano("1")) {
         const jettonWalletCode = await serializeWalletCodeToCell();
         const stateInit = await buildStateInit(totalSupply, tokenAdmin, content, jettonWalletCode[0]);
         const cellCode = await CompileCodeToCell();
@@ -220,11 +258,11 @@ export class JettonMinter implements iTvmBusContract {
             initialCode: jettonWalletCode[0],
         });
 
-        const instance = new JettonMinter(contract);
-        instance.address = myAddress;
-        instance.contract.setC7Config({
-            myself: myAddress,
-        });
+        const instance = new JettonMinter(contract, myAddress, balance);
+        if (tvmBus) {
+            tvmBus.registerContract(instance);
+        }
+
         instance.setUnixTime(toUnixTime(Date.now()));
         return instance;
     }
@@ -236,9 +274,7 @@ async function serializeWalletCodeToCell() {
     return Cell.fromBoc(jettonWalletCodeB64);
 }
 
-async function serializeMinterCodeToCell(replaceMyAddress = true) {
-    if (replaceMyAddress) {
-    }
+async function serializeMinterCodeToCell() {
     const jettonMinterCodeB64: string = compileFuncToB64(["test/jetton-minter.fc"]);
     return Cell.fromBoc(jettonMinterCodeB64);
 }
