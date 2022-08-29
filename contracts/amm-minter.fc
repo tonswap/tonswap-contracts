@@ -244,7 +244,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     if (noPayload == -1 ) {
       return ();
     }
-    
+
     ;; accept add-liquidity and swap actions only from token_wallet_address
     ;; W-ADDRESS != ZERO    &&   W-ADDRESS != SENDER => THROW , WRONG SENDER
     if (equal_slices(store::token_wallet_address, zero_address) == false)
@@ -255,9 +255,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     }
     
     int sub_op = in_msg_body~load_uint(32);
-    int x = 77;
     if( sub_op == OP_ADD_LIQUIDITY ) {
-      ~dump x;
       add_liquidity(
         in_msg_body,
         jetton_amount,
@@ -267,7 +265,6 @@ const MAX_SLIPAGE = 99; ;; TODO
         fwd_fee,
         query_id
       );
-      ~dump x;
       return ();
     }
     

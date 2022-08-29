@@ -82,9 +82,6 @@ describe("Ton Swap Bus Test Suite", () => {
         const { deployerLpWallet, tvmBus, deployWallet } = await initAMM({});
 
         const lpData = await deployerLpWallet.getData();
-        console.log(lpData);
-
-        console.log("lpData.balace", lpData.balance.toString());
 
         let messageBody = AmmLpWallet.RemoveLiquidityMessage(lpData.balance, deployWallet.address);
         const message = messageGenerator({
@@ -95,7 +92,6 @@ describe("Ton Swap Bus Test Suite", () => {
         });
 
         let messagesLog = await tvmBus.broadcast(message);
-        console.log(messagesLog);
 
         let deployerLpWallet2 = messagesLog[0].contractImpl as AmmLpWallet;
 
@@ -125,7 +121,6 @@ describe("Ton Swap Bus Test Suite", () => {
 
     it("swap ton to token", async () => {
         let { ammMinter, tvmBus, deployWallet } = await initAMM({});
-
         const tonSide = toNano(1);
         const preSwapData = await ammMinter.getData();
 
@@ -199,7 +194,6 @@ describe("Ton Swap Bus Test Suite", () => {
             body: swapTokenMessage,
         });
         let messagesLog = await tvmBus.broadcast(message);
-        console.log(messagesLog);
 
         ammMinter = messagesLog[3].contractImpl as AmmMinterTVM;
         const ammMinterData = await ammMinter.getData();
