@@ -26,14 +26,14 @@ const MAX_SLIPAGE = 99; ;; TODO
     .store_uint(0, 1)
     .end_cell();
 
-  cell state_init = calculate_jetton_wallet_state_init(
-    to_address, 
-    my_address(), 
-    store::jetton_wallet_code
-  );
+    cell state_init = calculate_jetton_wallet_state_init(
+        to_address, 
+        my_address(), 
+        store::jetton_wallet_code
+    );
 
-  slice to_wallet_address = calculate_jetton_wallet_address(state_init);
-  var msg = begin_cell()
+    slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+    var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(to_wallet_address)
     .store_coins(ton_leftovers)
@@ -41,7 +41,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     .store_ref(state_init)
     .store_ref(mint_msg);
   
-  send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+    send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
 }
 
 
@@ -54,276 +54,276 @@ const MAX_SLIPAGE = 99; ;; TODO
     int fwd_fee,
     int query_id) impure {
 
-  int slippage = in_msg_body~load_uint(32);
-  int ton_liquidity = in_msg_body~load_grams();
-  if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {  
-    revert_add_liquidity(
-      ton_liquidity,
-      jetton_amount,
-      jetton_sender,
-      query_id, msg_value
-    );
-    return ();
-  }
+    int slippage = in_msg_body~load_uint(32);
+    int ton_liquidity = in_msg_body~load_grams();
+    if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {  
+        revert_add_liquidity(
+            ton_liquidity,
+            jetton_amount,
+            jetton_sender,
+            query_id, msg_value
+        );
+        return ();
+    }
 
-  ;; - ton_liquidity is the amount that stays in the reserves
-  ;; - fwd_fee + gas_consumption needs to cover the gas fees in the execuation 
-  int add_liquidity_gas_cost = msg_value - (ton_liquidity + fwd_fee + JETTON_GAS_CONSUMPTION);
-  ;; add_liquidity_gas_cost should cover the new LP or updating it ,and the rest should return
-  ;; to jetton owenr via excess message
+    ;; - ton_liquidity is the amount that stays in the reserves
+    ;; - fwd_fee + gas_consumption needs to cover the gas fees in the execuation 
+    int add_liquidity_gas_cost = msg_value - (ton_liquidity + fwd_fee + JETTON_GAS_CONSUMPTION);
+    ;; add_liquidity_gas_cost should cover the new LP or updating it ,and the rest should return
+    ;; to jetton owenr via excess message
 
-  ;; min jetton storage for the lp wallet plus 1 message for mint 1
-  int next_message_gas_cost = (fwd_fee * 2) + JETTON_GAS_COMPUTATION  + MIN_JETTON_STORAGE;
-  ;; gas_left should cover 
-  if( add_liquidity_gas_cost < next_message_gas_cost ) 
+    ;; min jetton storage for the lp wallet plus 1 message for mint 1
+    int next_message_gas_cost = (fwd_fee * 2) + JETTON_GAS_COMPUTATION  + MIN_JETTON_STORAGE;
+    ;; gas_left should cover 
+    if( add_liquidity_gas_cost < next_message_gas_cost ) 
       | 
     ( ton_liquidity < ADD_LIQUIDTY_DUST)  {
 
-    revert_add_liquidity(
-      ton_liquidity,
-      jetton_amount,
-      jetton_sender,
-      query_id,
-      msg_value
-    );
-    return ();
-  }
-  int should_revert = 0;
-
-  if store::ton_reserves > 0 {
-    int optimal_ton = quote(jetton_amount, store::token_reserves, store::ton_reserves);
-    int optimal_jetton = quote(ton_liquidity, store::ton_reserves, store::token_reserves);
-
-    int ton_liquidity_min = muldiv(ton_liquidity, ( 100 - slippage ), 100);
-    int jeton_liquidity_min = muldiv(jetton_amount, ( 100 - slippage ), 100);
-
-    if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
         revert_add_liquidity(
-          ton_liquidity,
-          jetton_amount,
-          jetton_sender,
-          query_id,
-          msg_value
+            ton_liquidity,
+            jetton_amount,
+            jetton_sender,
+            query_id,
+            msg_value
         );
-        should_revert = 1;
-    } else {
-        int extra_ton = ton_liquidity - optimal_ton;
-        int extra_jeton = jetton_amount - optimal_jetton;
+        return ();
+    }
+    int should_revert = 0;
 
-        ;; return extra's
-        if extra_jeton > ADD_LIQUIDTY_DUST {
-            transfer_token(query_id, jetton_sender, extra_jeton, fwd_fee * 2 );  ;; TODO send 0.1TON use fwd 
-            ton_liquidity = optimal_ton;
-        }
+    if store::ton_reserves > 0 {
+        int optimal_ton = quote(jetton_amount, store::token_reserves, store::ton_reserves);
+        int optimal_jetton = quote(ton_liquidity, store::ton_reserves, store::token_reserves);
+
+        int ton_liquidity_min = muldiv(ton_liquidity, ( 100 - slippage ), 100);
+        int jeton_liquidity_min = muldiv(jetton_amount, ( 100 - slippage ), 100);
+
+        if( ( optimal_ton <= ton_liquidity_min ) | (optimal_jetton <= jeton_liquidity_min) ) {
+            revert_add_liquidity(
+                ton_liquidity,
+                jetton_amount,
+                jetton_sender,
+                query_id,
+                msg_value
+            );
+            should_revert = 1;
+        } else {
+            int extra_ton = ton_liquidity - optimal_ton;
+            int extra_jeton = jetton_amount - optimal_jetton;
+
+            ;; return extra's
+            if extra_jeton > ADD_LIQUIDTY_DUST {
+                transfer_token(query_id, jetton_sender, extra_jeton, fwd_fee * 2 );  ;; TODO send 0.1TON use fwd 
+                ton_liquidity = optimal_ton;
+            }
         elseif extra_ton > ADD_LIQUIDTY_DUST {
-            send_grams(jetton_sender ,extra_ton);
-            ;; token_liquidity = optimal_token;
+                send_grams(jetton_sender ,extra_ton);
+                ;; token_liquidity = optimal_token;
+            }
         }
     }
-  }
 
-  if should_revert == 1 {
-    return ();
-  }
+    if should_revert == 1 {
+        return ();
+    }
 
-  int minted_lp = calculate_new_lp(ton_liquidity, jetton_amount);
-  if equal_slices(store::token_wallet_address, zero_address) {
-    store::token_wallet_address = sender;
-  }
+    int minted_lp = calculate_new_lp(ton_liquidity, jetton_amount);
+    if equal_slices(store::token_wallet_address, zero_address) {
+        store::token_wallet_address = sender;
+    }
 
-  mint_tokens(jetton_sender, query_id,  minted_lp, add_liquidity_gas_cost);
-  save_data();
+    mint_tokens(jetton_sender, query_id,  minted_lp, add_liquidity_gas_cost);
+    save_data();
   
-  return ();
+    return ();
 }
 
 () remove_liquidity(
     int jetton_amount,
     slice from_address,
-    int query_id, 
-    slice sender, 
+    int query_id,
+    slice sender,
     int msg_value,
     int fwd_fee) impure inline {
 
-  int ton_to_remove = muldiv(jetton_amount, store::ton_reserves, store::total_supply);
-  int token_to_remove = muldiv(jetton_amount, store::token_reserves, store::total_supply);
+    int ton_to_remove = muldiv(jetton_amount, store::ton_reserves, store::total_supply);
+    int token_to_remove = muldiv(jetton_amount, store::token_reserves, store::total_supply);
   
-  throw_unless(ERROR::WRONG_JETTON_SENDER_ADDRESS,
-    equal_slices(
-      calculate_user_jetton_wallet_address(from_address,my_address(), 
-      store::jetton_wallet_code
-    ) 
+    throw_unless(ERROR::WRONG_JETTON_SENDER_ADDRESS,
+        equal_slices(
+            calculate_user_jetton_wallet_address(from_address,my_address(), 
+                store::jetton_wallet_code
+            )
     , sender)
-  );
+    );
   
-  ;; 1 fwd-fee for grams message 
-  ;; 1 token_transfer_fee
-  msg_value -= jetton_transfer_fee(fwd_fee) + fwd_fee;
+    ;; 1 fwd-fee for grams message 
+    ;; 1 token_transfer_fee
+    msg_value -= jetton_transfer_fee(fwd_fee) + fwd_fee;
   
-  send_grams(from_address, ton_to_remove);
+    send_grams(from_address, ton_to_remove);
   
-  transfer_token(
-    query_id,
-    from_address,
-    token_to_remove,
-    msg_value
-  );
+    transfer_token(
+        query_id,
+        from_address,
+        token_to_remove,
+        msg_value
+    );
 
-  store::ton_reserves -= ton_to_remove;
-  store::token_reserves -= token_to_remove;
-  store::total_supply -= jetton_amount;
-  save_data();
-  return ();
+    store::ton_reserves -= ton_to_remove;
+    store::token_reserves -= token_to_remove;
+    store::total_supply -= jetton_amount;
+    save_data();
+    return ();
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
-  if (in_msg_body.slice_empty?()) { ;; ignore empty messages
-    return ();
-  }
-  slice cs = in_msg_full.begin_parse();
-  int flags = cs~load_uint(4);
-  if (flags & 1) {
-    return ();
-  }
+    if (in_msg_body.slice_empty?()) { ;; ignore empty messages
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
   
-  slice sender = cs~load_msg_addr();
-  cs~load_msg_addr(); ;; skip dst
-  cs~load_coins(); ;; skip value
-  cs~skip_bits(1); ;; skip extracurrency collection
-  cs~load_coins(); ;; skip ihr_fee
-  int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs    
+    slice sender = cs~load_msg_addr();
+    cs~load_msg_addr(); ;; skip dst
+    cs~load_coins(); ;; skip value
+    cs~skip_bits(1); ;; skip extracurrency collection
+    cs~load_coins(); ;; skip ihr_fee
+    int fwd_fee = cs~load_coins(); ;; we use message fwd_fee for estimation of forward_payload costs    
 
-  int op = in_msg_body~load_uint(32);
-  int query_id = in_msg_body~load_uint(64);
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
 
-  load_data();
+    load_data();
   
-  if (op == OP_BURN_NOTIFICAITON) {
+    if (op == OP_BURN_NOTIFICAITON) {
 
-    int jetton_amount = in_msg_body ~load_coins();
-    slice from_address = in_msg_body ~load_msg_addr();
+        int jetton_amount = in_msg_body ~load_coins();
+        slice from_address = in_msg_body ~load_msg_addr();
 
-    remove_liquidity(
-      jetton_amount, 
-      from_address, 
-      query_id, 
-      sender,
-      msg_value,
-      fwd_fee
-    );
-    return ();  
-  }
+        remove_liquidity(
+            jetton_amount, 
+            from_address, 
+            query_id, 
+            sender,
+            msg_value,
+            fwd_fee
+        );
+        return ();  
+    }
 
-  if (op == OP_SWAP_TON ) {
+    if (op == OP_SWAP_TON ) {
       
-    int ton_to_swap = in_msg_body~load_coins();
-    int min_amount_out = in_msg_body~load_coins();
-    throw_if(ERROR::INSFUCIENT_FUNDS, min_amount_out > store::token_reserves); 
-    throw_if(ERROR::ZERO_RESERVES, 0 == store::token_reserves); 
-    throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address) );
-    ;; insfucient ton in the message 
-    throw_if(ERROR::MSG_VALUE_INSUFFICIENT, ton_to_swap > msg_value ); 
+        int ton_to_swap = in_msg_body~load_coins();
+        int min_amount_out = in_msg_body~load_coins();
+        throw_if(ERROR::INSFUCIENT_FUNDS, min_amount_out > store::token_reserves); 
+        throw_if(ERROR::ZERO_RESERVES, 0 == store::token_reserves); 
+        throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address) );
+        ;; insfucient ton in the message 
+        throw_if(ERROR::MSG_VALUE_INSUFFICIENT, ton_to_swap > msg_value ); 
 
-    swap_tokens(
-      min_amount_out,
-      ton_to_swap,
-      true,
-      sender,
-      query_id,
-      msg_value, 
-      fwd_fee
-    );
-    save_data();
-    return ();
-  }
-
-  if (op == OP_TRANSFER_NOTIFICATION ) {
-    
-    int jetton_amount = in_msg_body~load_coins();
-    slice jetton_sender = in_msg_body~load_msg_addr();
-    int noPayload = in_msg_body~load_uint(1); 
-    if (noPayload == -1 ) {
-      return ();
+        swap_tokens(
+            min_amount_out,
+            ton_to_swap,
+            true,
+            sender,
+            query_id,
+            msg_value, 
+            fwd_fee
+        );
+        save_data();
+        return ();
     }
 
-    ;; accept add-liquidity and swap actions only from token_wallet_address
-    ;; W-ADDRESS != ZERO    &&   W-ADDRESS != SENDER => THROW , WRONG SENDER
-    if (equal_slices(store::token_wallet_address, zero_address) == false)
-       &
-       (equal_slices(store::token_wallet_address, sender) == false) {
+    if (op == OP_TRANSFER_NOTIFICATION ) {
+    
+        int jetton_amount = in_msg_body~load_coins();
+        slice jetton_sender = in_msg_body~load_msg_addr();
+        int noPayload = in_msg_body~load_uint(1); 
+        if (noPayload == -1 ) {
+            return ();
+        }
+
+        ;; accept add-liquidity and swap actions only from token_wallet_address
+        ;; W-ADDRESS != ZERO    &&   W-ADDRESS != SENDER => THROW , WRONG SENDER
+        if (equal_slices(store::token_wallet_address, zero_address) == false)
+        &
+        (equal_slices(store::token_wallet_address, sender) == false) {
       
-      throw(ERROR::WRONG_JETTON_WALLET);
-    }
+            throw(ERROR::WRONG_JETTON_WALLET);
+        }
     
-    int sub_op = in_msg_body~load_uint(32);
+        int sub_op = in_msg_body~load_uint(32);
     
-    if( sub_op == OP_ADD_LIQUIDITY ) {
-      add_liquidity(
-        in_msg_body,
-        jetton_amount,
-        jetton_sender,
-        msg_value,
-        sender,
-        fwd_fee,
-        query_id
-      );
-      return ();
-    }
+        if( sub_op == OP_ADD_LIQUIDITY ) {
+            add_liquidity(
+                in_msg_body,
+                jetton_amount,
+                jetton_sender,
+                msg_value,
+                sender,
+                fwd_fee,
+                query_id
+            );
+            return ();
+        }
     
-    ;; swap TRC20 -> TON
-    if (sub_op == OP_SWAP_TOKEN ) {  
-      ;; bonuce message will be handled properly by the jetton sender
-      throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address)); 
+        ;; swap TRC20 -> TON
+        if (sub_op == OP_SWAP_TOKEN ) {  
+            ;; bonuce message will be handled properly by the jetton sender
+            throw_if(ERROR::NULL_JETTON_WALLET, equal_slices(store::token_wallet_address, zero_address)); 
 
-      int min_amount_out = in_msg_body~load_grams();
-      swap_tokens(
-        min_amount_out,
-        jetton_amount,
-        false,
-        jetton_sender,
-        query_id, 
-        msg_value, 
-        fwd_fee
-      ); 
+            int min_amount_out = in_msg_body~load_grams();
+            swap_tokens(
+                min_amount_out,
+                jetton_amount,
+                false,
+                jetton_sender,
+                query_id, 
+                msg_value, 
+                fwd_fee
+            ); 
 
-      save_data();
-      return ();
+            save_data();
+            return ();
+        }
+        return ();
     }
-    return ();
-  }
 
-  if (op == OP_CODE_UPGRADE & equal_slices(sender, store::admin) ) {
-    cell code = in_msg_body~load_ref();
-    set_code(code);
-    return ();
-  }
+    if (op == OP_CODE_UPGRADE & equal_slices(sender, store::admin) ) {
+        cell code = in_msg_body~load_ref();
+        set_code(code);
+        return ();
+    }
 
 
-  throw(0xffff);
+    throw(0xffff);
 }
 
 
 (int, int, slice, int, int, slice, cell, cell) get_jetton_data() method_id {
-  load_data();
+    load_data();
 
-  return (
-    store::total_supply,
-    -1,
-    store::token_wallet_address,
-    store::ton_reserves,
-    store::token_reserves,
-    store::admin,
-    store::content,
-    store::jetton_wallet_code
-  );
+    return (
+        store::total_supply,
+        -1,
+        store::token_wallet_address,
+        store::ton_reserves,
+        store::token_reserves,
+        store::admin,
+        store::content,
+        store::jetton_wallet_code
+    );
 }
 
 slice get_wallet_address(slice owner_address) method_id {
-  load_data();
+    load_data();
 
-  return calculate_user_jetton_wallet_address(
-    owner_address,
-    my_address(),
-    store::jetton_wallet_code
-  );
+    return calculate_user_jetton_wallet_address(
+        owner_address,
+        my_address(),
+        store::jetton_wallet_code
+    );
 }
