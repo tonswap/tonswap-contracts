@@ -122,7 +122,7 @@ export class AmmMinterTVM extends AmmMinterBase {
         this.init(contentUri, admin);
         this.balance = new BN(balance);
         this.contract?.setC7Config({
-            balance,
+            balance: new BN(balance),
         });
     }
 
