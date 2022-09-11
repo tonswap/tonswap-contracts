@@ -8,6 +8,7 @@
 
 const MIN_JETTON_STORAGE = 10000000;     ;; 0.01 TON
 const JETTON_GAS_COMPUTATION = 10000000; ;; 0.01 TON
+const ADD_LIQUIDTY_GAS_CONSUMPTION = 4000000; ;; 0.04
 const ADD_LIQUIDTY_DUST = 100000000;     ;; 0.1 
 const zero_address = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
 const MAX_SLIPAGE = 99; ;; TODO
@@ -61,14 +62,16 @@ const MAX_SLIPAGE = 99; ;; TODO
             ton_liquidity,
             jetton_amount,
             jetton_sender,
-            query_id, msg_value
+            query_id, 
+            msg_value,
+            fwd_fee
         );
         return ();
     }
 
     ;; - ton_liquidity is the amount that stays in the reserves
     ;; - fwd_fee + gas_consumption needs to cover the gas fees in the execuation 
-    int add_liquidity_gas_cost = msg_value - (ton_liquidity + fwd_fee + JETTON_GAS_CONSUMPTION);
+    int add_liquidity_gas_cost = msg_value - (ton_liquidity + jetton_transfer_fee(fwd_fee) + ADD_LIQUIDTY_GAS_CONSUMPTION);
     ;; add_liquidity_gas_cost should cover the new LP or updating it ,and the rest should return
     ;; to jetton owenr via excess message
 
@@ -84,7 +87,8 @@ const MAX_SLIPAGE = 99; ;; TODO
             jetton_amount,
             jetton_sender,
             query_id,
-            msg_value
+            msg_value,
+            fwd_fee
         );
         return ();
     }
@@ -103,7 +107,8 @@ const MAX_SLIPAGE = 99; ;; TODO
                 jetton_amount,
                 jetton_sender,
                 query_id,
-                msg_value
+                msg_value,
+                fwd_fee
             );
             should_revert = 1;
         } else {
@@ -160,7 +165,6 @@ const MAX_SLIPAGE = 99; ;; TODO
     ;; 1 token_transfer_fee
     msg_value -= jetton_transfer_fee(fwd_fee) + fwd_fee;
   
-    send_grams(from_address, ton_to_remove);
   
     transfer_token(
         query_id,
@@ -168,6 +172,7 @@ const MAX_SLIPAGE = 99; ;; TODO
         token_to_remove,
         msg_value
     );
+    send_grams(from_address, ton_to_remove);
 
     store::ton_reserves -= ton_to_remove;
     store::token_reserves -= token_to_remove;
@@ -326,4 +331,9 @@ slice get_wallet_address(slice owner_address) method_id {
         my_address(),
         store::jetton_wallet_code
     );
+}
+
+
+int version() method_id {
+    return 101;
 }

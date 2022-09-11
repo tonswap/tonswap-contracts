@@ -13,7 +13,7 @@ import { OutAction } from "ton-contract-executor";
 
 const myContractAddress = Address.parse("EQD4FPq-PRDieyQKkizFTRtSDyucUIqrj0v_zXJmqaDp6_0t");
 
-class AmmMinterBase {
+export class AmmMinterBase {
     swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
@@ -44,7 +44,7 @@ class AmmMinterBase {
             codeCell: this.compileCodeToCell(),
         };
     }
-
+    // for testing
     getCodeUpgrade() {
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter-upgrade.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
@@ -93,6 +93,18 @@ export class AmmMinterRPC extends AmmMinterBase {
             minAmountOut: BigInt(res.stack[0][1]),
         };
     }
+    //int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
+    async getAmountIn(amountOut: BN, reserveIn: BN, reserveOut: BN) {
+        let res = await this.client.callGetMethod(this.address, "get_amount_in", [
+            ["num", amountOut.toString()],
+            ["num", reserveIn.toString()],
+            ["num", reserveOut.toString()],
+        ]);
+        return {
+            amountIn: BigInt(res.stack[0][1]),
+        };
+    }
+
     async getJettonData() {
         let res = await this.client.callGetMethod(this.address, "get_jetton_data", []);
 

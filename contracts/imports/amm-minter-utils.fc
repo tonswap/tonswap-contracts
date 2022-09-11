@@ -35,7 +35,7 @@ int square_root(int number) {
     .store_coins(amount)
     .store_uint(0, 107) ;; 106 zeroes +  0 as an indicator that there is no cell with the data.
     .end_cell();
-  send_raw_message(msg, 64); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
+  send_raw_message(msg, 1 + 2); ;; mode, 2 for ignoring errors, 1 for sender pays fees, 64 for returning inbound message value
 }
 
 
@@ -47,7 +47,7 @@ int square_root(int number) {
 
 () transfer_token(int query_id, slice to, int jetton_amount, int ton_value) impure {
 
-    var jetton_transfer_message = begin_cell()
+  var jetton_transfer_message = begin_cell()
     .store_uint(OP_TRANSFER, 32)
     .store_uint(query_id, 64)
     .store_coins(jetton_amount)
@@ -63,7 +63,7 @@ int square_root(int number) {
     .store_coins(ton_value) ;; gas
     .store_uint(4, 1 + 4 + 4 + 64 + 32)
     .store_uint(0, 1) ;; state-init null
-    .store_uint(1, 1); ;; message body as
+    .store_uint(1, 1); ;; message body as REF
 
   msg = msg.store_ref(jetton_transfer_message);
 
@@ -111,6 +111,7 @@ int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
   if (is_ton_src == true) {
     store::ton_reserves += in_amount;
     store::token_reserves -= amount_out;
+                             
     int transfer_token_gas = msg_value - ( in_amount + AMM_GAS_CONSUMPTION + fwd_fee * 2);
     int jetton_fee = jetton_transfer_fee(fwd_fee);
     throw_unless(ERROR::SWAP_TON_NO_GAS, transfer_token_gas > jetton_fee);
@@ -128,10 +129,12 @@ int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
   int token_liquidity,
   slice jetton_sender,
   int query_id,
-  int msg_value) impure {
+  int msg_value,
+  int fwd_fee) impure {
 
   send_grams(jetton_sender, ton_liquidity);
-  transfer_token(query_id, jetton_sender, token_liquidity, msg_value);
+  int send_token_gas = msg_value - ( ton_liquidity + jetton_transfer_fee(fwd_fee) + fwd_fee );
+  transfer_token(query_id, jetton_sender, token_liquidity, send_token_gas);
 }
 
 (int) calculate_new_lp(int ton_amount,int token_amount) impure {
