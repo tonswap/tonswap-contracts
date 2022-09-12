@@ -28,6 +28,13 @@ If you want to set an explicit func path you may use the FUNC_PATH environment v
 the project uses [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor) package to run Jest based tests.
 Use `npm run test` to execute the test suite.
 
+### Run TVM-BUS tests
+
+run `npm run test-bus` 
+this tests are different then the tests in `/test/amm-minter.spec.ts`, 
+Because this tests are using [ton-tvm-bus](https://github.com/ton-defi-org/ton-tvm-bus) , each tests starts in a single message, and the message passing between contracts is done automatically, messages with statInit are auto deployed , messages find their receiver automatically unlike in the first test suite.
+
+
 ### Run end to end test on Mainnet or Testnet
 
 `npm run e2e` (this process will generate a deploy wallet during uts execution)
