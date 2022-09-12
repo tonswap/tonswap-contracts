@@ -1,8 +1,8 @@
 # Tonswap - FunC Smart Contracts
 
-## Work in progress!
+## TonSwap is live on TON mainnet.
 
-> This project is still experimental and in an ongoing research phase.
+TonSwap is live on TON mainnet. TonSwap is in Beta, use at your own risk
 
 ## Overview
 
@@ -37,17 +37,8 @@ Because this tests are using [ton-tvm-bus](https://github.com/ton-defi-org/ton-t
 
 ### Run end to end test on Mainnet or Testnet
 
-`npm run e2e` (this process will generate a deploy wallet during uts execution)
+`npm run e2e` (this process will generate a deploy wallet during it`s execution)
 
-## Roadmap
+### build for web 
 
--   [x] Full functional AMM with 0.3% fees
--   [x] End to end Jest test coverage using [ton-contract-executor](https://github.com/tonwhales/ton-contract-executor)
--   [x] Gas Optimizations , sender should receive the gas change in the end of the message flows
--   [x] Move to Jetton architecture
--   [x] Add Liquidity should validate sufficient gas for minting LP contract , so liquidity slippage check should include it.
--   [x] Write end to end script that deploys on test/main-net
--   [x] enforce overflows in price calculation
--   [x] upgrade to latest npm ton
--   [x] Connect Bot to mainnet
--   [x] Connect Web app
+`npm run build:web` - this process will generate json files with hex value for the contract, both for `amm-minter.fc` and `amm-wallet.fc`;
