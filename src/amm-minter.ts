@@ -14,8 +14,13 @@ import { printChain, TvmBus, iTvmBusContract } from "ton-tvm-bus";
 
 const myContractAddress = Address.parse("EQBZjEzfbSslRltL4z7ncz_tb-t1z5R98zAKUuWLO1QTINTA");
 
+<<<<<<< HEAD
 export class AmmMinterMessages {
     static swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+=======
+export class AmmMinterBase {
+    swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
+>>>>>>> master
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -45,8 +50,13 @@ export class AmmMinterMessages {
             codeCell: this.compileCodeToCell(),
         };
     }
+<<<<<<< HEAD
 
     static getCodeUpgrade() {
+=======
+    // for testing
+    getCodeUpgrade() {
+>>>>>>> master
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter-upgrade.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
@@ -93,6 +103,18 @@ export class AmmMinterRPC {
             minAmountOut: BigInt(res.stack[0][1]),
         };
     }
+    //int get_amount_in(int amountOut, int reserveIn, int reserveOut) method_id {
+    async getAmountIn(amountOut: BN, reserveIn: BN, reserveOut: BN) {
+        let res = await this.client.callGetMethod(this.address, "get_amount_in", [
+            ["num", amountOut.toString()],
+            ["num", reserveIn.toString()],
+            ["num", reserveOut.toString()],
+        ]);
+        return {
+            amountIn: BigInt(res.stack[0][1]),
+        };
+    }
+
     async getJettonData() {
         let res = await this.client.callGetMethod(this.address, "get_jetton_data", []);
 
@@ -117,8 +139,18 @@ export class AmmMinterTVM implements iTvmBusContract {
     balance?: BN;
     address?: Address;
 
+<<<<<<< HEAD
     constructor(contentUri: string, admin: Address, tvmBus?: TvmBus, balance = toNano(1)) {
         this.init(contentUri, admin, balance, tvmBus);
+=======
+    constructor(contentUri: string, admin: Address, balance: 1000000000000) {
+        super();
+        this.init(contentUri, admin);
+        this.balance = new BN(balance);
+        this.contract?.setC7Config({
+            balance: new BN(balance),
+        });
+>>>>>>> master
     }
 
     async init(contentUri: string, admin: Address, balance: BN, tvmBus?: TvmBus) {
