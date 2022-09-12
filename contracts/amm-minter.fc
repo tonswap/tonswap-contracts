@@ -54,7 +54,6 @@ const MAX_SLIPAGE = 99; ;; TODO
     slice sender,
     int fwd_fee,
     int query_id) impure {
-
     int slippage = in_msg_body~load_uint(32);
     int ton_liquidity = in_msg_body~load_grams();
     if (0 == jetton_amount) | (msg_value == 0) | slippage > MAX_SLIPAGE {  
@@ -68,20 +67,18 @@ const MAX_SLIPAGE = 99; ;; TODO
         );
         return ();
     }
-
     ;; - ton_liquidity is the amount that stays in the reserves
     ;; - fwd_fee + gas_consumption needs to cover the gas fees in the execuation 
     int add_liquidity_gas_cost = msg_value - (ton_liquidity + jetton_transfer_fee(fwd_fee) + ADD_LIQUIDTY_GAS_CONSUMPTION);
     ;; add_liquidity_gas_cost should cover the new LP or updating it ,and the rest should return
     ;; to jetton owenr via excess message
-
+    
     ;; min jetton storage for the lp wallet plus 1 message for mint 1
     int next_message_gas_cost = (fwd_fee * 2) + JETTON_GAS_COMPUTATION  + MIN_JETTON_STORAGE;
     ;; gas_left should cover 
     if( add_liquidity_gas_cost < next_message_gas_cost ) 
       | 
     ( ton_liquidity < ADD_LIQUIDTY_DUST)  {
-
         revert_add_liquidity(
             ton_liquidity,
             jetton_amount,
@@ -95,6 +92,7 @@ const MAX_SLIPAGE = 99; ;; TODO
     int should_revert = 0;
 
     if store::ton_reserves > 0 {
+       
         int optimal_ton = quote(jetton_amount, store::token_reserves, store::ton_reserves);
         int optimal_jetton = quote(ton_liquidity, store::ton_reserves, store::token_reserves);
 

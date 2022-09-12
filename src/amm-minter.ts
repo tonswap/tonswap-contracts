@@ -14,13 +14,8 @@ import { printChain, TvmBus, iTvmBusContract } from "ton-tvm-bus";
 
 const myContractAddress = Address.parse("EQBZjEzfbSslRltL4z7ncz_tb-t1z5R98zAKUuWLO1QTINTA");
 
-<<<<<<< HEAD
 export class AmmMinterMessages {
     static swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
-=======
-export class AmmMinterBase {
-    swapTon(tonToSwap: BN, minAmountOut: BN): Cell {
->>>>>>> master
         let cell = new Cell();
         cell.bits.writeUint(OPS.SWAP_TON, 32); // action
         cell.bits.writeUint(1, 64); // query-id
@@ -50,13 +45,8 @@ export class AmmMinterBase {
             codeCell: this.compileCodeToCell(),
         };
     }
-<<<<<<< HEAD
 
     static getCodeUpgrade() {
-=======
-    // for testing
-    getCodeUpgrade() {
->>>>>>> master
         const ammMinterCodeB64: string = compileFuncToB64(["contracts/amm-minter-upgrade.fc"]);
         return Cell.fromBoc(ammMinterCodeB64);
     }
@@ -139,18 +129,8 @@ export class AmmMinterTVM implements iTvmBusContract {
     balance?: BN;
     address?: Address;
 
-<<<<<<< HEAD
     constructor(contentUri: string, admin: Address, tvmBus?: TvmBus, balance = toNano(1)) {
         this.init(contentUri, admin, balance, tvmBus);
-=======
-    constructor(contentUri: string, admin: Address, balance: 1000000000000) {
-        super();
-        this.init(contentUri, admin);
-        this.balance = new BN(balance);
-        this.contract?.setC7Config({
-            balance: new BN(balance),
-        });
->>>>>>> master
     }
 
     async init(contentUri: string, admin: Address, balance: BN, tvmBus?: TvmBus) {
@@ -220,7 +200,6 @@ export class AmmMinterTVM implements iTvmBusContract {
         });
 
         let res = await this.contract.sendInternalMessage(nMessage);
-
         let parsedResponse = parseInternalMessageResponse(res);
         if (res.exit_code == 0) {
             // this.calculateBalance(message.value, parsedResponse.actions);

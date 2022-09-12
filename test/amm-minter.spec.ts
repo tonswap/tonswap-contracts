@@ -93,10 +93,11 @@ describe("Ton Swap Test Suite", () => {
 
         let sendTonAfterRemoveLiquidity = ammResponse.actionList[0] as SendMsgAction;
 
-        const transferTokenMessage = actionToMessage(amm, ammResponse.actionList[1], toNano(0.1), true);
+        const transferTokenMessage = actionToMessage(amm, ammResponse.actionList[0], toNano(0.1), true);
         const usdcResponseAfterRemoveLiquidity = await ammUsdcWallet.sendInternalMessage(transferTokenMessage);
         await aliceUSDC.sendInternalMessage(actionToMessage(ammUsdcWallet.address, usdcResponseAfterRemoveLiquidity.actionList[0]));
 
+        const transferTonMessage = actionToMessage(amm, ammResponse.actionList[1], toNano(0.1), true);
         const aliceUsdcData2 = await aliceUSDC.getData();
         expect(aliceUsdcData2.balance.toString()).toBe(ALICE_INITIAL_BALANCE.toString());
     });

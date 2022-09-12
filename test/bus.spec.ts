@@ -17,8 +17,10 @@ const LP_DEFAULT_AMOUNT = 707106781;
 const INITIAL_JETTON_MINT = toNano(2050);
 
 const GAS_FEES = {
-    ADD_LIQUIDITY: "0.2",
-    SWAP_FEE: "0.04",
+    ADD_LIQUIDITY: 0.2,
+    SWAP_FEE: 0.09,
+    ADD_LIQUIDITY_FORWARD_TON:0.09,
+    REMOVE_LIQUIDITY: 0.1
 };
 
 const alice = Address.parse("EQCLjyIQ9bF5t9h3oczEX3hPVK4tpW2Dqby0eHOH1y5_Nvb7");
@@ -59,8 +61,8 @@ describe("Ton Swap Bus Test Suite", () => {
         const messageBody = JettonWallet.TransferOverloaded(
             ammMinter.address as Address,
             JETTON_LIQUIDITY,
-            ammMinter.address as Address,
-            tonValue,
+            deployWallet.address as Address,
+            tonValue.add(toNano(GAS_FEES.ADD_LIQUIDITY_FORWARD_TON)),
             OPS.ADD_LIQUIDITY,
             new BN(5),
             tonValue
@@ -68,10 +70,12 @@ describe("Ton Swap Bus Test Suite", () => {
         const addLiquidityMessage = messageGenerator({
             from: deployWallet.address,
             to: deployerJetton.address,
-            value: tonValue.add(toNano("0.2")),
+            value: tonValue.add(toNano(GAS_FEES.ADD_LIQUIDITY)),
             body: messageBody,
         });
         const messagesLog = await tvmBus.broadcast(addLiquidityMessage);
+        //console.log(messagesLog);
+        
 
         printChain(messagesLog, "add liquidity twice and fail the second time, send back funds to sender");
 
@@ -87,18 +91,20 @@ describe("Ton Swap Bus Test Suite", () => {
         const message = messageGenerator({
             from: deployWallet.address,
             to: deployerLpWallet.address as Address,
-            value: toNano("0.2"),
+            value: toNano(GAS_FEES.REMOVE_LIQUIDITY),
             body: messageBody,
         });
 
         let messagesLog = await tvmBus.broadcast(message);
-
+        console.log(messagesLog);
+        
         let deployerLpWallet2 = messagesLog[0].contractImpl as AmmLpWallet;
 
-        let deployer = messagesLog[0].contractImpl as Wallet;
+        let lpWallet = messagesLog[0].contractImpl as AmmLpWallet;
         let ammMinter = messagesLog[1].contractImpl as AmmMinterTVM;
-        let ammJetton = messagesLog[2].contractImpl as JettonWallet;
-        let deployerJetton = messagesLog[3].contractImpl as JettonWallet;
+        let wallet = messagesLog[0].contractImpl as Wallet;
+        let ammJetton = messagesLog[3].contractImpl as JettonWallet;
+        let deployerJetton = messagesLog[4].contractImpl as JettonWallet;
 
         // deployer lp = 0
         const deployerLpWalletData = await deployerLpWallet2.getData();
@@ -131,7 +137,7 @@ describe("Ton Swap Bus Test Suite", () => {
         const message = messageGenerator({
             from: deployWallet.address,
             to: ammMinter.address as Address,
-            value: tonSide.add(toNano("0.2")),
+            value: tonSide.add(toNano(GAS_FEES.SWAP_FEE)),
             body: swapTonMessage,
         });
         let messagesLog = await tvmBus.broadcast(message);
@@ -146,7 +152,7 @@ describe("Ton Swap Bus Test Suite", () => {
     it("swap ton to token and revert", async () => {
         let { ammMinter, tvmBus, deployWallet } = await initAMM({});
         const tonSide = toNano(1);
-        const preSwapData = await ammMinter.getData();
+        const initialPoolData = await ammMinter.getData();
 
         const { tonReserves, tokenReserves } = await ammMinter.getData();
         const { minAmountOut } = await ammMinter.getAmountOut(tonSide, tonReserves, tokenReserves);
@@ -162,8 +168,8 @@ describe("Ton Swap Bus Test Suite", () => {
 
         ammMinter = messagesLog[0].contractImpl as AmmMinterTVM;
         const ammMinterData = await ammMinter.getData();
-        expect(ammMinterData.tonReserves.toString()).toBe(preSwapData.tonReserves.toString());
-        expect(ammMinterData.tokenReserves.toString()).toBe(preSwapData.tokenReserves.toString());
+        expect(ammMinterData.tonReserves.toString()).toBe(initialPoolData.tonReserves.toString());
+        expect(ammMinterData.tokenReserves.toString()).toBe(initialPoolData.tokenReserves.toString());
         printChain(messagesLog, "swap ton to token and revert");
     });
 
